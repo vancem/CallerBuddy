@@ -117,9 +117,9 @@ This includes
   broad way that the UI interacts with the model, and any additional state the
   UI needs for its own use. But it should be reasonably terse, and it should be
   anchored by UI elements that make up the user interface. Styling is definitely
-  not in this document, nor are most 'boring' UI items like buttons an
-  textboxes. I only expect a handful (< 10) of UI elements that need this
-  treatment (e.g. playListEditor).
+  not in this document, nor are most 'boring' UI items like buttons and text
+  boxes. I only expect a handful (< 10) of UI elements that need this treatment
+  (e.g. playListEditor).
 - Generally speaking if something is complex (e.g. over 200 lines of code and 10
   functions), it should have been covered by one of the above design documents
   somewhere. If that is not the case either add mention to one of them and work
@@ -435,7 +435,7 @@ If the song has no lyrics it is assumed to be a patter call and the looping
 feature becomes active. All of this UI can be placed where the lyrics normally
 go since they don't exist for patter. It can display the loop start and end (and
 gray them out if inactive (loopEnd == 0)). The UI lets this values be modified,
-there are also 'nudge' (10msec) nand 'big nudge (100 msec) buttons that move the
+there are also 'nudge' (10msec) and 'big nudge (100 msec) buttons that move the
 value in each direction. The loop start and end points are also shown on the
 bottom slider, and and be set from there by moving the mark for each of these on
 the slider. The start end end loop values are shown with 2 digits after the
