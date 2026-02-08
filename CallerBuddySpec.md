@@ -12,7 +12,7 @@ purpose is the same, but most of the UI details are different.
 
 ## Requirements
 
-This app is designed to fix many of the limitation sqview. In particular it
+This app is designed to fix many of the limitations of sqview. In particular it
 needs to be cross platform. This is the prioritized list of platforms
 
 1. Windows 11
@@ -21,12 +21,12 @@ needs to be cross platform. This is the prioritized list of platforms
 4. Android Phone
 5. IPhone
 
-The two phone platforms are not as important and IPhone is the least important.
-A minimum viable product would support Windows and MacOS.
+The two phone platforms are not as important, and iPhone is the least important.
+A minimum viable product would support Windows and macOS.
 
 The user is likely to wish to store the music and lyrics in some cloud service
 (OneDrive, Google Drive, ICloud) so it is available from more than one device
-(and is backed up). Thus CallerBuddy should support that. ICloud is not as
+(and is backed up). Thus CallerBuddy should support that. iCloud is not as
 important as the other two.
 
 The app is likely to be used where network connectivity might be poor. Thus it
@@ -104,12 +104,12 @@ This includes
   be done for major data (like songs, probably the cache manager, song player
   ...). If the interface is functional, mention that. Glue code (especially API
   glue code) does not need this design treatment. I don't expect more than 10
-  such classes that deserve up-front design. Save these explicitly, and keep
-  them up to date as the code base is modified and prioritize these files in
-  your AI CONTEXT when working with the code.
-- A analogous design document should be made UI design. Describe how any UI
-  frameworks will be used and how they add value, If there is UI state that is
-  not part of the model, that is interesting, describe how UI interactions
+  such classes that deserve up-front design. Save these explicitly and keep them
+  up to date as the code base is modified. Prioritize these files in your AI
+  context when working with the code.
+- An analogous design document should be made for UI design. Describe how any UI
+  frameworks will be used and how they add value. If there is UI state that is
+  not part of the model, that is interesting. Describe how UI interactions
   (clicks) get mapped back to items in the (non-ui) model including how UI items
   get access to the model to begin with. The fewer global variables you have the
   better (having classes for the whole app means you probably don't need any
@@ -214,10 +214,10 @@ MD), but also includes
   of an octave) that the pitch of the music should be altered from the original
   music
 - The _originalTempo_. A decimal number representing the number of beats per
-  minute that the music has. Ideally CallerBuddy and look at the MP3 file and
+  minute that the music has. Ideally CallerBuddy can look at the MP3 file and
   determine this, but if necessary the user can provide it.
-- The _deltaDemo_. A signed decimal number (in BPM) that callerBuddy should
-  modify the music
+- The _deltaTempo_. A signed decimal number (in BPM) that CallerBuddy should
+  adjust the music's tempo by
 
 This data will be serialized to a songs.json file when and data associated with
 a song is modified by CallerBuddy.
@@ -243,41 +243,40 @@ is an associated HTML or MD file then we also know the lyrics. All the other
 fields have reasonable defaults. Thus CallerBuddy only needs the MP3 files to
 bootstrap a song database.
 
-Thus once the app has a CallerBuddyRoot directory. it can look for a songs.json,
-and generate one if needed (by scanning for MP3 files) These files can be
+Thus once the app has a CallerBuddyRoot directory, it can look for a songs.json,
+and generate one if needed (by scanning for MP3 files). These files can be
 displayed int what feels like a row and column table (spreadsheet) with
 filtering and the user can select songs to be included in the list.
 
 Once the user has created the playlist he can move on to the 'playingPlaylist'
 UI which shows the finished playlist, and keeps track of what has been played so
-far. One of the options is to play the next song, which takes the user to
+far. One of the options is to play the next song, which takes the user to the
 playingSong UI for that song.
 
 The playingSong UI displays the lyrics (if available) and has controls for
 
 - modifying the song (changing pitch tempo and volume)
-- Controlling the playing of a the song (play button, stop, forward 2 sec ,
-  forward 5 seconds, back 2 seconds, back five seconds, restart from the
-  beginning)
-- A slider that both shows the progress of the playing and allows the user to
-  select an arbitrary spot in the song
-- information like the time position in min:sec in the music, and the total
-  playing time since reset, as well as a clock that displays the time of day. It
-  should also show the total elapsed time since the song first played. It also
-  shows the looping start and end (and the fact that they are set). Because
-  singing calls have 7 equal sections, the slider should be visually divided
-  into 7 sections so the caller can tell at a glance what section is currently
-  being played. The slider should also show the loop start and end (if set)
+- Controlling the playing of the song (play button, stop, forward 2 sec, forward
+  5 seconds, back 2 seconds, back 5 seconds, restart from the beginning)
+- A slider that shows the progress of the song and allows the user to select an
+  arbitrary spot in the song
+- information like the time position in min:sec in the music, and the elapsed
+  time since reset, as well as a clock that displays the time of day. It should
+  also show the total elapsed time since the song first played. It also shows
+  the looping start and end (and the fact that they are set). Because singing
+  calls have 7 equal sections, the slider should be visually divided into 7
+  sections so the caller can tell at a glance what section is currently being
+  played. The slider should also show the loop start and end (if set)
 
 When the song finishes, or the user closes the playingSong UI, the app goes back
 to the 'playingPlaylist' UI. Normally square dances consist of a patter portion
 (4-10 min with looped music and no lyrics) and a singing call (~4 min) playing a
-song end-to-end (no loop) with lyrics. Followed by a break of typically 5
-minutes when nothing is played. The playingPlayList UI should support this
+song end-to-end (no loop) with lyrics, followed by a break of typically 5
+minutes when nothing is played. The playingPlaylist UI should support this
 pattern while being very flexible (sometimes the patter is skipped, or two
 singing calls are performed, or it is just one singing call and nothing else, it
-needs to be flexible). THe app identifies patter because it has no lyrics (that
-is the definition from the apps point of view). This UI should allow a 0-10min
+needs to be flexible). The app identifies patter because it has no lyrics (that
+is the definition from the app's point of view). This UI should allow a 0-10 min
 timer to be set for the break time as well as a timer for patter length
 (typically 3-10 min). In both cases when the timer goes off, a sound is played
 (the the user gets to select). The UI has controls for these timers (stop,
@@ -305,32 +304,32 @@ CallerBuddy will be run both on laptops, and phones, which have pretty different
 UI constraints. The CallerBuddy UI will be optimized for the laptop first, but
 it should work on a phone UI as well as it can given its constraints.
 
-As always, best practices in UI design should be applied. In particular, cutter
-should be kept to a minimum. It is OK however to use words (and not make
-everything icons), as our audience is English speaking (however we should allow
-for globalization, but it is not a priority for the first version). Features
-need to discoverable, and tooltips should be used aggressively. The UI is likely
-to be used on stage, which means mouse/touch is inconvenient so the UI should be
+As always, best practices in UI design should be applied. In particular, clutter
+should be kept to a minimum. It is okay to use words (and not make everything
+icons), as our audience is English speaking (however we should allow for
+globalization, but it is not a priority for the first version). Features need to
+be discoverable, and tooltips should be used aggressively. The UI is likely to
+be used on stage, which means mouse/touch is inconvenient so the UI should be
 useful using just the keyboard (on the laptop), and the keyboard shortcuts
 should be in the toolTips.
 
-For inspiration for the UI, CallerBuddy should look toward either the VSCode, or
-the Chrome browser. When possible actions should be possible via gestures
+For inspiration for the UI, CallerBuddy should look toward either VSCode or the
+Chrome browser. Where possible, actions should be possible via gestures
 (dragging songs into the list, or changing song order by dragging the songs
 around). Like VSCode, context menus (e.g. right click) should be preferred, and
-menus should show the keyboard shortcuts so that the user can learn them as he
-simply uses the app.
+menus should show the keyboard shortcuts so that the user can learn them while
+using the app.
 
 ### Basic UI layout
 
 The basic UI layout will be much like the Chrome Browser. The idea is that there
-will be a bunch of tabs where real works happens, as the workflow proceeds, it
-opens new tabs, but the old ones may stay around so you can 'back up' in the
-workflow by clicking back to that tab (just like the Chrome browser) Like the
-browser, there also needs to be a small UI element (e.g. upper right corner)
-that controls things that are global to all workflows (like reopening the
-welcome window to set the CallerBuddyRoot folder, or to bring up classic help
-docs, app-wide user preferences, or app version information and upgrades)
+will be a bunch of tabs where real work happens. As the workflow proceeds, it
+opens new tabs, but the old ones may stay around so you can navigate back to
+that tab by clicking it (just like the Chrome browser). Like the browser, there
+also needs to be a small UI element (e.g. upper right corner) that controls
+things that are global to all workflows (like reopening the welcome window to
+set the CallerBuddyRoot folder, or to bring up classic help docs, app-wide user
+preferences, or app version information and upgrades)
 
 #### Welcome Screen UI
 
@@ -348,35 +347,35 @@ brought up
 
 Conceptually there is only one playlist in the app, but there can be many
 editors that operate on that playlist. From a UI standpoint a playlist editor is
-similar a OS File Explorer UI, and so the UI details should mimic that UI. It
-shows a list of things on the right side (which for us are SONGs) it will have
-some text box at the top that allows those songs to be filtered. The songs will
-be in a table gride with column heading (like a File Explorer), and you should
-be able to filter on the columns (like how Google Sheets work) What is different
-than a File Explorer UI is that the goal is to create the Playlist, which is a
-list of song titles on the left. YOu can select a song on the right and right
-click to put in at the beginning or end of the list, and you can drag the
-selected line to the list and place it where you want in the order. You can also
-grab items that are in the list and drag them to new places in the list.
+similar to an OS File Explorer UI, and so the UI details should mimic that UI.
+It shows a list of things on the right side (which for us are songs). It will
+have some text box at the top that allows those songs to be filtered. The songs
+will be in a table grid with column headings (like a File Explorer), and you
+should be able to filter on the columns (like how Google Sheets work). What is
+different from a File Explorer UI is that the goal is to create the playlist,
+which is a list of song titles on the left. You can select a song on the right
+and right click to add it to the beginning or end of the list, and you can drag
+the selected line to the list and place it where you want in the order. You can
+also grab items that are in the list and drag them to new places in the list.
 
-A playlist editor has a OS folder associated with it which is where it gets is
+A playlist editor has an OS folder associated with it which is where it gets its
 songs from. WHen the CallerBuddyRoot is set, CallerBuddy will open a playlist
 editor pointing a the CallerBuddyRoot.
 
 Like the file explorer, in addition to songs in the right list, there can be
-folders. These correspond to folders in the playlist editors folder. You can
-open these folders change the playlists folder to folder the user indicated.
-There should be a .. folder in the list (assuming you can go to the parent
-folder, depending on how the folder APIs work the playlist may need to keep
-track of its parent, and only show the .. folder when it is possible to do so)
-You can also right click on the folder and open a NEW tab (playlist editor) with
-the new folder to the right the current playlist editor but in the same tab(thus
-you can have to editors open at the same time). They two editors to be able to
-close independently of one another Thus they each probably have a title bar
-(which is the name of the folder they represent, and X icon to close each). They
-will both be operating on the same playlist (there is only one per app).
-Playlist editors don't close automatically they need to be closed by the user
-(the x on the tab or title bar).
+folders. These correspond to folders in the playlist editor's folder. You can
+open these folders and change the playlist's folder to the folder the user
+indicated. There should be a .. folder in the list (assuming you can go to the
+parent folder, depending on how the folder APIs work the playlist may need to
+keep track of its parent, and only show the .. folder when it is possible to do
+so) You can also right click on the folder and open a new tab (playlist editor)
+with the new folder to the right of the current playlist editor but in the same
+tab (thus you can have two editors open at the same time). The two editors are
+able to close independently of one another. Thus they each probably have a title
+bar (which is the name of the folder they represent, and an X icon to close
+each). They will both be operating on the same playlist (there is only one per
+app). Playlist editors don't close automatically they need to be closed by the
+user (the x on the tab or title bar).
 
 There should be a button near (above) the playlist that indicates 'play'
 (probably a triangle to the right)) clicking that will bring you to the
@@ -393,10 +392,10 @@ user can override this by clicking on any song, and that will cause it to be the
 next song to be played. By default however, the next song (the one the cursor
 points at) is the first non-grayed song in the list.
 
-There is a play button (Probably a triangle pointing right). That will play the
+There is a play button (probably a triangle pointing right). That will play the
 currently selected song. When the song is done it will be grayed out. There is a
-break timer on the right of this tab. It contains a textbox for the the time of
-the break (default 5 min, user can set, and it is persisted in the setting.json
+break timer on the right of this tab. It contains a textbox for the time of the
+break (default 5 min, user can set, and it is persisted in the settings.json
 file), and a countdown display, and a button that turns the break timer on. WHen
 a song completes IF the break timer is on, it starts counting down, when it hits
 zero it will play a sound (we want a non-obtrusive sound) It should replay every
@@ -411,7 +410,7 @@ Logically there is only one PlaylistPlay tab in the app. If the tab already
 exists it is reused, otherwise it is created. Like all tabs, it can be closed.
 
 When a song is played, it closes any existing song that was being played. Thus
-there is at most one playSong UI as well. The playListPlay UI should become
+there is at most one playSong UI as well. The playlistPlay UI should become
 inactive (grayed) when the playSong UI is active (only one song playing at a
 time)
 
@@ -421,31 +420,33 @@ When the play button in the playlistPlay UI is activated, it brings up a new tab
 that plays a single song. This tab is dominated by a window on the left that
 displays the lyrics (if present). Along the bottom of the UI is a slider that
 represents the whole runtime of the song broken into 7 segments (alternate
-colors to highlight the segments) YOu can use the slider to move to any point in
-the song. On the right side are controls/information. There the standard song
-playing buttons (play, stop, forward a bit (2 sec) forward more (10 sec)
-backward a bit (2 sec) backward more (10 sec), and restart). In addition there
-are controls for displaying the volume, pitch and tempo. around each values have
-buttons on the left and right (triangles pointing left and right) that allow you
-to tick the values up or down. There are also values for min:sec into the song,
-min:sec for the total song playtime (which may be different because of looping
-or seeking in the slider). There is also a clock showing the time of day.
+colors to highlight the segments). You can use the slider to move to any point
+in the song. On the right side are controls and information. There are the
+standard song playing buttons (play, stop, forward a bit (2 sec), forward more
+(5 sec) backward a bit (2 sec), backward more (5 sec), and restart). In addition
+there are controls for displaying the volume, pitch and tempo. Around each value
+there are buttons on the left and right (triangles pointing left and right) that
+allow you to adjust the values up or down. There are also displays for min:sec
+into the song, min:sec for the total song playtime (which may be different
+because of looping or seeking in the slider). There is also a clock showing the
+time of day.
 
 If the song has no lyrics it is assumed to be a patter call and the looping
 feature becomes active. All of this UI can be placed where the lyrics normally
 go since they don't exist for patter. It can display the loop start and end (and
-gray them out if inactive (loopEnd == 0)). The UI lets this values be modified,
+gray them out if inactive (loopEnd == 0)). The UI lets these values be modified,
 there are also 'nudge' (10msec) and 'big nudge (100 msec) buttons that move the
 value in each direction. The loop start and end points are also shown on the
-bottom slider, and and be set from there by moving the mark for each of these on
-the slider. The start end end loop values are shown with 2 digits after the
-decimal point so that users see the changes from nudges. Patter also will have a
+bottom slider, and can be set from there by moving the mark for each of these on
+the slider. The start and end loop values are shown with 2 digits after the
+decimal point so that users see the changes from nudges. Patter also has a
 'patterTime' countdown timer. There will be UI to set the amount of time
-((default 5 min, user can set, and it is persisted in the setting.json file)),
-and live countdown of how long the music was running. When countdown reaches
-zero a sound is played (again unobtrusive) once (unlike the break timer it will
-not chime again), the countdown continues past zero into negative numbers (color
-changes red) so that the user knows how much over budget he is.
+((default 5 min, user can set, and it is persisted in the settings.json file)),
+and a live countdown of how long the music has been running. When the countdown
+reaches zero a sound is played (again unobtrusive) once (unlike the break timer
+it will not chime again). The countdown continues past zero into negative
+numbers (color changes to red) so that the user knows how much over budget they
+are.
 
 When the song finishes playing the tab will auto-close, and the playListPlay UI
 is activated again.
@@ -497,27 +498,27 @@ include
   end (Or near the end). Introduce the concept of practice, which is when
   playlists are short (e.g. single songs) or are designated as practice. Only
   non-practice (that is performances) are tracked. Then provide filters to avoid
-  songs used in the last month or sort songs by the the amount of time since
-  last use.
+  songs used in the last month, or sort songs by the amount of time since last
+  use.
 - Add editing of the lyrics - Typically callers buy songs on the internet that
-  come in ZIP files that contain music (sometime with several variation of the
-  song), and lyrics in various formats (html, docx, text ...). Depending on the
-  recording company these ZIP files use different conventions. Sometimes they
+  come in ZIP files that contain music (sometimes with several variations of the
+  song), and lyrics in various formats (html, docx, text...). Depending on the
+  recording company, these ZIP files use different conventions. Sometimes they
   use the Label-Title format, sometimes just the label, sometimes the folder has
-  the label-title and MP3 file has a generic name, When there are multiple
-  variations, they all have different names, and the lyric name will only match
-  one at most (and often not any of them). In short it is a mess. I want a UI
-  that takes one of these ZIPs (Or a collection of ZIPs), and copies them into a
+  the label-title and the MP3 file has a generic name. When there are multiple
+  variations, they all have different names, and the lyric name will match at
+  most one (and often not any of them). In short, it is a mess. I want a UI that
+  takes one of these ZIPs (Or a collection of ZIPs), and copies them into a
   somewhere under CallerBuddyRoot creating a good format (renaming them as
   needed, and selecting the variation that the caller prefers). This is all done
   by hand today, and some basic rules will create a good guess, that you can
   then confirm with the user, speeding things up a lot.
-- lyric files tend to also have a wide variety of formats. As part of this
-  conversion process, the original lyric files are transformed into either
-  Markdown or some standard HTML, so that all lyrics will have a uniform format.
-- adding choreography. Basically a database of sequence of calls, that are
-  sorted by various parameters (what kinds of calls used etc)
+- Lyric files tend to have a wide variety of formats. As part of this conversion
+  process, the original lyric files are transformed into either Markdown or
+  standard HTML, so that all lyrics will have a uniform format.
+- Adding choreography: basically a database of sequences of calls that are
+  sorted by various parameters (what kinds of calls are used, etc.)
 - Potentially adding something like
   [Taminations sequencer](https://www.tamtwirlers.org/taminations/#/?main=SEQUENCER&formation=Squared+Set&helplink=info/sequencer)
-- If we added the Taminations sequencer, seeing we can add speech recognition
-  that is good enough that you can call with voice rather than type sequences.
+- If we added the Taminations sequencer, then we can add speech recognition that
+  is good enough that you can call with voice rather than type sequences.
