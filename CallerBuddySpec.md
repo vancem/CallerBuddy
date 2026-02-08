@@ -5,14 +5,14 @@
 CallerBuddy is a tool for square dance callers to manage a collection of music
 (MP3 files) and Lyrics (HTML or MD files) so they can select songs for a dance,
 then play songs and read the associated lyrics during the dance. It is loosely
-based on the [sqview](https://www.sqview.se/download.php) program, the general
+based on the [SqView](https://www.SqView.se/download.php) program, the general
 purpose is the same, but most of the UI details are different.
 
 ---
 
 ## Requirements
 
-This app is designed to fix many of the limitations of sqview. In particular it
+This app is designed to fix many of the limitations of SqView. In particular it
 needs to be cross platform. This is the prioritized list of platforms
 
 1. Windows 11
