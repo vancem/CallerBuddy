@@ -75,100 +75,6 @@ and tempo of the music to fit the caller. Thus signal processing may need to be
 done. However this adjustment is relatively rare (the user finds a pitch and
 tempo that he likes and leaves it). Caching will work extremely well for this.
 
-The User interface is pretty simple and should not require a heavy UI framework.
-A VERY light package like [lit](https://lit.dev/) is acceptable if it ads clear
-value to justify its size and conceptual weight.
-
-## General Coding Principles
-
-The overarching goal is to create a code base for this application that
-demonstrates all the best software engineering practices (as preached by
-[Modern Software Engineering](https://www.youtube.com/@ModernSoftwareEngineeringYT)).
-This includes
-
-- When in doubt, FIX THE SPEC (ASK). This specification is meant is meant to
-  include enough information that a diligent developer could write the app and I
-  as the specifier would not be 'surprised' by the result. Small details are
-  left to the developer, but if there big ambiguities in the user experience, or
-  in the architecture, or problems during development that require non-trivial
-  rewrites, then these things should be surface as questions about the
-  specification. Do not simply make a choice and continue coding. Obviously a
-  balance is required, but when in doubt is is OK to ask, at the very least we
-  will converge to answer of what needs to be escalated to fixing the spec, and
-  what is an implementation detail. Github issues (with high priority) can be
-  used to track the need for clarification or spec change.
-- DOCUMENT the important design decisions as code design happens, along with
-  tradeoffs, and ramifications. Here is where you provide API interface (what
-  looks like a class definitions without the bodies), but with good, descriptive
-  names and enough comments to describe the purpose of the class. This needs to
-  be done for major data (like songs, probably the cache manager, song player
-  ...). If the interface is functional, mention that. Glue code (especially API
-  glue code) does not need this design treatment. I don't expect more than 10
-  such classes that deserve up-front design. Save these explicitly and keep them
-  up to date as the code base is modified. Prioritize these files in your AI
-  context when working with the code.
-- An analogous design document should be made for UI design. Describe how any UI
-  frameworks will be used and how they add value. If there is UI state that is
-  not part of the model, that is interesting. Describe how UI interactions
-  (clicks) get mapped back to items in the (non-ui) model including how UI items
-  get access to the model to begin with. The fewer global variables you have the
-  better (having classes for the whole app means you probably don't need any
-  global variable). Like the design document, this document should cover the
-  broad way that the UI interacts with the model, and any additional state the
-  UI needs for its own use. But it should be reasonably terse, and it should be
-  anchored by UI elements that make up the user interface. Styling is definitely
-  not in this document, nor are most 'boring' UI items like buttons and text
-  boxes. I only expect a handful (< 10) of UI elements that need this treatment
-  (e.g. playListEditor).
-- Generally speaking if something is complex (e.g. over 200 lines of code and 10
-  functions), it should have been covered by one of the above design documents
-  somewhere. If that is not the case either add mention to one of them and work
-  through any design issue.
-- The design documents should work though any non-trivial lifetime issues. There
-  should be an CodingBuddy class that represents the program as a whole, that
-  gets created at start and dies when the program is closed. All global
-  variables need to be justified, and no objects should 'leak' in the sense that
-  the have outlived their usefulness (or will accumulate if the program runs a
-  long time). Lifetime issues (e.g. potential leaks) need an explicit GitHub
-  issue tracking the problem.
-- Code design should include strong factoring into components that are only
-  weakly coupled, and can be understood and tested independently of each other.
-- Typed programming is to be preferred (typescript whenever possible over raw
-  javascript).
-- Functional programming style should be used when it can be done naturally, but
-  use stateful object oriented where it leads to a clean design. If the
-  functional design requires unnatural return parameters or extra parameters
-  that don't feel relevant, than a stateful object oriented design is better.
-  Generally smaller and simpler things where the state is easy to describe tend
-  to benefit from functional design. Bigger things that managed diverse
-  collections of state should be object based.
-- Reuse: If there are GOOD QUALITY components (e.g. sound processing software)
-  that exist on the web, or useful UI components they should be preferred IF
-  THEY ADD ENOUGH VALUE (the work well, were well designed, and do not add large
-  unnecessary bloat, and the alternative is a lot of locally written code) If
-  there is any doubt, create a GitHub issue for it asking for a fix to the
-  relevant design document.
-- Code that is easy to understand and maintain. Simplicity and
-  straightforwardness should be the theme. Names should be descriptive, and
-  comments placed where they add value (typically expressing intent, or
-  non-local behavior, something the code will not tell you easily)
-- Shorter code is generally better code (avoid redundancy and build meaningful
-  abstractions) but being easy to understand trumps this. Subtle code (even if
-  it is short) is a red flag.
-- Strong design for testability, including sufficient testing (code coverage is
-  a MINIMUM), Assertions of preconditions and post-conditions and any data
-  structure invariants that is not trivially (locally) known (these also make
-  the code readable). When total test time is over 1 minute, an audit should be
-  done to comment out assertions that impact performance and are likely to have
-  low value (e.g. they have not tripped in a long time)
-- The goal is to spend very little time debugging. If asserts are not enough to
-  easily diagnose a problem, then logging should be standard during test runs so
-  that sufficient information is available to diagnose problems.
-- Code should follow consistent rules on formatting and style following language
-  standards and best practices. Code should follow 'standard idioms' if they
-  exist, and in general be 'boring' (doing things in the most straightforward
-  way unless there is a strong reason not to).
-
 ## Workflows
 
 ### Initialization Workflow
@@ -378,7 +284,7 @@ app). Playlist editors don't close automatically they need to be closed by the
 user (the x on the tab or title bar).
 
 There should be a button near (above) the playlist that indicates 'play'
-(probably a triangle to the right)) clicking that will bring you to the
+(probably a triangle to the right) clicking that will bring you to the
 playListPlay UI.
 
 #### PlaylistPlay UI
@@ -473,52 +379,3 @@ played. Song collections can be very large so caching all songs locally is
 probably too much, but anything that makes it into a playlist (even before the
 playlist is played), should be cached. Songs can be removed from the cache if
 they have not been used for over a week (say 10 days).
-
-## Future Features
-
-There are some features that we have explicitly cut from version 1 of this app,
-but may impact how the code is written to make adding the later easier. These
-include
-
-- Finding the tempo of music simply by analyzing the MP3 data. If the digital
-  signal processing code can reliably find the tempo (Beats per minute), it
-  should to that and fill that in on the songs.json data for every song it
-  encounters.
-- Singing calls all have a similar structure of 7 parts that are each 64 beats
-  long. Typically there is a short (4-16 beat) lead in, and a short (4-16 beat)
-  trail out. The 7 parts consist of a opener, 2 figures, a middle break, two
-  more figure, and closer. Before the non-figure components, there often can be
-  a very short (2-4 beat) transition. If we could reliably find these points,
-  that would be valuable, and instead of blindly breaking songs into 7 equal
-  sections, we could break them into these sections based on the song data
-  itself.
-- Named playlists - In Version 1 playlists are ephemeral. You should be able to
-  save them as named entities (probably represented as files with JSON in them)
-- Song playing history - keep track of every day a song has been played to the
-  end (Or near the end). Introduce the concept of practice, which is when
-  playlists are short (e.g. single songs) or are designated as practice. Only
-  non-practice (that is performances) are tracked. Then provide filters to avoid
-  songs used in the last month, or sort songs by the amount of time since last
-  use.
-- Add editing of the lyrics - Typically callers buy songs on the internet that
-  come in ZIP files that contain music (sometimes with several variations of the
-  song), and lyrics in various formats (html, docx, text...). Depending on the
-  recording company, these ZIP files use different conventions. Sometimes they
-  use the Label-Title format, sometimes just the label, sometimes the folder has
-  the label-title and the MP3 file has a generic name. When there are multiple
-  variations, they all have different names, and the lyric name will match at
-  most one (and often not any of them). In short, it is a mess. I want a UI that
-  takes one of these ZIPs (Or a collection of ZIPs), and copies them into a
-  somewhere under CallerBuddyRoot creating a good format (renaming them as
-  needed, and selecting the variation that the caller prefers). This is all done
-  by hand today, and some basic rules will create a good guess, that you can
-  then confirm with the user, speeding things up a lot.
-- Lyric files tend to have a wide variety of formats. As part of this conversion
-  process, the original lyric files are transformed into either Markdown or
-  standard HTML, so that all lyrics will have a uniform format.
-- Adding choreography: basically a database of sequences of calls that are
-  sorted by various parameters (what kinds of calls are used, etc.)
-- Potentially adding something like
-  [Taminations sequencer](https://www.tamtwirlers.org/taminations/#/?main=SEQUENCER&formation=Squared+Set&helplink=info/sequencer)
-- If we added the Taminations sequencer, then we can add speech recognition that
-  is good enough that you can call with voice rather than type sequences.
