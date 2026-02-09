@@ -79,3 +79,19 @@ npm run preview
 - **Cache busting** on each version via the service worker cache name.
 - A **deployed, installable PWA** on GitHub Pages so you can test install,
   updates, and behavior in a real environment.
+
+## Troubleshooting: 404 at your Pages URL
+
+If **https://&lt;your-username&gt;.github.io/CallerBuddy/** returns 404:
+
+1. **Enable Pages from GitHub Actions (most common cause)**  
+   In the repo: **Settings → Pages**. Under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”). Save. Without this, the workflow does not publish your site.
+
+2. **Confirm the workflow ran and succeeded**  
+   Open the **Actions** tab. Find the latest **Deploy preview** run for your push. If it failed, fix the reported error (e.g. build failure). If it never ran, ensure the workflow file is on `main` and that you pushed to `main`.
+
+3. **Wait a minute after the first deploy**  
+   The first deployment can take 1–2 minutes to go live. Refresh the URL after the workflow shows a green check.
+
+4. **Use the exact project URL**  
+   The URL must be `https://&lt;username&gt;.github.io/&lt;repo-name&gt;/` with the **exact** repo name (e.g. `CallerBuddy` with that casing). No trailing path unless you added one in the app.
