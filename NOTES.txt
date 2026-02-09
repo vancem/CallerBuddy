@@ -1,0 +1,6 @@
+To run in developer mode - In a terminal 
+    npm run dev
+
+To run more like how it will be deployed 
+    npm run build
+    npm run preview
