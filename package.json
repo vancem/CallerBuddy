@@ -1,9 +1,12 @@
 {
   "name": "callerbuddy",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0-pre.1",
   "type": "module",
   "scripts": {
+    "inject-version": "node scripts/inject-version.cjs",
+    "predev": "npm run inject-version",
+    "prebuild": "npm run inject-version",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"

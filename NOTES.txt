@@ -4,3 +4,14 @@ To run in developer mode - In a terminal
 To run more like how it will be deployed 
     npm run build
     npm run preview
+
+To set up the Release stuff (from Github Releases and Github Pages)
+ 
+    Went to 
+        https://github.com/vancem/CallerBuddy/settings/pages
+    And Set 'Build and Deployment' source to 'Github Actions'
+
+The file 
+    .github/workflows/deploy-preview.yml 
+    Tells GIT to do some things when release are pushed to main. 
+    

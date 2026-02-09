@@ -7,11 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1a1a2e" />
     <title>CallerBuddy</title>
+    <link rel="stylesheet" href="/src/index.css" />
+    <script type="module" src="/src/welcome-view.ts"></script>
   </head>
   <body>
-    <main>
-      <h1>Hello World</h1>
-    </main>
+    <welcome-view></welcome-view>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
