@@ -40,31 +40,38 @@ rationale.
   - This is because PWA apps give us the cross platform reach that we need we
     avoid the need to generate many binaries for the different platforms.
 - We prefer TypeScript to JavaScript whenever possible.
-- We may use a LIGHTWEIGHT UI framework like Lit (implementors choice) if its
-  value can be justified. Otherwise use raw HTML5 / TypeScript.
+- We will use the Lit framework for UI components.
+  - Rationale: The UI complexity (tabs, tables, sliders, drag-and-drop, audio controls) justifies a framework. Lit is lightweight (~5KB gzipped), provides component encapsulation, reactive properties, template rendering, and lifecycle hooks. Building equivalent functionality in vanilla TypeScript would require significant custom code. Lit aligns with the design philosophy of minimalism while providing necessary structure.
 - We will be Prettier for formatting. Code should confirm its defaults.
 - We will be using Vite for building.
 - We will be using Vitest for Unit testing.
 - We will be using Playwright for UI testing.
+- We will use Web Audio API for audio playback and processing (pitch/tempo modification).
+  - Rationale: Web Audio API is native to browsers and provides the necessary capabilities for pitch and tempo modification. For tempo/pitch processing, we will evaluate SoundTouchJS (lightweight, purpose-built) or implement using Web Audio API's built-in capabilities. Tone.js is an alternative but may be overkill for our needs. Decision will be made during implementation based on performance and complexity.
+- We will use the File System Access API for accessing CallerBuddyRoot folder.
+  - Rationale: This is the standard PWA approach for folder access. The API provides persistent permission handles that can be stored and reused across app sessions, which matches our requirements perfectly.
+- We will use OPFS (Origin Private File System) for local caching of audio files and metadata.
+  - Rationale: OPFS is the modern PWA standard for large file storage and provides the performance needed for audio file caching. It's designed for this use case and integrates well with File System Access API.
+- State management will start simple (EventTarget pattern or singleton) and only add complexity if needed.
+  - Rationale: Lit provides component-level reactivity. For global state (playlist, settings, current song), we'll start with a simple EventTarget-based event bus or singleton pattern. Only add a state management library if the simple approach becomes unwieldy.
 - We will not be doing test driven development, but we will be front loading
   testing. features need good testing early and that should be part of
   developing the feature. If a bug was found AFTER testing (by users), part of
   the fix needs to be a test that exercises the behavior (and any related test
   hole).
-- We will want an easy way of logging (maybe just browser console logging), with
-  a way to turn it on during test runs, so that most bugs can be analyzed from
-  just the logs and the asserts, logging should be light enough that it can be
-  run during a test failure to get diagnostic information. Too much logging can
-  be a problem, Ideally typical unit test runs produce less than 1000 lines of
-  logging (hopefully less than 100).
+- We will use a simple custom logging wrapper around console methods.
+  - Rationale: A lightweight custom logger provides log levels (debug, info, warn, error) that can be filtered at runtime and during tests. No external logging package needed - just a thin wrapper that respects log levels and can be configured per environment. This keeps bundle size minimal and gives us the control we need for test diagnostics.
 
 ## Open Design Issues
 
-- [] Decide whether to use the Lit framework (and put the justification in the
+- [x] Decide whether to use the Lit framework (and put the justification in the
   design decision section)
-- [] Decide how to get the audio software that can modify tempo/pitch, and get
+  - Decision: Use Lit. Rationale moved to Design Decisions section.
+- [x] Decide how to get the audio software that can modify tempo/pitch, and get
   it integrated into the code base.
-- [] Decide on a logging strategy (do we use a logging package, which one?)
+  - Decision: Use Web Audio API. Evaluate SoundTouchJS during implementation if needed. Rationale moved to Design Decisions section.
+- [x] Decide on a logging strategy (do we use a logging package, which one?)
+  - Decision: Custom lightweight logger wrapper. Rationale moved to Design Decisions section.
 
 ## Coding Standards
 
@@ -84,10 +91,10 @@ rationale.
   between components need good documentation, typically at the start of a
   related file. Cross referencing (pointing the reader to documentation
   elsewhere in the code base), is good. Repeating is bad (reference instead).
-- There should be an CodingBuddy object that represents the program as a whole,
+- There should be a CallerBuddy object that represents the program as a whole,
   that gets created at start and dies when the program is closed. All global
   variables need to be justified, and no objects should 'leak' in the sense that
-  the have outlived their usefulness (or will accumulate if the program runs a
+  they have outlived their usefulness (or will accumulate if the program runs a
   long time).
 - Reuse: If there are GOOD QUALITY components (e.g. sound processing software)
   that exist on the web, or useful UI components they should be preferred IF
@@ -107,5 +114,19 @@ rationale.
 
 ## Questions/Clarifications.
 
-- [x] HIGH: A Sample Question that is high priority
-  - This is the Sample answer.
+- [] MEDIUM: How should we handle PWA manifest.json and service worker configuration?
+  - Need to decide: manifest structure, service worker caching strategy, offline fallback behavior, install prompt handling. This is standard PWA setup but should be documented.
+- [] MEDIUM: What is the strategy for testing audio processing (pitch/tempo modification)?
+  - Unit tests for audio processing will need mock audio contexts or test fixtures. Need to decide on approach for Vitest tests that exercise Web Audio API functionality.
+- [] LOW: Should we use IndexedDB in addition to OPFS for metadata caching?
+  - OPFS is for large files. IndexedDB might be better for songs.json and settings.json caching. However, OPFS can handle small JSON files too. Decision: Start with OPFS for everything, evaluate if IndexedDB provides benefits during implementation.
+- [] LOW: How should we handle audio format support beyond MP3?
+  - Spec mentions MP3, but browsers support various formats. Should we support OGG, WAV, M4A? Decision: Start with MP3 only (matches spec), add format detection and support later if needed.
+- [] LOW: What is the maximum size we should cache in OPFS?
+  - Need to consider storage quotas and cache eviction policy. The spec mentions removing songs unused for 10+ days. Should we also have a total size limit? Decision: Start with time-based eviction only, add size limits if storage becomes an issue.
+- [] MEDIUM: What browsers/versions should we target for PWA support?
+  - File System Access API support varies by browser. Need to document minimum browser versions and fallback behavior for unsupported browsers (e.g., Safari on macOS/iOS). This affects MVP scope.
+- [] LOW: How should we handle errors when CallerBuddyRoot becomes unavailable (network disconnection, folder moved)?
+  - Spec mentions offline handling, but what about error UI/UX? Should we show clear error messages? Auto-retry? Decision: Show clear error state, allow manual retry, fall back to cache gracefully.
+- [] LOW: Should we validate MP3 file integrity or handle corrupted files gracefully?
+  - What happens if an MP3 file is corrupted or unreadable? Decision: Handle gracefully with error message, skip corrupted files in song list, allow user to fix manually.
