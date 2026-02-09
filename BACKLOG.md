@@ -108,4 +108,4 @@ rationale.
 ## Questions/Clarifications.
 
 - [x] HIGH: A Sample Question that is high priority
-  - This is the sample answer.
+  - This is the Sample answer.
