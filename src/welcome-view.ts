@@ -175,7 +175,8 @@ export class WelcomeView extends LitElement {
     }
 
     .popup {
-      background: var(--cb-popup-bg, #242424);
+      background: var(--cb-popup-bg, #ffffff);
+      color: #213547;
       border-radius: 12px;
       padding: 1.5rem;
       max-width: 90vw;
@@ -191,7 +192,7 @@ export class WelcomeView extends LitElement {
 
     .popup-path {
       font-size: 0.9rem;
-      color: rgba(255, 255, 255, 0.7);
+      color: #555;
       margin: 0 0 1rem;
       word-break: break-all;
     }
@@ -202,7 +203,7 @@ export class WelcomeView extends LitElement {
       margin: 0 0 1rem;
       max-height: 40vh;
       overflow: auto;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(0, 0, 0, 0.15);
       border-radius: 8px;
       padding: 0.5rem;
     }
@@ -220,6 +221,10 @@ export class WelcomeView extends LitElement {
 
     .muted {
       color: rgba(255, 255, 255, 0.5);
+    }
+
+    .popup .muted {
+      color: #888;
     }
   `;
 }
