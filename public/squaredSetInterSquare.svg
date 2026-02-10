@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true" role="img">
+  <!-- Four couples in cardinal directions, knobs toward center. Symmetric, centered. -->
+  <!-- Colors CCW from bottom: red, blue, green, yellow. Couple centerline = gap between boy and girl. -->
+
+  <!-- BOTTOM couple (red): knobs up toward center; backed off ~1 body width from center -->
+  <g transform="translate(0, 21.62)" fill="#dc2626" stroke="#b91c1c" stroke-width="0.5">
+    <circle cx="24.5" cy="26.35" r="2.85" fill="#b91c1c" stroke="#b91c1c"/>
+    <rect x="18.8" y="26.85" width="11.4" height="11.4" rx="1.5"/>
+    <circle cx="39.5" cy="27" r="3" fill="#b91c1c" stroke="#b91c1c"/>
+    <circle cx="39.5" cy="32.5" r="6"/>
+  </g>
+
+  <!-- RIGHT couple (blue): rotated -90 deg, knobs left toward center; backed off ~1 body width -->
+  <g transform="translate(52.62, 32) rotate(-90) translate(-32, -31)" fill="#1d4ed8" stroke="#1e40af" stroke-width="0.5">
+    <circle cx="24.5" cy="26.35" r="2.85" fill="#1e40af" stroke="#1e40af"/>
+    <rect x="18.8" y="26.85" width="11.4" height="11.4" rx="1.5"/>
+    <circle cx="39.5" cy="27" r="3" fill="#1e40af" stroke="#1e40af"/>
+    <circle cx="39.5" cy="32.5" r="6"/>
+  </g>
+
+  <!-- TOP couple (green): rotated 180 deg, knobs down toward center; backed off ~1 body width -->
+  <g transform="translate(32, 11.38) rotate(180) translate(-32, -31)" fill="#15803d" stroke="#166534" stroke-width="0.5">
+    <circle cx="24.5" cy="26.35" r="2.85" fill="#166534" stroke="#166534"/>
+    <rect x="18.8" y="26.85" width="11.4" height="11.4" rx="1.5"/>
+    <circle cx="39.5" cy="27" r="3" fill="#166534" stroke="#166534"/>
+    <circle cx="39.5" cy="32.5" r="6"/>
+  </g>
+
+  <!-- LEFT couple (yellow): rotated 90 deg, knobs right toward center; backed off ~1 body width -->
+  <g transform="translate(11.38, 32) rotate(90) translate(-32, -31)" fill="#eab308" stroke="#ca8a04" stroke-width="0.5">
+    <circle cx="24.5" cy="26.35" r="2.85" fill="#ca8a04" stroke="#ca8a04"/>
+    <rect x="18.8" y="26.85" width="11.4" height="11.4" rx="1.5"/>
+    <circle cx="39.5" cy="27" r="3" fill="#ca8a04" stroke="#ca8a04"/>
+    <circle cx="39.5" cy="32.5" r="6"/>
+  </g>
+
+  <!-- Center: interSquare figure scaled to ~boy size (11.4) -->
+  <g transform="translate(32, 32) scale(0.346) translate(-32, -32)">
+    <rect x="9.28" y="9.28" width="32" height="32" fill="none" stroke="#a67c00" stroke-width="5.775"/>
+    <rect x="22.72" y="22.72" width="32" height="32" fill="none" stroke="#a67c00" stroke-width="5.775"/>
+  </g>
+</svg>
