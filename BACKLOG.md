@@ -166,9 +166,6 @@ rationale.
   - The spec mentions a help tab displaying an HTML help document. This is a
     stub; the infrastructure is there (tab system supports it) but no help
     content exists yet.
-- [] LOW: Proper PWA icons (192px, 512px).
-  - The manifest currently uses callerBuddy.svg as a placeholder. Real CallerBuddy
-    icons need to be designed and added.
 
 ## Coding Standards
 

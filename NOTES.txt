@@ -15,3 +15,6 @@ The file
     .github/workflows/deploy-preview.yml 
     Tells GIT to do some things when release are pushed to main. 
     
+
+You should update the version number only in the package.json file. 
+This will be propagated to all the other places by a build.  
