@@ -26,3 +26,6 @@ dist-ssr
 # misc
 /.vscode
 /SpecPrompt.txt
+
+# Generated test data (audio files)
+/test-data/

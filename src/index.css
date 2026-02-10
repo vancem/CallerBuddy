@@ -1,38 +1,39 @@
+/**
+ * Global styles for CallerBuddy.
+ * Component-specific styles live inside each Lit component's static `styles`.
+ * This file covers only the bare page defaults.
+ */
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --cb-bg: #1a1a2e;
+  --cb-fg: rgba(255, 255, 255, 0.87);
+  --cb-accent: #646cff;
+  --cb-border: #333;
+  --cb-panel-bg: #1e1e2e;
+  --cb-tab-bar-bg: #1e1e2e;
+  --cb-menu-bg: #2a2a3e;
+  --cb-input-bg: #2a2a3e;
+
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color-scheme: dark;
+  color: var(--cb-fg);
+  background-color: var(--cb-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
+  overflow: hidden;
 }

@@ -1,0 +1,847 @@
+/**
+ * Single-song playback view.
+ *
+ * Layout:
+ *  ┌──────────────────────────┬──────────────────────────┐
+ *  │  Lyrics (or loop ctrl)   │  Transport controls      │
+ *  │                          │  Volume / Pitch / Tempo   │
+ *  │                          │  Time info + clock        │
+ *  ├──────────────────────────┴──────────────────────────┤
+ *  │  Progress slider (7 segments)                       │
+ *  └────────────────────────────────────────────────────-┘
+ *
+ * For patter (no lyrics), the left area shows loop controls and a patter timer.
+ *
+ * See CallerBuddySpec.md §"playSong UI".
+ */
+
+import { LitElement, css, html, nothing } from "lit";
+import { customElement, state } from "lit/decorators.js";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { callerBuddy } from "../caller-buddy.js";
+import { isSingingCall, isPatter } from "../models/song.js";
+import type { Song } from "../models/song.js";
+
+@customElement("song-play")
+export class SongPlay extends LitElement {
+  @state() private currentTime = 0;
+  @state() private duration = 0;
+  @state() private playing = false;
+  @state() private lyrics = "";
+  @state() private clockTime = "";
+
+  // Total elapsed time since first play (includes pauses/seeks via wall clock)
+  @state() private totalElapsed = 0;
+  private firstPlayTime: number | null = null;
+
+  // Loop controls (patter)
+  @state() private loopStart = 0;
+  @state() private loopEnd = 0;
+
+  // Patter timer
+  @state() private patterMinutes = 5;
+  @state() private patterCountdown = 0;
+  @state() private patterTimerRunning = false;
+  private patterInterval: number | null = null;
+  @state() private patterAlarmFired = false;
+
+  private clockInterval: number | null = null;
+  private elapsedInterval: number | null = null;
+
+  get song(): Song | null {
+    return callerBuddy.state.currentSong;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
+    this.updateClock();
+
+    // Listen for time updates from audio engine
+    callerBuddy.audio.onTimeUpdate((t) => {
+      this.currentTime = t;
+      this.duration = callerBuddy.audio.getDuration();
+      this.playing = callerBuddy.audio.isPlaying();
+    });
+
+    callerBuddy.audio.onEnded(() => {
+      this.playing = false;
+      this.stopPatterTimer();
+      // Auto-close: return to playlist play
+      callerBuddy.closeSongPlay();
+    });
+
+    // Load lyrics and song state
+    this.initSong();
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this.clockInterval !== null) clearInterval(this.clockInterval);
+    if (this.elapsedInterval !== null) clearInterval(this.elapsedInterval);
+    this.stopPatterTimer();
+  }
+
+  private async initSong() {
+    const song = this.song;
+    if (!song) return;
+
+    this.loopStart = song.loopStartTime;
+    this.loopEnd = song.loopEndTime;
+    this.patterMinutes = callerBuddy.state.settings.patterTimerMinutes;
+
+    if (isSingingCall(song)) {
+      this.lyrics = await callerBuddy.loadLyrics(song);
+    }
+
+    this.duration = callerBuddy.audio.getDuration();
+  }
+
+  render() {
+    const song = this.song;
+    if (!song) return html`<p class="muted">No song loaded.</p>`;
+
+    return html`
+      <div class="song-play">
+        <!-- Left panel: lyrics or loop controls -->
+        <div class="left-panel">
+          ${isSingingCall(song)
+            ? this.renderLyrics()
+            : this.renderPatterControls()}
+        </div>
+
+        <!-- Right panel: controls and info -->
+        <div class="right-panel">
+          ${this.renderTransport()}
+          ${this.renderAdjustments(song)}
+          ${this.renderTimeInfo()}
+        </div>
+
+        <!-- Bottom: progress slider -->
+        <div class="slider-panel">
+          ${this.renderSlider()}
+        </div>
+      </div>
+    `;
+  }
+
+  // -- Lyrics ---------------------------------------------------------------
+
+  private renderLyrics() {
+    if (!this.lyrics) {
+      return html`<p class="muted centered">No lyrics available.</p>`;
+    }
+    // Render HTML lyrics safely in a container
+    return html`<div class="lyrics-content">${unsafeHTML(this.lyrics)}</div>`;
+  }
+
+  // -- Patter controls (loop + timer) ---------------------------------------
+
+  private renderPatterControls() {
+    return html`
+      <div class="patter-controls">
+        <h3>Loop Controls</h3>
+        <div class="loop-row">
+          <label>Loop Start:</label>
+          <span class="loop-value">${this.loopStart.toFixed(2)}s</span>
+          <button class="nudge" title="-100ms" @click=${() => this.nudgeLoop("start", -0.1)}>◄◄</button>
+          <button class="nudge" title="-10ms" @click=${() => this.nudgeLoop("start", -0.01)}>◄</button>
+          <button class="nudge" title="Set to current position"
+            @click=${() => this.setLoopFromCurrent("start")}>Set</button>
+          <button class="nudge" title="+10ms" @click=${() => this.nudgeLoop("start", 0.01)}>►</button>
+          <button class="nudge" title="+100ms" @click=${() => this.nudgeLoop("start", 0.1)}>►►</button>
+        </div>
+        <div class="loop-row">
+          <label>Loop End:</label>
+          <span class="loop-value">${this.loopEnd.toFixed(2)}s</span>
+          <button class="nudge" title="-100ms" @click=${() => this.nudgeLoop("end", -0.1)}>◄◄</button>
+          <button class="nudge" title="-10ms" @click=${() => this.nudgeLoop("end", -0.01)}>◄</button>
+          <button class="nudge" title="Set to current position"
+            @click=${() => this.setLoopFromCurrent("end")}>Set</button>
+          <button class="nudge" title="+10ms" @click=${() => this.nudgeLoop("end", 0.01)}>►</button>
+          <button class="nudge" title="+100ms" @click=${() => this.nudgeLoop("end", 0.1)}>►►</button>
+        </div>
+        <div class="loop-status ${this.loopEnd > 0 ? "active" : "inactive"}">
+          ${this.loopEnd > 0 ? "Looping active" : "Looping inactive (set Loop End to enable)"}
+        </div>
+
+        <hr />
+
+        <h3>Patter Timer</h3>
+        <div class="patter-timer-controls">
+          <div class="patter-row">
+            <label>Duration (min):</label>
+            <input
+              type="number"
+              min="1"
+              max="15"
+              step="0.5"
+              .value=${String(this.patterMinutes)}
+              @change=${this.onPatterMinutesChange}
+              ?disabled=${this.patterTimerRunning}
+            />
+            <button class="secondary" @click=${this.togglePatterTimer}>
+              ${this.patterTimerRunning ? "Reset" : "Start"}
+            </button>
+          </div>
+          ${this.patterTimerRunning
+            ? html`
+                <div class="patter-countdown ${this.patterCountdown <= 0 ? "overtime" : ""}">
+                  ${this.formatCountdown(this.patterCountdown)}
+                </div>
+              `
+            : nothing}
+        </div>
+      </div>
+    `;
+  }
+
+  // -- Transport controls ---------------------------------------------------
+
+  private renderTransport() {
+    return html`
+      <div class="transport">
+        <button class="ctrl-btn" title="Restart (Home)" @click=${this.onRestart}>⏮</button>
+        <button class="ctrl-btn" title="Back 5s (Ctrl+←)" @click=${() => this.onSeekDelta(-5)}>⏪</button>
+        <button class="ctrl-btn" title="Back 2s (←)" @click=${() => this.onSeekDelta(-2)}>◄</button>
+        <button class="ctrl-btn play-btn" title="${this.playing ? "Pause (Space)" : "Play (Space)"}"
+          @click=${this.onPlayPause}>
+          ${this.playing ? "⏸" : "▶"}
+        </button>
+        <button class="ctrl-btn" title="Forward 2s (→)" @click=${() => this.onSeekDelta(2)}>►</button>
+        <button class="ctrl-btn" title="Forward 5s (Ctrl+→)" @click=${() => this.onSeekDelta(5)}>⏩</button>
+        <button class="ctrl-btn" title="Stop and close" @click=${this.onStop}>⏹</button>
+      </div>
+    `;
+  }
+
+  // -- Volume / pitch / tempo adjustments -----------------------------------
+
+  private renderAdjustments(song: Song) {
+    return html`
+      <div class="adjustments">
+        <div class="adj-row">
+          <span class="adj-label">Volume</span>
+          <button class="adj-btn" @click=${() => this.adjustVolume(-5)}>◄</button>
+          <span class="adj-value">${song.volume}</span>
+          <button class="adj-btn" @click=${() => this.adjustVolume(5)}>►</button>
+        </div>
+        <div class="adj-row">
+          <span class="adj-label">Pitch</span>
+          <button class="adj-btn" @click=${() => this.adjustPitch(-1)}>◄</button>
+          <span class="adj-value">${song.pitch > 0 ? "+" : ""}${song.pitch}</span>
+          <button class="adj-btn" @click=${() => this.adjustPitch(1)}>►</button>
+        </div>
+        <div class="adj-row">
+          <span class="adj-label">Tempo</span>
+          <button class="adj-btn" @click=${() => this.adjustTempo(-1)}>◄</button>
+          <span class="adj-value">${song.deltaTempo > 0 ? "+" : ""}${song.deltaTempo}</span>
+          <button class="adj-btn" @click=${() => this.adjustTempo(1)}>►</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // -- Time info and clock --------------------------------------------------
+
+  private renderTimeInfo() {
+    return html`
+      <div class="time-info">
+        <div class="time-row">
+          <span class="time-label">Position</span>
+          <span class="time-value">${this.formatTime(this.currentTime)}</span>
+        </div>
+        <div class="time-row">
+          <span class="time-label">Duration</span>
+          <span class="time-value">${this.formatTime(this.duration)}</span>
+        </div>
+        <div class="time-row">
+          <span class="time-label">Elapsed</span>
+          <span class="time-value">${this.formatTime(this.totalElapsed)}</span>
+        </div>
+        <div class="time-row clock-row">
+          <span class="time-label">Clock</span>
+          <span class="time-value clock">${this.clockTime}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // -- Progress slider (7 segments) -----------------------------------------
+
+  private renderSlider() {
+    const pct = this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0;
+    // Loop markers
+    const loopStartPct = this.duration > 0 ? (this.loopStart / this.duration) * 100 : 0;
+    const loopEndPct = this.duration > 0 ? (this.loopEnd / this.duration) * 100 : 0;
+
+    return html`
+      <div class="slider-container">
+        <!-- 7-segment background -->
+        <div class="segments">
+          ${[0, 1, 2, 3, 4, 5, 6].map(
+            (i) => html`
+              <div
+                class="segment ${i % 2 === 0 ? "even" : "odd"}"
+                style="width: ${100 / 7}%"
+              ></div>
+            `,
+          )}
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress" style="width: ${pct}%"></div>
+
+        <!-- Loop markers -->
+        ${this.loopEnd > 0
+          ? html`
+              <div class="loop-marker start" style="left: ${loopStartPct}%"
+                title="Loop start: ${this.loopStart.toFixed(2)}s"></div>
+              <div class="loop-marker end" style="left: ${loopEndPct}%"
+                title="Loop end: ${this.loopEnd.toFixed(2)}s"></div>
+            `
+          : nothing}
+
+        <!-- Clickable overlay -->
+        <input
+          type="range"
+          class="slider-input"
+          min="0"
+          max=${this.duration || 1}
+          step="0.1"
+          .value=${String(this.currentTime)}
+          @input=${this.onSliderInput}
+          title="Song position"
+        />
+      </div>
+    `;
+  }
+
+  // -- Event handlers -------------------------------------------------------
+
+  private onPlayPause() {
+    if (this.playing) {
+      callerBuddy.audio.pause();
+      this.playing = false;
+    } else {
+      callerBuddy.audio.play();
+      this.playing = true;
+      if (this.firstPlayTime === null) {
+        this.firstPlayTime = Date.now();
+        this.startElapsedTimer();
+        // Start patter timer automatically if this is patter
+        if (this.song && isPatter(this.song) && !this.patterTimerRunning) {
+          this.startPatterTimer();
+        }
+      }
+    }
+  }
+
+  private onRestart() {
+    callerBuddy.audio.seek(0);
+    this.currentTime = 0;
+  }
+
+  private onSeekDelta(seconds: number) {
+    const newTime = Math.max(0, Math.min(this.currentTime + seconds, this.duration));
+    callerBuddy.audio.seek(newTime);
+    this.currentTime = newTime;
+  }
+
+  private onStop() {
+    this.stopPatterTimer();
+    callerBuddy.closeSongPlay();
+  }
+
+  private onSliderInput(e: Event) {
+    const value = Number((e.target as HTMLInputElement).value);
+    callerBuddy.audio.seek(value);
+    this.currentTime = value;
+  }
+
+  // -- Adjustment handlers --------------------------------------------------
+
+  private adjustVolume(delta: number) {
+    if (!this.song) return;
+    const newVol = Math.max(0, Math.min(100, this.song.volume + delta));
+    this.song.volume = newVol;
+    callerBuddy.audio.setVolume(newVol);
+    this.requestUpdate();
+    callerBuddy.updateSong(this.song);
+  }
+
+  private adjustPitch(delta: number) {
+    if (!this.song) return;
+    this.song.pitch += delta;
+    callerBuddy.audio.setPitch(this.song.pitch);
+    this.requestUpdate();
+    callerBuddy.updateSong(this.song);
+  }
+
+  private adjustTempo(delta: number) {
+    if (!this.song) return;
+    this.song.deltaTempo += delta;
+    callerBuddy.audio.setTempo(this.song.deltaTempo);
+    this.requestUpdate();
+    callerBuddy.updateSong(this.song);
+  }
+
+  // -- Loop controls --------------------------------------------------------
+
+  private nudgeLoop(which: "start" | "end", delta: number) {
+    if (which === "start") {
+      this.loopStart = Math.max(0, this.loopStart + delta);
+    } else {
+      this.loopEnd = Math.max(0, this.loopEnd + delta);
+    }
+    this.applyLoopPoints();
+  }
+
+  private setLoopFromCurrent(which: "start" | "end") {
+    if (which === "start") {
+      this.loopStart = this.currentTime;
+    } else {
+      this.loopEnd = this.currentTime;
+    }
+    this.applyLoopPoints();
+  }
+
+  private applyLoopPoints() {
+    callerBuddy.audio.setLoopPoints(this.loopStart, this.loopEnd);
+    if (this.song) {
+      this.song.loopStartTime = this.loopStart;
+      this.song.loopEndTime = this.loopEnd;
+      callerBuddy.updateSong(this.song);
+    }
+  }
+
+  // -- Patter timer ---------------------------------------------------------
+
+  private onPatterMinutesChange(e: Event) {
+    this.patterMinutes = Number((e.target as HTMLInputElement).value) || 5;
+  }
+
+  private togglePatterTimer() {
+    if (this.patterTimerRunning) {
+      this.stopPatterTimer();
+      // Reset
+      this.patterAlarmFired = false;
+    } else {
+      this.startPatterTimer();
+    }
+  }
+
+  private startPatterTimer() {
+    this.patterCountdown = this.patterMinutes * 60;
+    this.patterTimerRunning = true;
+    this.patterAlarmFired = false;
+    this.patterInterval = window.setInterval(() => {
+      this.patterCountdown--;
+      if (this.patterCountdown === 0 && !this.patterAlarmFired) {
+        callerBuddy.audio.playBeep();
+        this.patterAlarmFired = true; // only beep once per spec
+      }
+    }, 1000);
+  }
+
+  private stopPatterTimer() {
+    this.patterTimerRunning = false;
+    if (this.patterInterval !== null) {
+      clearInterval(this.patterInterval);
+      this.patterInterval = null;
+    }
+  }
+
+  // -- Elapsed timer --------------------------------------------------------
+
+  private startElapsedTimer() {
+    this.elapsedInterval = window.setInterval(() => {
+      if (this.firstPlayTime !== null) {
+        this.totalElapsed = (Date.now() - this.firstPlayTime) / 1000;
+      }
+    }, 1000);
+  }
+
+  // -- Clock ----------------------------------------------------------------
+
+  private updateClock() {
+    this.clockTime = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  // -- Formatting -----------------------------------------------------------
+
+  private formatTime(seconds: number): string {
+    const abs = Math.abs(Math.floor(seconds));
+    const m = Math.floor(abs / 60);
+    const s = abs % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  private formatCountdown(totalSeconds: number): string {
+    const abs = Math.abs(totalSeconds);
+    const sign = totalSeconds < 0 ? "-" : "";
+    const min = Math.floor(abs / 60);
+    const sec = abs % 60;
+    return `${sign}${min}:${sec.toString().padStart(2, "0")}`;
+  }
+
+  // -- Keyboard shortcuts ---------------------------------------------------
+
+  connectedCallback2() {
+    // Keyboard shortcut handler attached at the document level
+    // (Handled via the component for now; can be promoted to app-level later)
+  }
+
+  static styles = css`
+    :host {
+      display: block;
+      height: 100%;
+    }
+
+    .song-play {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      grid-template-rows: 1fr auto;
+      height: 100%;
+    }
+
+    /* -- Left panel: lyrics or patter controls ----------------------------- */
+
+    .left-panel {
+      grid-column: 1;
+      grid-row: 1;
+      overflow-y: auto;
+      padding: 16px;
+      border-right: 1px solid var(--cb-border, #333);
+    }
+
+    .lyrics-content {
+      font-size: 1rem;
+      line-height: 1.7;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .lyrics-content h1,
+    .lyrics-content h2,
+    .lyrics-content h3 {
+      color: var(--cb-accent, #646cff);
+    }
+
+    /* -- Patter controls --------------------------------------------------- */
+
+    .patter-controls {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .patter-controls h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .patter-controls hr {
+      border: none;
+      border-top: 1px solid var(--cb-border, #333);
+      margin: 16px 0;
+    }
+
+    .loop-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .loop-row label {
+      width: 80px;
+    }
+
+    .loop-value {
+      width: 70px;
+      font-variant-numeric: tabular-nums;
+      font-family: monospace;
+    }
+
+    .loop-status {
+      font-size: 0.85rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+
+    .loop-status.active {
+      color: #4caf50;
+      background: rgba(76, 175, 80, 0.1);
+    }
+
+    .loop-status.inactive {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .nudge {
+      padding: 4px 8px;
+      border: 1px solid var(--cb-border, #555);
+      border-radius: 4px;
+      background: var(--cb-input-bg, #2a2a3e);
+      color: var(--cb-fg, #fff);
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .nudge:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .patter-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .patter-row input {
+      width: 60px;
+      padding: 4px 8px;
+      border: 1px solid var(--cb-border, #555);
+      border-radius: 4px;
+      background: var(--cb-input-bg, #2a2a3e);
+      color: var(--cb-fg, #fff);
+    }
+
+    .patter-countdown {
+      font-size: 2rem;
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      margin-top: 8px;
+    }
+
+    .patter-countdown.overtime {
+      color: #f66;
+    }
+
+    /* -- Right panel: controls and info ------------------------------------ */
+
+    .right-panel {
+      grid-column: 2;
+      grid-row: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    /* -- Transport controls ------------------------------------------------ */
+
+    .transport {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .ctrl-btn {
+      background: none;
+      border: 1px solid var(--cb-border, #555);
+      color: var(--cb-fg, #fff);
+      font-size: 1.1rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ctrl-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .ctrl-btn.play-btn {
+      width: 44px;
+      height: 44px;
+      font-size: 1.3rem;
+      background: var(--cb-accent, #646cff);
+      border-color: transparent;
+    }
+
+    .ctrl-btn.play-btn:hover {
+      background: #535bf2;
+    }
+
+    /* -- Adjustments (volume/pitch/tempo) ---------------------------------- */
+
+    .adjustments {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .adj-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .adj-label {
+      width: 60px;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .adj-value {
+      width: 40px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    .adj-btn {
+      background: none;
+      border: 1px solid var(--cb-border, #555);
+      color: var(--cb-fg, #fff);
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .adj-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* -- Time info --------------------------------------------------------- */
+
+    .time-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .time-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .time-label {
+      width: 60px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .time-value {
+      font-variant-numeric: tabular-nums;
+      font-size: 1rem;
+    }
+
+    .time-value.clock {
+      font-size: 1.3rem;
+      font-weight: 300;
+    }
+
+    /* -- Progress slider --------------------------------------------------- */
+
+    .slider-panel {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      padding: 8px 12px 12px;
+      border-top: 1px solid var(--cb-border, #333);
+    }
+
+    .slider-container {
+      position: relative;
+      height: 28px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .segments {
+      display: flex;
+      position: absolute;
+      inset: 0;
+    }
+
+    .segment.even {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .segment.odd {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      background: rgba(100, 108, 255, 0.3);
+      pointer-events: none;
+      transition: width 0.1s linear;
+    }
+
+    .loop-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      z-index: 2;
+    }
+
+    .loop-marker.start {
+      background: #4caf50;
+    }
+
+    .loop-marker.end {
+      background: #f44336;
+    }
+
+    .slider-input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    /* -- Shared ------------------------------------------------------------ */
+
+    .secondary {
+      border-radius: 6px;
+      border: 1px solid var(--cb-border, #555);
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      background: transparent;
+      color: var(--cb-fg, #fff);
+      cursor: pointer;
+    }
+
+    .secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .muted {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .centered {
+      text-align: center;
+      padding: 3rem;
+    }
+  `;
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "song-play": SongPlay;
+  }
+}

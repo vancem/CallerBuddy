@@ -92,6 +92,26 @@ rationale.
     logging package needed - just a thin wrapper that respects log levels and
     can be configured per environment. This keeps bundle size minimal and gives
     us the control we need for test diagnostics.
+- The CallerBuddy singleton (src/caller-buddy.ts) is the central coordination
+  point. It owns the AppState (EventTarget-based), the AudioEngine, and
+  orchestrates all services. UI components import it and call methods on it.
+  - Rationale: A single coordination object avoids scattered global state and
+    makes the app's structure explicit. Components subscribe to state events and
+    re-render reactively. This is the simplest approach that satisfies the
+    spec's requirement for a "CallerBuddy object that represents the program as
+    a whole."
+- The AudioEngine interface (src/services/audio-engine.ts) abstracts audio
+  playback from the processing backend. The initial WebAudioEngine implements
+  basic playback; pitch and tempo modification are stubbed. A future
+  implementation (e.g. SoundTouchJS) can be plugged in without changing the rest
+  of the app.
+  - Rationale: The spec requires pitch/tempo modification but the right library
+    hasn't been chosen yet. Abstracting behind an interface lets us proceed with
+    the full data flow while deferring the DSP decision.
+- IndexedDB is used to persist the CallerBuddyRoot directory handle across
+  browser sessions.
+  - Rationale: The File System Access API supports storing handles in IndexedDB.
+    This lets the app remember the user's chosen folder without re-prompting.
 - PWA manifest and service worker configuration (manifest structure, caching
   strategy, offline fallback, install prompt).
   - Manifest: display mode standalone; icons at 192px and 512px; theme colors
@@ -119,6 +139,36 @@ rationale.
 - [x] Decide on a logging strategy (do we use a logging package, which one?)
   - Decision: Custom lightweight logger wrapper. Rationale moved to Design
     Decisions section.
+- [] HIGH: Evaluate and integrate a pitch/tempo processing library.
+  - The AudioEngine interface is in place (src/services/audio-engine.ts) with
+    setPitch() and setTempo() stubbed. Need to evaluate SoundTouchJS vs. other
+    options and plug a real implementation into the interface. The data flow is
+    ready; only the DSP code is missing.
+- [] MEDIUM: Implement OPFS caching layer for offline support.
+  - The spec requires caching audio and lyrics files locally (OPFS) for offline
+    use. The architecture supports this but the caching layer is not yet built.
+    Songs added to the playlist should be cached aggressively. Cache eviction
+    (10+ days unused) is also needed.
+- [] MEDIUM: Drag-and-drop support in the playlist editor.
+  - The spec calls for drag-and-drop of songs into the playlist and reordering
+    within the playlist. Currently using buttons and context menus.
+    Drag-and-drop should be added for a more natural UX.
+- [] MEDIUM: Keyboard shortcuts for all major actions.
+  - The spec emphasizes keyboard usability (on-stage use). Need to add keyboard
+    handlers for: play/pause (Space), seek (arrows), stop (Esc), volume (+/-),
+    tab switching (Ctrl+Tab), etc. Shortcuts should appear in tooltips.
+- [] MEDIUM: Subfolder navigation in the playlist editor.
+  - The spec describes navigating into sub-folders of CallerBuddyRoot and
+    opening additional editors in new tabs. Currently the editor only shows the
+    root folder contents. Need to add folder entry rendering, ".." navigation,
+    and "open in new tab" for sub-folders.
+- [] LOW: Help documentation tab.
+  - The spec mentions a help tab displaying an HTML help document. This is a
+    stub; the infrastructure is there (tab system supports it) but no help
+    content exists yet.
+- [] LOW: Proper PWA icons (192px, 512px).
+  - The manifest currently uses vite.svg as a placeholder. Real CallerBuddy
+    icons need to be designed and added.
 
 ## Coding Standards
 
@@ -155,9 +205,30 @@ rationale.
 - [] WHen the code is pretty complete, an analysis should be done locate any
   lifetime issues. Lifetime issues (e.g. potential leaks) need an explicit
   GitHub issue tracking the problem.
-- [] Make sure ESLint is configured correctly.
+- [] Make sure ESLint is configured correctly for TypeScript (current config is
+  JS-only and doesn't parse .ts files). Need @typescript-eslint/parser and
+  @typescript-eslint/eslint-plugin.
+- [] Add Vitest unit tests for core services (song-library.ts, app-state.ts,
+  audio-engine.ts). The project has Vitest as a design decision but no tests
+  yet.
+- [] Add Playwright E2E tests for the main workflows (welcome → folder picker →
+  playlist editor → play).
+- [] Implement settings persistence for break timer and patter timer durations
+  (currently settings are loaded but the UI doesn't update settings.json when
+  the user changes timer values in the playlist-play or song-play views).
+- [] Song table column filters (like Google Sheets). Currently only a global
+  text filter is implemented. Per-column dropdown filters would match the spec.
+- [] The playSong UI should auto-close when the song finishes AND return to the
+  playlistPlay tab. Currently the close happens but the tab activation needs
+  testing.
+- [] The playlist editor should show the number of items in the playlist and
+  total estimated duration.
 
 ## Bugs
+
+- [] The old `src/my-element.ts` (Vite demo) and `src/welcome-view.ts` (pre-
+  architecture) files have been deleted. If any import references them, that is
+  a build error to fix.
 
 ## Questions/Clarifications.
 
@@ -214,3 +285,27 @@ rationale.
   - What happens if an MP3 file is corrupted or unreadable?
   - DECISION: Handle gracefully with error message, skip corrupted files in song
     list, allow user to fix manually.
+- [] MEDIUM: Should we support WAV files in addition to MP3 for testing?
+  - The test data generator creates WAV files (since generating MP3 requires an
+    encoder library). The song scanner currently accepts .wav as well as .mp3.
+    The earlier decision says "MP3 only", but WAV is useful for testing. Keep
+    .wav support for now? Or require real MP3 test data?
+  - GUESS: Keep .wav support; it costs nothing and is useful for testing. Can be
+    restricted later if needed.
+- [] LOW: How should the song-play component handle the `unsafeHTML` directive
+  for lyrics?
+  - We're rendering user-provided HTML lyrics with `unsafeHTML` from Lit. This
+    is safe for locally stored lyrics (the user controls the files), but worth
+    noting as a potential concern if CallerBuddyRoot ever comes from an
+    untrusted source. For V1, this is acceptable.
+- [] LOW: Should we handle the case where the CallerBuddy singleton's audio
+  context is suspended?
+  - Browsers require a user gesture before playing audio. The WebAudioEngine
+    calls context.resume() on play(), but if this fails, audio won't play. Need
+    to verify this works reliably and add user-facing feedback if it doesn't.
+- [] MEDIUM: Reconnect flow when stored root handle has no permission.
+  - When the app loads and finds a stored directory handle but doesn't have
+    permission (user hasn't gestured yet), the welcome screen shows but doesn't
+    clearly indicate that the user just needs to re-authorize. Consider adding a
+    "Reconnect to [folder name]" button that re-requests permission on the
+    stored handle without requiring a new folder picker flow.
