@@ -10,7 +10,7 @@
   "background_color": "#1a1a2e",
   "icons": [
     {
-      "src": "/vite.svg",
+      "src": "/callerBuddy.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"
