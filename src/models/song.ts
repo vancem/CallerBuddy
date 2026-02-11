@@ -4,7 +4,7 @@
  *
  * Filenames follow the convention: LABEL - TITLE.MP3
  * e.g., "RYL 607 - Come Sail Away.MP3"
- * Lyrics use the same base name with .HTML or .MD extension.
+ * Lyrics use the same base name with .HTML, .MD, or .TXT extension.
  */
 
 /** All per-song metadata persisted to songs.json. */
@@ -15,7 +15,7 @@ export interface Song {
   title: string;
   /** Relative path to the music file within CallerBuddyRoot */
   musicFile: string;
-  /** Relative path to lyrics file (HTML/MD) within CallerBuddyRoot, empty if none */
+  /** Relative path to lyrics file (HTML/MD/TXT) within CallerBuddyRoot, empty if none */
   lyricsFile: string;
   /** User-defined category string (e.g., "Christmas", "Patriotic") */
   category: string;
@@ -43,7 +43,7 @@ export interface Song {
 const MUSIC_EXTENSIONS = [".mp3", ".wav"];
 
 /** Supported lyrics file extensions (lower-case, with dot). */
-const LYRICS_EXTENSIONS = [".html", ".htm", ".md"];
+const LYRICS_EXTENSIONS = [".html", ".htm", ".md", ".txt"];
 
 /** True if song has lyrics (and is therefore a singing call, not patter). */
 export function isSingingCall(song: Song): boolean {

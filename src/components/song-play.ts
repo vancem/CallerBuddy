@@ -232,7 +232,13 @@ export class SongPlay extends LitElement {
     if (!this.lyrics) {
       return html`<p class="muted centered">No lyrics available.</p>`;
     }
-    // Render HTML lyrics safely in a container
+    const song = this.song;
+    const isPlainText =
+      song?.lyricsFile?.toLowerCase().endsWith(".txt") ?? false;
+    if (isPlainText) {
+      return html`<div class="lyrics-content lyrics-plain">${this.lyrics}</div>`;
+    }
+    // Render HTML/MD lyrics in a container
     return html`<div class="lyrics-content">${unsafeHTML(this.lyrics)}</div>`;
   }
 
@@ -653,6 +659,10 @@ export class SongPlay extends LitElement {
       background: #fff;
       color: #212121;
       padding: 16px;
+    }
+
+    .lyrics-content.lyrics-plain {
+      white-space: pre-wrap;
     }
 
     .lyrics-content h1,

@@ -4,7 +4,7 @@
  * Shows the playlist with selection highlighting, break timer, and clock.
  * Played songs are grayed out. The selected song defaults to the first
  * unplayed song; clicking a song overrides the selection. Play/Enter/Space
- * plays the selected song.
+ * plays the selected song. S starts/stops the break timer.
  *
  * See CallerBuddySpec.md §"PlaylistPlay UI".
  */
@@ -64,6 +64,11 @@ export class PlaylistPlay extends LitElement {
     if (e.ctrlKey && e.key === "r") {
       e.preventDefault();
       this.resetPlayedSongs();
+      return;
+    }
+    if (e.key.toLowerCase() === "s" && this.breakTimerEnabled) {
+      e.preventDefault();
+      this.onBreakStartStopClick();
       return;
     }
     if (e.key !== "Enter" && e.key !== " ") return;
@@ -157,6 +162,7 @@ export class PlaylistPlay extends LitElement {
                 <button
                   type="button"
                   class="break-start-stop"
+                  title="Start or stop break timer (S)"
                   ?disabled=${!this.breakTimerEnabled}
                   @click=${this.onBreakStartStopClick}
                 >
