@@ -30,7 +30,7 @@ export class SongPlay extends LitElement {
   @state() private lyrics = "";
   @state() private clockTime = "";
 
-  // Total elapsed time since first play (includes pauses/seeks via wall clock)
+  // Total elapsed time while song has been playing (paused time not counted)
   @state() private totalElapsed = 0;
   private firstPlayTime: number | null = null;
 
@@ -584,8 +584,8 @@ export class SongPlay extends LitElement {
 
   private startElapsedTimer() {
     this.elapsedInterval = window.setInterval(() => {
-      if (this.firstPlayTime !== null) {
-        this.totalElapsed = (Date.now() - this.firstPlayTime) / 1000;
+      if (this.playing) {
+        this.totalElapsed += 1;
       }
     }, 1000);
   }
