@@ -141,6 +141,11 @@ export class SongPlay extends LitElement {
         e.preventDefault();
         this.onRestart();
         break;
+      case "End":
+      case "Escape":
+        e.preventDefault();
+        this.onGoToEnd();
+        break;
       case "ArrowLeft":
         e.preventDefault();
         this.onSeekDelta(e.ctrlKey ? -5 : -2);
@@ -306,7 +311,7 @@ export class SongPlay extends LitElement {
         </button>
         <button class="ctrl-btn" title="Forward 2s (→)" @click=${() => this.onSeekDelta(2)}>►</button>
         <button class="ctrl-btn" title="Forward 5s (Ctrl+→)" @click=${() => this.onSeekDelta(5)}>⏩</button>
-        <button class="ctrl-btn" title="Stop and close" @click=${this.onStop}>⏹</button>
+        <button class="ctrl-btn" title="Go to end (End)" @click=${this.onGoToEnd}>⏭</button>
       </div>
     `;
   }
@@ -451,7 +456,9 @@ export class SongPlay extends LitElement {
     this.currentTime = newTime;
   }
 
-  private onStop() {
+  private onGoToEnd() {
+    callerBuddy.audio.seek(this.duration);
+    this.currentTime = this.duration;
     this.stopPatterTimer();
     callerBuddy.closeSongPlay();
   }
@@ -624,7 +631,7 @@ export class SongPlay extends LitElement {
 
     .song-play {
       display: grid;
-      grid-template-columns: 1fr 280px;
+      grid-template-columns: 1fr 320px;
       grid-template-rows: 1fr auto;
       height: 100%;
     }
@@ -779,7 +786,6 @@ export class SongPlay extends LitElement {
       align-items: center;
       justify-content: center;
       gap: 4px;
-      flex-wrap: wrap;
     }
 
     .ctrl-btn {
