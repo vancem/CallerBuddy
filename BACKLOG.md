@@ -61,14 +61,41 @@ rationale.
 - We will be using Vite for building.
 - We will be using Vitest for Unit testing.
 - We will be using Playwright for UI testing.
-- We will use Web Audio API for audio playback and processing (pitch/tempo
-  modification).
-  - Rationale: Web Audio API is native to browsers and provides the necessary
-    capabilities for pitch and tempo modification. For tempo/pitch processing,
-    we will evaluate SoundTouchJS (lightweight, purpose-built) or implement
-    using Web Audio API's built-in capabilities. Tone.js is an alternative but
-    may be overkill for our needs. Decision will be made during implementation
-    based on performance and complexity.
+- We will use Web Audio API for audio playback, with SoundTouchJS (soundtouchjs
+  v0.3.0, LGPL-2.1) for independent pitch shifting and tempo stretching.
+  - Rationale: Web Audio API alone cannot independently change pitch and tempo
+    (playbackRate changes both together; detune is broken on Safari/Firefox).
+    SoundTouchJS is a JS port of the proven SoundTouch C++ library that uses
+    WSOLA (Waveform Similarity Overlap-Add) for high-quality time stretching.
+    It is lightweight (~25 KB gzipped in the bundle), zero-dependency,
+    purpose-built for exactly this use case, and integrates cleanly with the
+    Web Audio graph via its PitchShifter wrapper.
+  - Alternatives evaluated and rejected:
+    - **Tone.js** (MIT, 232K weekly downloads): Full DAW framework with
+      synths, effects, scheduling. Has pitch shifting but is massive overkill
+      for our needs (5.4 MB unpacked, 886 files). Would add unnecessary
+      complexity and bundle bloat.
+    - **soundtouch-ts** (LGPL-2.1, 13 stars): TypeScript port of the core
+      SoundTouch algorithm but stripped-down, fewer utilities, no PitchShifter
+      wrapper, much less maintained. Not ready for production use.
+    - **Raw Web Audio API**: playbackRate changes pitch AND tempo together.
+      detune property is broken on Safari (not supported) and limited on
+      Firefox (max 1 octave range). Independent control requires implementing
+      WSOLA or phase-vocoder from scratch — enormous effort, error-prone.
+    - **Rubber Band (WASM)**: High-quality C++ library but no maintained JS/WASM
+      port exists. Would require building from source with Emscripten, complex
+      integration. Overkill for our needs.
+  - Triggers to reconsider this decision:
+    - If ScriptProcessorNode (deprecated) is removed from browsers, migrate to
+      the AudioWorklet variant (@soundtouchjs/audio-worklet, same maintainer).
+    - If audio quality on extreme pitch shifts (>4 half-steps) is poor, consider
+      a phase-vocoder approach (Rubber Band WASM or similar).
+    - If the LGPL-2.1 license becomes a concern for distribution, soundtouchjs
+      is used as an unmodified separate module (compliant with LGPL 6b), but
+      an MIT-licensed alternative could be sought.
+  - For future BPM detection (FUTURE.md), the web-audio-beat-detector package
+    (MIT, TypeScript, ~42 KB) is a good fit. It can be added independently
+    without replacing SoundTouchJS since they serve different purposes.
 - We will use the File System Access API for accessing CallerBuddyRoot folder.
   - Rationale: This is the standard PWA approach for folder access. The API
     provides persistent permission handles that can be stored and reused across
@@ -104,13 +131,16 @@ rationale.
     spec's requirement for a "CallerBuddy object that represents the program as
     a whole."
 - The AudioEngine interface (src/services/audio-engine.ts) abstracts audio
-  playback from the processing backend. The initial WebAudioEngine implements
-  basic playback; pitch and tempo modification are stubbed. A future
-  implementation (e.g. SoundTouchJS) can be plugged in without changing the rest
-  of the app.
-  - Rationale: The spec requires pitch/tempo modification but the right library
-    hasn't been chosen yet. Abstracting behind an interface lets us proceed with
-    the full data flow while deferring the DSP decision.
+  playback from the processing backend. The WebAudioEngine implementation uses
+  SoundTouchJS PitchShifter for all playback, enabling independent pitch and
+  tempo control. The PitchShifter replaces the raw AudioBufferSourceNode that
+  was used previously.
+  - Rationale: The PitchShifter wraps a ScriptProcessorNode that reads from the
+    decoded AudioBuffer through the SoundTouch WSOLA algorithm. This gives us
+    independent pitch (in half-steps via pitchSemitones) and tempo (as a ratio
+    via the tempo property) control. Looping is implemented by monitoring
+    playback position and seeking back to the loop start. The interface
+    abstraction is preserved so the backend can still be swapped if needed.
 - IndexedDB is used to persist the CallerBuddyRoot directory handle across
   browser sessions.
   - Rationale: The File System Access API supports storing handles in IndexedDB.
@@ -137,16 +167,16 @@ rationale.
   - Decision: Use Lit. Rationale moved to Design Decisions section.
 - [x] Decide how to get the audio software that can modify tempo/pitch, and get
       it integrated into the code base.
-  - Decision: Use Web Audio API. Evaluate SoundTouchJS during implementation if
-    needed. Rationale moved to Design Decisions section.
+  - Decision: SoundTouchJS (soundtouchjs v0.3.0) integrated via PitchShifter.
+    Full analysis in Design Decisions section.
 - [x] Decide on a logging strategy (do we use a logging package, which one?)
   - Decision: Custom lightweight logger wrapper. Rationale moved to Design
     Decisions section.
-- [] HIGH: Evaluate and integrate a pitch/tempo processing library.
-  - The AudioEngine interface is in place (src/services/audio-engine.ts) with
-    setPitch() and setTempo() stubbed. Need to evaluate SoundTouchJS vs. other
-    options and plug a real implementation into the interface. The data flow is
-    ready; only the DSP code is missing.
+- [x] HIGH: Evaluate and integrate a pitch/tempo processing library.
+  - Decision: SoundTouchJS (soundtouchjs v0.3.0). Integrated into
+    WebAudioEngine. setPitch() uses pitchSemitones, setTempo() converts BPM
+    delta to a ratio. See Design Decisions for full analysis. TypeScript type
+    declarations added at src/soundtouchjs.d.ts.
 - [] MEDIUM: Implement OPFS caching layer for offline support.
   - The spec requires caching audio and lyrics files locally (OPFS) for offline
     use. The architecture supports this but the caching layer is not yet built.

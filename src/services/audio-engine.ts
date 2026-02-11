@@ -1,17 +1,29 @@
 /**
- * Audio engine: interface and Web Audio API implementation.
+ * Audio engine: interface and Web Audio API + SoundTouchJS implementation.
  *
  * The interface abstracts audio playback so the pitch/tempo processing backend
  * can be swapped without changing the rest of the app. See BACKLOG.md design
- * decisions (Web Audio API, SoundTouchJS evaluation).
+ * decisions for the SoundTouchJS selection rationale.
  *
- * Current implementation:
- *  - Play/pause/stop/seek/volume: fully functional via Web Audio API.
- *  - Pitch and tempo modification: STUBBED (logged, no-op). The interface is
- *    ready for a real implementation (e.g. SoundTouchJS) to be plugged in.
- *  - Looping: functional via AudioBufferSourceNode loop properties.
+ * Implementation notes:
+ *  - Play/pause/stop/seek/volume: fully functional.
+ *  - Pitch shifting: implemented via SoundTouchJS PitchShifter (pitchSemitones).
+ *  - Tempo adjustment: implemented via SoundTouchJS PitchShifter (tempo ratio).
+ *  - Looping: implemented by monitoring playback position and resetting when
+ *    the position reaches the loop end point.
+ *
+ * The SoundTouchJS PitchShifter wraps a ScriptProcessorNode internally.
+ * It reads from the decoded AudioBuffer through the SoundTouch WSOLA
+ * (Waveform Similarity Overlap-Add) algorithm, enabling independent control
+ * of pitch and tempo. See: https://github.com/cutterbl/SoundTouchJS
+ *
+ * Design note: ScriptProcessorNode is technically deprecated in favor of
+ * AudioWorklet, but remains widely supported. SoundTouchJS also offers an
+ * AudioWorklet variant (@soundtouchjs/audio-worklet) that we can migrate to
+ * if ScriptProcessorNode support is ever dropped. See BACKLOG.md.
  */
 
+import { PitchShifter } from "soundtouchjs";
 import { log } from "./logger.js";
 
 // ---------------------------------------------------------------------------
@@ -48,13 +60,19 @@ export interface AudioEngine {
 
   /**
    * Set pitch shift in half-steps (signed integer).
-   * STUB in the initial implementation.
+   * Implemented via SoundTouchJS pitchSemitones.
    */
   setPitch(halfSteps: number): void;
 
   /**
-   * Set tempo adjustment in BPM delta (signed).
-   * STUB in the initial implementation.
+   * Set tempo adjustment as a ratio.
+   *
+   * The caller provides a **BPM delta** (e.g. +5 means "5 BPM faster").
+   * Since the original BPM of the song may not be known, we approximate
+   * the tempo ratio as: ratio = 1 + deltaBPM / referenceBPM, where
+   * referenceBPM defaults to 128 (a typical square dance tempo). When
+   * originalTempo is available on the Song model, the caller should pass
+   * that for higher accuracy.
    */
   setTempo(deltaBPM: number): void;
 
@@ -77,27 +95,55 @@ export interface AudioEngine {
 }
 
 // ---------------------------------------------------------------------------
-// Web Audio implementation
+// Constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Default reference BPM used to convert a BPM-delta to a tempo ratio.
+ * Square dance music is typically 120–130 BPM; 128 is a reasonable midpoint.
+ * When the Song model has an originalTempo, that should be used instead.
+ */
+const DEFAULT_REFERENCE_BPM = 128;
+
+/**
+ * ScriptProcessorNode buffer size for SoundTouchJS.  4096 is a good balance
+ * between latency (~93 ms at 44.1 kHz) and CPU load.
+ */
+const SHIFTER_BUFFER_SIZE = 4096;
+
+// ---------------------------------------------------------------------------
+// Web Audio + SoundTouchJS implementation
 // ---------------------------------------------------------------------------
 
 export class WebAudioEngine implements AudioEngine {
   private context: AudioContext;
   private audioBuffer: AudioBuffer | null = null;
-  private sourceNode: AudioBufferSourceNode | null = null;
   private gainNode: GainNode;
 
-  /** When the current source started in context.currentTime coordinates. */
-  private startContextTime = 0;
-  /** Playback offset (seconds into the song) when play() was last called. */
-  private playOffset = 0;
+  // --- SoundTouchJS PitchShifter state ---
+  private shifter: PitchShifter | null = null;
   private playing = false;
+  private connected = false;
 
+  /** Current pitch shift in half-steps. */
+  private pitchHalfSteps = 0;
+  /** Current tempo ratio (1.0 = original). */
+  private tempoRatio = 1.0;
+
+  // --- Loop state ---
   private loopStart = 0;
   private loopEnd = 0;
 
+  // --- Callbacks ---
   private endedCb: EndedCallback | null = null;
   private timeUpdateCb: TimeUpdateCallback | null = null;
   private rafId: number | null = null;
+
+  // --- Playback tracking ---
+  /** The most recent time (seconds) reported by the PitchShifter. */
+  private lastReportedTime = 0;
+  /** Whether we have already fired the ended callback for the current playback. */
+  private endedFired = false;
 
   constructor() {
     this.context = new AudioContext();
@@ -108,7 +154,8 @@ export class WebAudioEngine implements AudioEngine {
   async loadAudio(audioData: ArrayBuffer): Promise<void> {
     this.stop();
     this.audioBuffer = await this.context.decodeAudioData(audioData);
-    this.playOffset = 0;
+    this.lastReportedTime = 0;
+    this.endedFired = false;
     log.info(
       `Audio loaded: ${this.audioBuffer.duration.toFixed(1)}s, ` +
         `${this.audioBuffer.numberOfChannels}ch, ${this.audioBuffer.sampleRate}Hz`,
@@ -121,68 +168,67 @@ export class WebAudioEngine implements AudioEngine {
       this.context.resume();
     }
 
-    const source = this.context.createBufferSource();
-    source.buffer = this.audioBuffer;
-    source.connect(this.gainNode);
-
-    // Looping
-    if (this.loopEnd > 0 && this.loopEnd > this.loopStart) {
-      source.loop = true;
-      source.loopStart = this.loopStart;
-      source.loopEnd = this.loopEnd;
+    // If we don't have a PitchShifter yet, create one
+    if (!this.shifter) {
+      this.createShifter();
     }
 
-    source.onended = () => {
-      if (this.playing) {
-        this.playing = false;
-        this.stopTimeUpdates();
-        this.endedCb?.();
-      }
-    };
+    // Connect the shifter to the gain node to start audio flowing
+    if (this.shifter && !this.connected) {
+      this.shifter.connect(this.gainNode);
+      this.connected = true;
+    }
 
-    source.start(0, this.playOffset);
-    this.sourceNode = source;
-    this.startContextTime = this.context.currentTime;
     this.playing = true;
+    this.endedFired = false;
     this.startTimeUpdates();
   }
 
   pause(): void {
     if (!this.playing) return;
-    this.playOffset = this.getCurrentTime();
-    this.destroySource();
+    // Disconnect stops audio flow but keeps the shifter's position
+    if (this.shifter && this.connected) {
+      this.shifter.disconnect();
+      this.connected = false;
+    }
     this.playing = false;
     this.stopTimeUpdates();
   }
 
   stop(): void {
-    this.destroySource();
-    this.playOffset = 0;
+    if (this.shifter && this.connected) {
+      this.shifter.disconnect();
+      this.connected = false;
+    }
+    this.destroyShifter();
+    this.lastReportedTime = 0;
     this.playing = false;
+    this.endedFired = false;
     this.stopTimeUpdates();
   }
 
   seek(timeSeconds: number): void {
-    const wasPlaying = this.playing;
-    if (wasPlaying) {
-      this.destroySource();
-      this.playing = false;
+    const duration = this.getDuration();
+    const clampedTime = Math.max(0, Math.min(timeSeconds, duration));
+
+    if (this.shifter && duration > 0) {
+      // Set percentage to seek the PitchShifter to the desired position
+      const pct = (clampedTime / duration) * 100;
+      this.shifter.percentagePlayed = pct;
+      this.lastReportedTime = clampedTime;
+    } else {
+      this.lastReportedTime = clampedTime;
     }
-    this.playOffset = Math.max(
-      0,
-      Math.min(timeSeconds, this.getDuration()),
-    );
-    if (wasPlaying) {
-      this.play();
+
+    // If we're playing but had to recreate the shifter, reconnect
+    if (this.playing && this.shifter && !this.connected) {
+      this.shifter.connect(this.gainNode);
+      this.connected = true;
     }
   }
 
   getCurrentTime(): number {
-    if (!this.playing) return this.playOffset;
-    const elapsed = this.context.currentTime - this.startContextTime;
-    const raw = this.playOffset + elapsed;
-    const duration = this.getDuration();
-    return Math.min(raw, duration);
+    return this.lastReportedTime;
   }
 
   getDuration(): number {
@@ -194,32 +240,37 @@ export class WebAudioEngine implements AudioEngine {
     this.gainNode.gain.value = Math.max(0, Math.min(volume, 100)) / 100;
   }
 
-  setPitch(_halfSteps: number): void {
-    // TODO: Implement pitch shifting (SoundTouchJS or similar).
-    // See BACKLOG.md: audio processing is stubbed for V1.
-    log.info(`setPitch(${_halfSteps}) — STUB, not yet implemented`);
+  setPitch(halfSteps: number): void {
+    this.pitchHalfSteps = halfSteps;
+    if (this.shifter) {
+      this.shifter.pitchSemitones = halfSteps;
+    }
+    log.info(`setPitch(${halfSteps}) — pitch shift set to ${halfSteps} half-steps`);
   }
 
-  setTempo(_deltaBPM: number): void {
-    // TODO: Implement tempo adjustment (SoundTouchJS or similar).
-    // See BACKLOG.md: audio processing is stubbed for V1.
-    log.info(`setTempo(${_deltaBPM}) — STUB, not yet implemented`);
+  setTempo(deltaBPM: number): void {
+    // Convert BPM delta to a ratio: ratio = 1 + delta/reference
+    // e.g. +5 BPM at 128 reference = 1.039 (3.9% faster)
+    this.tempoRatio = 1.0 + deltaBPM / DEFAULT_REFERENCE_BPM;
+    // Clamp to reasonable range (0.5x to 2.0x)
+    this.tempoRatio = Math.max(0.5, Math.min(2.0, this.tempoRatio));
+
+    if (this.shifter) {
+      this.shifter.tempo = this.tempoRatio;
+    }
+    log.info(
+      `setTempo(${deltaBPM}) — tempo ratio set to ${this.tempoRatio.toFixed(3)} ` +
+        `(${deltaBPM >= 0 ? "+" : ""}${deltaBPM} BPM from reference ${DEFAULT_REFERENCE_BPM})`,
+    );
   }
 
   setLoopPoints(startSeconds: number, endSeconds: number): void {
     this.loopStart = startSeconds;
     this.loopEnd = endSeconds;
-
-    // Update live source if playing
-    if (this.sourceNode) {
-      if (endSeconds > 0 && endSeconds > startSeconds) {
-        this.sourceNode.loop = true;
-        this.sourceNode.loopStart = startSeconds;
-        this.sourceNode.loopEnd = endSeconds;
-      } else {
-        this.sourceNode.loop = false;
-      }
-    }
+    log.info(
+      `setLoopPoints(${startSeconds.toFixed(2)}, ${endSeconds.toFixed(2)}) — ` +
+        (endSeconds > 0 ? "looping enabled" : "looping disabled"),
+    );
   }
 
   isPlaying(): boolean {
@@ -257,23 +308,85 @@ export class WebAudioEngine implements AudioEngine {
 
   // -- private helpers ------------------------------------------------------
 
-  private destroySource(): void {
-    if (this.sourceNode) {
-      try {
-        this.sourceNode.onended = null;
-        this.sourceNode.stop();
-        this.sourceNode.disconnect();
-      } catch {
-        // source may already have stopped
+  /**
+   * Create a new PitchShifter from the current audioBuffer, applying the
+   * current pitch and tempo settings.
+   */
+  private createShifter(): void {
+    if (!this.audioBuffer) return;
+
+    this.destroyShifter();
+
+    this.shifter = new PitchShifter(
+      this.context,
+      this.audioBuffer,
+      SHIFTER_BUFFER_SIZE,
+      () => this.onShifterEnd(),
+    );
+
+    // Apply current pitch and tempo settings
+    this.shifter.pitchSemitones = this.pitchHalfSteps;
+    this.shifter.tempo = this.tempoRatio;
+
+    // Listen for play events (time updates from the ScriptProcessorNode)
+    this.shifter.on("play", (detail) => {
+      this.lastReportedTime = detail.timePlayed;
+
+      // Check loop points — if looping is active and we've passed the end,
+      // seek back to the start
+      if (
+        this.loopEnd > 0 &&
+        this.loopEnd > this.loopStart &&
+        detail.timePlayed >= this.loopEnd
+      ) {
+        this.seek(this.loopStart);
       }
-      this.sourceNode = null;
+    });
+
+    // If we had a saved position, seek to it
+    if (this.lastReportedTime > 0 && this.getDuration() > 0) {
+      const pct = (this.lastReportedTime / this.getDuration()) * 100;
+      this.shifter.percentagePlayed = pct;
+    }
+
+    log.info("SoundTouchJS PitchShifter created");
+  }
+
+  /** Called by SoundTouchJS when the source buffer is exhausted. */
+  private onShifterEnd(): void {
+    if (this.endedFired) return;
+
+    // If looping is active, seek to loop start instead of ending
+    if (this.loopEnd > 0 && this.loopEnd > this.loopStart) {
+      this.seek(this.loopStart);
+      return;
+    }
+
+    this.endedFired = true;
+    this.playing = false;
+    this.stopTimeUpdates();
+    this.endedCb?.();
+  }
+
+  private destroyShifter(): void {
+    if (this.shifter) {
+      try {
+        this.shifter.off();
+        if (this.connected) {
+          this.shifter.disconnect();
+          this.connected = false;
+        }
+      } catch {
+        // Shifter may already be disconnected
+      }
+      this.shifter = null;
     }
   }
 
   private startTimeUpdates(): void {
     this.stopTimeUpdates();
     const tick = () => {
-      this.timeUpdateCb?.(this.getCurrentTime());
+      this.timeUpdateCb?.(this.lastReportedTime);
       this.rafId = requestAnimationFrame(tick);
     };
     this.rafId = requestAnimationFrame(tick);
