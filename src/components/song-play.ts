@@ -52,6 +52,34 @@ export class SongPlay extends LitElement {
     return callerBuddy.state.currentSong;
   }
 
+  /** Tempo ratio from song delta (matches audio engine: (ref + delta) / ref, clamped 0.5–2). */
+  private getTempoRatio(): number {
+    const song = this.song;
+    if (!song) return 1;
+    const ref = song.originalTempo > 0 ? song.originalTempo : 128;
+    return Math.max(0.5, Math.min(2, (ref + song.deltaTempo) / ref));
+  }
+
+  /** Playback duration in seconds (source duration / tempo ratio). */
+  private getEffectiveDuration(): number {
+    const ratio = this.getTempoRatio();
+    return ratio > 0 ? this.duration / ratio : this.duration;
+  }
+
+  /** Playback position in seconds (source position / tempo ratio). */
+  private getEffectiveCurrentTime(): number {
+    const ratio = this.getTempoRatio();
+    return ratio > 0 ? this.currentTime / ratio : this.currentTime;
+  }
+
+  /** Effective BPM (original + delta) for display. */
+  private getEffectiveBPM(): number {
+    const song = this.song;
+    if (!song) return 0;
+    const ref = song.originalTempo > 0 ? song.originalTempo : 128;
+    return ref + song.deltaTempo;
+  }
+
   connectedCallback() {
     super.connectedCallback();
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
@@ -237,7 +265,7 @@ export class SongPlay extends LitElement {
           <button class="adj-btn" @click=${() => this.adjustTempo(-1)}>◄</button>
           <span class="adj-value">${song.deltaTempo > 0 ? "+" : ""}${song.deltaTempo}</span>
           <button class="adj-btn" @click=${() => this.adjustTempo(1)}>►</button>
-          <span class="adj-hint">${song.originalTempo > 0 ? `${song.originalTempo} BPM` : ""}</span>
+          <span class="adj-hint">${this.getEffectiveBPM() > 0 ? `${this.getEffectiveBPM()} BPM` : ""}</span>
         </div>
       </div>
     `;
@@ -246,15 +274,17 @@ export class SongPlay extends LitElement {
   // -- Time info and clock --------------------------------------------------
 
   private renderTimeInfo() {
+    const effectivePosition = this.getEffectiveCurrentTime();
+    const effectiveDuration = this.getEffectiveDuration();
     return html`
       <div class="time-info">
         <div class="time-row">
           <span class="time-label">Position</span>
-          <span class="time-value">${this.formatTime(this.currentTime)}</span>
+          <span class="time-value">${this.formatTime(effectivePosition)}</span>
         </div>
         <div class="time-row">
           <span class="time-label">Duration</span>
-          <span class="time-value">${this.formatTime(this.duration)}</span>
+          <span class="time-value">${this.formatTime(effectiveDuration)}</span>
         </div>
         <div class="time-row">
           <span class="time-label">Elapsed</span>
@@ -271,8 +301,10 @@ export class SongPlay extends LitElement {
   // -- Progress slider (7 segments) -----------------------------------------
 
   private renderSlider() {
-    const pct = this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0;
-    // Loop markers
+    const effectiveDuration = this.getEffectiveDuration();
+    const effectiveCurrent = this.getEffectiveCurrentTime();
+    const pct = effectiveDuration > 0 ? (effectiveCurrent / effectiveDuration) * 100 : 0;
+    // Loop markers (in source time, so use source duration for placement)
     const loopStartPct = this.duration > 0 ? (this.loopStart / this.duration) * 100 : 0;
     const loopEndPct = this.duration > 0 ? (this.loopEnd / this.duration) * 100 : 0;
 
@@ -290,7 +322,7 @@ export class SongPlay extends LitElement {
           )}
         </div>
 
-        <!-- Progress bar -->
+        <!-- Progress bar (by effective playback position) -->
         <div class="progress" style="width: ${pct}%"></div>
 
         <!-- Loop markers -->
@@ -303,14 +335,14 @@ export class SongPlay extends LitElement {
             `
           : nothing}
 
-        <!-- Clickable overlay -->
+        <!-- Clickable overlay: range in effective time so cursor matches playback -->
         <input
           type="range"
           class="slider-input"
           min="0"
-          max=${this.duration || 1}
+          max=${effectiveDuration || 1}
           step="0.1"
-          .value=${String(this.currentTime)}
+          .value=${String(effectiveCurrent)}
           @input=${this.onSliderInput}
           title="Song position"
         />
@@ -355,9 +387,11 @@ export class SongPlay extends LitElement {
   }
 
   private onSliderInput(e: Event) {
-    const value = Number((e.target as HTMLInputElement).value);
-    callerBuddy.audio.seek(value);
-    this.currentTime = value;
+    const effectiveValue = Number((e.target as HTMLInputElement).value);
+    const ratio = this.getTempoRatio();
+    const sourceTime = effectiveValue * ratio;
+    callerBuddy.audio.seek(sourceTime);
+    this.currentTime = sourceTime;
   }
 
   // -- Adjustment handlers --------------------------------------------------
