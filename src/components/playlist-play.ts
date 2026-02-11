@@ -12,6 +12,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
+import { DEFAULT_BREAK_TIMER_MINUTES } from "../models/settings.js";
 import { StateEvents } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 
@@ -24,7 +25,7 @@ export class PlaylistPlay extends LitElement {
 
   // Break timer
   @state() private breakTimerEnabled = true;
-  @state() private breakMinutes = 5;
+  @state() private breakMinutes = DEFAULT_BREAK_TIMER_MINUTES;
   @state() private breakCountdown = 0; // seconds remaining
   @state() private breakTimerRunning = false;
 
@@ -141,38 +142,47 @@ export class PlaylistPlay extends LitElement {
             <span class="clock-value">${this.clockTime}</span>
           </div>
 
-          <div class="break-section">
+          <div class="break-section ${this.breakTimerEnabled ? "" : "timer-disabled"}">
             <h3>Break Timer</h3>
             <div class="break-controls">
-              <label class="break-toggle">
-                <input
-                  type="checkbox"
-                  .checked=${this.breakTimerEnabled}
-                  @change=${this.toggleBreakTimer}
-                />
-                Enabled
-              </label>
-              <div class="break-input-row ${this.breakTimerEnabled ? "" : "disabled"}">
+              <div class="break-toggle-row">
+                <label class="break-toggle">
+                  <input
+                    type="checkbox"
+                    .checked=${this.breakTimerEnabled}
+                    @change=${this.toggleBreakTimer}
+                  />
+                  Enabled
+                </label>
+                <button
+                  type="button"
+                  class="break-start-stop"
+                  ?disabled=${!this.breakTimerEnabled}
+                  @click=${this.onBreakStartStopClick}
+                >
+                  ${this.breakTimerRunning ? "Stop" : "Start"}
+                </button>
+              </div>
+              <div class="break-input-row">
                 <label>Minutes:</label>
                 <input
                   type="number"
                   min="0"
-                  max="10"
-                  step="0.5"
+                  max="60"
+                  step="any"
                   .value=${String(this.breakMinutes)}
                   @change=${this.onBreakMinutesChange}
                   ?disabled=${!this.breakTimerEnabled}
                 />
               </div>
-              ${this.breakTimerRunning
-                ? html`
-                    <div class="countdown">
-                      <span class="countdown-value ${this.breakCountdown <= 0 ? "alarm" : ""}">
-                        ${this.formatCountdown(this.breakCountdown)}
-                      </span>
-                    </div>
-                  `
-                : nothing}
+              <div class="countdown time-row ${this.breakTimerRunning && this.breakTimerEnabled ? "" : "countdown-idle"}">
+                <span class="time-label">Time left</span>
+                <span class="time-value ${this.breakTimerRunning && this.breakCountdown <= 0 ? "alarm" : ""}">
+                  ${this.breakTimerRunning && this.breakTimerEnabled
+                    ? this.formatCountdown(this.breakCountdown)
+                    : this.formatCountdown(Math.round(this.breakMinutes * 60))}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -226,13 +236,22 @@ export class PlaylistPlay extends LitElement {
     }
   }
 
+  private onBreakStartStopClick() {
+    if (this.breakTimerRunning) {
+      this.stopBreakTimer();
+    } else if (this.breakTimerEnabled) {
+      this.startBreakTimer();
+    }
+  }
+
   private onBreakMinutesChange(e: Event) {
-    this.breakMinutes = Number((e.target as HTMLInputElement).value) || 5;
+    const v = Number((e.target as HTMLInputElement).value);
+    this.breakMinutes = Number.isFinite(v) && v >= 0 ? v : DEFAULT_BREAK_TIMER_MINUTES;
   }
 
   private startBreakTimer() {
     this.stopBreakTimer();
-    this.breakCountdown = this.breakMinutes * 60;
+    this.breakCountdown = Math.round(this.breakMinutes * 60);
     this.breakTimerRunning = true;
     this.breakInterval = window.setInterval(() => {
       this.breakCountdown--;
@@ -427,12 +446,37 @@ export class PlaylistPlay extends LitElement {
       gap: 8px;
     }
 
+    .break-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .break-toggle {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 0.9rem;
       cursor: pointer;
+    }
+
+    .break-start-stop {
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--cb-border, #555);
+      background: var(--cb-input-bg, #2a2a3e);
+      color: var(--cb-fg, #fff);
+      cursor: pointer;
+    }
+
+    .break-start-stop:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .break-start-stop:disabled {
+      opacity: 0.5;
+      cursor: default;
     }
 
     .break-input-row {
@@ -442,8 +486,15 @@ export class PlaylistPlay extends LitElement {
       font-size: 0.9rem;
     }
 
-    .break-input-row.disabled {
+    .break-section.timer-disabled h3,
+    .break-section.timer-disabled .break-input-row,
+    .break-section.timer-disabled .countdown {
       opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .break-section.timer-disabled .break-toggle {
+      opacity: 1;
     }
 
     .break-input-row input {
@@ -456,13 +507,28 @@ export class PlaylistPlay extends LitElement {
       font-size: 0.9rem;
     }
 
-    .countdown-value {
-      font-size: 1.8rem;
-      font-weight: 300;
-      font-variant-numeric: tabular-nums;
+    .countdown.time-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
     }
 
-    .countdown-value.alarm {
+    .break-section .time-label {
+      width: 60px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .break-section .time-value {
+      font-variant-numeric: tabular-nums;
+      font-size: 1rem;
+    }
+
+    .countdown-idle .time-value {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .break-section .time-value.alarm {
       color: #f66;
     }
 
