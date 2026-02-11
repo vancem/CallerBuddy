@@ -635,7 +635,6 @@ export class SongPlay extends LitElement {
       grid-column: 1;
       grid-row: 1;
       overflow-y: auto;
-      padding: 16px;
       border-right: 1px solid var(--cb-border, #333);
     }
 
@@ -644,12 +643,27 @@ export class SongPlay extends LitElement {
       line-height: 1.7;
       max-width: 700px;
       margin: 0 auto;
+      background: #fff;
+      color: #212121;
+      padding: 16px;
     }
 
     .lyrics-content h1,
     .lyrics-content h2,
     .lyrics-content h3 {
-      color: var(--cb-accent, #646cff);
+      color: #212121;
+    }
+
+    .lyrics-content a {
+      color: #0000ee;
+    }
+
+    .lyrics-content a:visited {
+      color: #551a8b;
+    }
+
+    .lyrics-content hr {
+      border-color: #ddd;
     }
 
     /* -- Patter controls --------------------------------------------------- */
@@ -657,6 +671,7 @@ export class SongPlay extends LitElement {
     .patter-controls {
       max-width: 500px;
       margin: 0 auto;
+      padding: 16px;
     }
 
     .patter-controls h3 {
