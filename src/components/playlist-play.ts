@@ -57,9 +57,15 @@ export class PlaylistPlay extends LitElement {
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
 
   private onKeydown(e: KeyboardEvent) {
-    if (e.key !== "Enter" && e.key !== " ") return;
     const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     if (inInput) return;
+
+    if (e.ctrlKey && e.key === "r") {
+      e.preventDefault();
+      this.resetPlayedSongs();
+      return;
+    }
+    if (e.key !== "Enter" && e.key !== " ") return;
     if (callerBuddy.state.playlist.length === 0 || callerBuddy.state.currentSong !== null) return;
     e.preventDefault();
     this.playSelected();
@@ -118,6 +124,12 @@ export class PlaylistPlay extends LitElement {
               @click=${() => this.playSelected()}
             >
               ▶ Play
+            </button>
+            <button
+              title="Reset played status for all songs (Ctrl+R)"
+              @click=${() => this.resetPlayedSongs()}
+            >
+              ⟲ Reset
             </button>
           </div>
         </aside>
@@ -198,6 +210,12 @@ export class PlaylistPlay extends LitElement {
       this.startBreakTimer();
     }
   };
+
+  private resetPlayedSongs() {
+    callerBuddy.state.resetPlayedSongs();
+    this.selectedIndex = null; // revert to default (first unplayed)
+    this.refresh();
+  }
 
   // -- Break timer ----------------------------------------------------------
 
@@ -351,6 +369,23 @@ export class PlaylistPlay extends LitElement {
 
     .play-actions {
       margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .play-actions button:not(.primary) {
+      border-radius: 6px;
+      border: 1px solid var(--cb-border, #555);
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      background: var(--cb-input-bg, #2a2a3e);
+      color: var(--cb-fg, #fff);
+      cursor: pointer;
+    }
+
+    .play-actions button:not(.primary):hover {
+      background: rgba(255, 255, 255, 0.08);
     }
 
     /* -- Info panel --------------------------------------------------------- */

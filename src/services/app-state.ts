@@ -143,6 +143,12 @@ export class AppState extends EventTarget {
     return this.playedSongPaths;
   }
 
+  /** Reset the 'has played' bits for all songs in the Now Playing playlist. */
+  resetPlayedSongs(): void {
+    this.playedSongPaths.clear();
+    this.emit(StateEvents.PLAYLIST_CHANGED);
+  }
+
   // -- Tab management -------------------------------------------------------
 
   openTab(type: TabType, title: string, closable = true, data?: unknown): string {
