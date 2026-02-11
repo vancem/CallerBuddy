@@ -37,6 +37,9 @@ Please also see CallerBuddySpec.md for the specification of user behavior.
   [Modern Software Engineering](https://www.youtube.com/@ModernSoftwareEngineeringYT)
   would be in evidence.
 - Ideally we spend very little time debugging.
+- This app does not benefit from concurrency and concurrency has the potential
+  to create subtle bugs. To avoid these, code (e.g. awaits) should try to stay
+  sequential unless there is a good reason to deviate from that default.
 
 ## Design Decisions
 
