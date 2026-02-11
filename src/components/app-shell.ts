@@ -15,6 +15,7 @@
 
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
+import { repeat } from "lit/directives/repeat.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { StateEvents, TabType } from "../services/app-state.js";
 import { APP_VERSION } from "../version.js";
@@ -72,7 +73,17 @@ export class AppShell extends LitElement {
           </div>
         </header>
         <main class="content">
-          ${activeTab ? this.renderTab(activeTab.type) : this.renderEmpty()}
+          ${tabs.length > 0
+            ? repeat(
+                tabs,
+                (t) => t.id,
+                (tab) => html`
+                  <div class="tab-pane" ?hidden=${tab.id !== activeTabId}>
+                    ${this.renderTab(tab.type)}
+                  </div>
+                `,
+              )
+            : this.renderEmpty()}
         </main>
       </div>
     `;
@@ -251,6 +262,17 @@ export class AppShell extends LitElement {
     .content {
       flex: 1;
       overflow: auto;
+    }
+
+    /* All open tabs stay in the DOM; inactive ones are hidden via the
+       [hidden] attribute. This preserves component state (timers, event
+       listeners, scroll position, etc.) across tab switches. */
+    .tab-pane {
+      height: 100%;
+    }
+
+    .tab-pane[hidden] {
+      display: none;
     }
 
     .empty {
