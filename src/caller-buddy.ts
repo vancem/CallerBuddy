@@ -207,6 +207,12 @@ export class CallerBuddy {
 
   /** Open the song play view for a specific song. */
   async openSongPlay(song: Song): Promise<void> {
+    try {
+      await this.loadSongAudio(song);
+    } catch (err) {
+      log.error(`Failed to load audio for "${song.title}":`, err);
+      return;
+    }
     this.state.setCurrentSong(song);
     this.state.openSingletonTab(
       TabType.SongPlay,
@@ -214,25 +220,19 @@ export class CallerBuddy {
       true,
       { song },
     );
-    try {
-      await this.loadSongAudio(song);
-    } catch (err) {
-      log.error(`Failed to load audio for "${song.title}":`, err);
-    }
   }
 
   /** Close the song play tab and clear the current song. */
-  closeSongPlay(): void {
+  async closeSongPlay(): Promise<void> {
     this.audio.stop();
+    // Persist lastUsed before closing so we don't have concurrent write with tab teardown
+    if (this.state.currentSong) {
+      const song = { ...this.state.currentSong, lastUsed: new Date().toISOString() };
+      await this.updateSong(song);
+    }
     const tab = this.state.tabs.find((t) => t.type === TabType.SongPlay);
     if (tab) {
       this.state.closeTab(tab.id);
-    }
-
-    // Update lastUsed on the song that was playing
-    if (this.state.currentSong) {
-      const song = { ...this.state.currentSong, lastUsed: new Date().toISOString() };
-      this.updateSong(song);
     }
     this.state.setCurrentSong(null);
   }
