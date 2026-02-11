@@ -152,10 +152,10 @@ export async function loadAndMergeSongs(
   dirHandle: FileSystemDirectoryHandle,
 ): Promise<Song[]> {
   log.info(`loadAndMergeSongs: scanning "${dirHandle.name}"…`);
-  const [scanned, persisted] = await Promise.all([
-    scanDirectory(dirHandle),
-    loadSongsJson(dirHandle),
-  ]);
+  // Run sequentially to avoid concurrent use of the same directory handle, which
+  // can hang in some environments (e.g. handle.values() and getFileHandle).
+  const persisted = await loadSongsJson(dirHandle);
+  const scanned = await scanDirectory(dirHandle);
   log.info(
     `loadAndMergeSongs: scanned=${scanned.length}, persisted=${persisted.length}`,
   );
