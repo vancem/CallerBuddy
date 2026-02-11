@@ -1,8 +1,10 @@
 /**
  * Playlist playback view.
  *
- * Shows the playlist with a cursor, break timer, and clock. When the user
- * clicks "play" on a song, opens the song-play tab.
+ * Shows the playlist with selection highlighting, break timer, and clock.
+ * Played songs are grayed out. The selected song defaults to the first
+ * unplayed song; clicking a song overrides the selection. Play/Enter/Space
+ * plays the selected song.
  *
  * See CallerBuddySpec.md §"PlaylistPlay UI".
  */
@@ -17,13 +19,7 @@ import { isSingingCall } from "../models/song.js";
 export class PlaylistPlay extends LitElement {
   @state() private _tick = 0;
 
-  /** Index of the next song to play (the cursor). */
-  @state() private cursorIndex = 0;
-
-  /** Set of indices of songs already played (grayed out). */
-  @state() private playedIndices = new Set<number>();
-
-  /** Override: the user clicked a specific song to play next. */
+  /** User-clicked override; null = default to first unplayed. */
   @state() private selectedIndex: number | null = null;
 
   // Break timer
@@ -47,7 +43,6 @@ export class PlaylistPlay extends LitElement {
     document.addEventListener("keydown", this._boundKeydown);
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
     this.updateClock();
-    this.advanceCursor();
   }
 
   disconnectedCallback() {
@@ -74,14 +69,23 @@ export class PlaylistPlay extends LitElement {
     this._tick++;
   };
 
+  /** The effective selected index: user override or first unplayed. */
+  private getSelectedIndex(): number {
+    if (this.selectedIndex !== null) return this.selectedIndex;
+    const playlist = callerBuddy.state.playlist;
+    const played = callerBuddy.state.getPlayedSongPaths();
+    const i = playlist.findIndex((s) => !played.has(s.musicFile));
+    return i >= 0 ? i : -1; // -1 = all played
+  }
+
   render() {
     const playlist = callerBuddy.state.playlist;
     const isPlayingSong = callerBuddy.state.currentSong !== null;
-    const effectiveIdx = this.selectedIndex ?? this.cursorIndex;
+    const sel = this.getSelectedIndex();
+    const playedPaths = callerBuddy.state.getPlayedSongPaths();
 
     return html`
       <div class="play-view ${isPlayingSong ? "inactive" : ""}">
-        <!-- Left: Playlist with cursor -->
         <aside class="playlist-panel">
           <h2>Playlist</h2>
           ${playlist.length === 0
@@ -89,15 +93,13 @@ export class PlaylistPlay extends LitElement {
             : html`
                 <ol class="playlist-list">
                   ${playlist.map((song, i) => {
-                    const played = this.playedIndices.has(i);
-                    const isCursor = i === effectiveIdx;
+                    const played = playedPaths.has(song.musicFile);
                     return html`
                       <li
-                        class="pl-item ${played ? "played" : ""} ${isCursor ? "cursor" : ""}"
-                        @click=${() => this.selectSong(i)}
-                        @dblclick=${() => this.onPlaySongAt(i)}
+                        class="pl-item ${played ? "played" : ""} ${i === sel ? "selected" : ""}"
+                        @click=${() => (this.selectedIndex = i)}
+                        @dblclick=${() => this.playAt(i)}
                       >
-                        <span class="pl-indicator">${isCursor ? "▸" : ""}</span>
                         <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
                           >${isSingingCall(song) ? "♪" : "♫"}</span
                         >
@@ -112,7 +114,7 @@ export class PlaylistPlay extends LitElement {
             <button
               class="primary"
               ?disabled=${playlist.length === 0 || isPlayingSong}
-              title="Play next song (Space)"
+              title="Play selected song (Enter / Space)"
               @click=${() => this.playSelected()}
             >
               ▶ Play
@@ -170,50 +172,32 @@ export class PlaylistPlay extends LitElement {
     `;
   }
 
-  // -- Song selection and playback ------------------------------------------
+  // -- Song playback --------------------------------------------------------
 
-  private selectSong(index: number) {
-    this.selectedIndex = index;
-  }
-
-  /** Double-click: play the song at this index (same as selecting and clicking Play). */
-  private onPlaySongAt(index: number) {
+  /** Play song at a specific index (double-click). */
+  private playAt(index: number) {
     if (callerBuddy.state.currentSong !== null) return;
-    this.selectSong(index);
+    this.selectedIndex = index;
     this.playSelected();
   }
 
   private async playSelected() {
     const playlist = callerBuddy.state.playlist;
-    const idx = this.selectedIndex ?? this.cursorIndex;
+    const idx = this.getSelectedIndex();
     if (idx < 0 || idx >= playlist.length) return;
 
     this.stopBreakTimer();
     const song = playlist[idx];
-    this.playedIndices.add(idx);
-    this.selectedIndex = null;
+    callerBuddy.state.markSongPlayed(song.musicFile);
+    this.selectedIndex = null; // reset to auto-select next unplayed
     await callerBuddy.openSongPlay(song);
   }
 
   private onSongEnded = () => {
-    this.advanceCursor();
-    // Start break timer if enabled
     if (this.breakTimerEnabled) {
       this.startBreakTimer();
     }
   };
-
-  /** Move cursor to the first non-played song. */
-  private advanceCursor() {
-    const playlist = callerBuddy.state.playlist;
-    for (let i = 0; i < playlist.length; i++) {
-      if (!this.playedIndices.has(i)) {
-        this.cursorIndex = i;
-        return;
-      }
-    }
-    this.cursorIndex = playlist.length; // all played
-  }
 
   // -- Break timer ----------------------------------------------------------
 
@@ -337,19 +321,12 @@ export class PlaylistPlay extends LitElement {
     }
 
     .pl-item.played {
-      opacity: 0.4;
-      text-decoration: line-through;
+      opacity: 0.5;
+      color: rgba(255, 255, 255, 0.5);
     }
 
-    .pl-item.cursor {
-      background: rgba(100, 108, 255, 0.15);
-    }
-
-    .pl-indicator {
-      width: 16px;
-      text-align: center;
-      font-size: 0.9rem;
-      color: var(--cb-accent, #646cff);
+    .pl-item.selected {
+      background: rgba(100, 108, 255, 0.2);
     }
 
     .pl-type {

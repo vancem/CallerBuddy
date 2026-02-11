@@ -72,6 +72,9 @@ export class AppState extends EventTarget {
   /** The song currently being played, or null. */
   currentSong: Song | null = null;
 
+  /** Set of musicFile paths for songs already played this session (Now Playing). */
+  private playedSongPaths = new Set<string>();
+
   // -- Mutation helpers (fire events) ---------------------------------------
 
   emit(eventName: string): void {
@@ -126,7 +129,18 @@ export class AppState extends EventTarget {
 
   clearPlaylist(): void {
     this.playlist = [];
+    this.playedSongPaths.clear();
     this.emit(StateEvents.PLAYLIST_CHANGED);
+  }
+
+  /** Mark a song as played (by music file path) for Now Playing gray-out. */
+  markSongPlayed(musicFile: string): void {
+    this.playedSongPaths.add(musicFile);
+  }
+
+  /** Read-only set of music file paths that have been played this session. */
+  getPlayedSongPaths(): ReadonlySet<string> {
+    return this.playedSongPaths;
   }
 
   // -- Tab management -------------------------------------------------------
