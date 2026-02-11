@@ -222,6 +222,7 @@ export class PlaylistPlay extends LitElement {
   };
 
   private resetPlayedSongs() {
+    this.stopBreakTimer();
     callerBuddy.state.resetPlayedSongs();
     this.selectedIndex = null; // revert to default (first unplayed)
     this.refresh();
