@@ -14,6 +14,7 @@ import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { APP_VERSION } from "../version.js";
+import { log } from "../services/logger.js";
 
 @customElement("welcome-view")
 export class WelcomeView extends LitElement {
@@ -31,12 +32,11 @@ export class WelcomeView extends LitElement {
 
   render() {
     return html`
-      <div class="welcome"> q
-      
+      <div class="welcome">
         <h1>CallerBuddy</h1>
 
         <p class="explanation">
-          (CallerBuddy) is a tool for square dance callers to manage music
+          CallerBuddy is a tool for square dance callers to manage music
           and lyrics. It uses a single folder as your root. All songs (MP3
           files), lyrics (HTML or MD), and app data live in this folder.
           You can use a local folder or one inside a cloud drive (OneDrive,
@@ -84,18 +84,23 @@ export class WelcomeView extends LitElement {
 
     try {
       this.loading = true;
+      log.info("pickFolder: opening directory picker…");
       const handle = await window.showDirectoryPicker({ mode: "readwrite" });
       this.folderName = handle.name;
+      log.info(`pickFolder: user chose "${handle.name}", calling setRoot…`);
       await callerBuddy.setRoot(handle);
+      log.info("pickFolder: setRoot completed successfully");
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
-        // User cancelled the picker
+        log.info("pickFolder: user cancelled the picker");
         return;
       }
+      log.error("pickFolder: error during folder setup:", err);
       this.pickerError =
         err instanceof Error ? err.message : "Could not open folder.";
     } finally {
       this.loading = false;
+      log.info("pickFolder: loading set to false");
     }
   }
 

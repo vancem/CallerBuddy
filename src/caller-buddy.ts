@@ -50,18 +50,24 @@ export class CallerBuddy {
 
     const storedHandle = await loadRootHandle();
     if (storedHandle) {
+      log.info(`init: found stored handle "${storedHandle.name}", checking permission…`);
       // Try to silently verify permission (no user gesture, may fail)
       const perm = await storedHandle.queryPermission({ mode: "readwrite" });
+      log.info(`init: queryPermission returned "${perm}"`);
       if (perm === "granted") {
+        log.info("init: permission granted, activating stored root…");
         await this.activateRoot(storedHandle);
         return;
       }
       // Permission not granted — we'll need a user gesture. Store the handle
       // so the welcome view can offer a "reconnect" button.
-      log.info("Stored root found but permission not granted; showing welcome.");
+      log.info("init: permission not granted; showing welcome.");
       this.state.rootHandle = storedHandle;
+    } else {
+      log.info("init: no stored handle found");
     }
 
+    log.info("init: opening welcome tab");
     this.state.openSingletonTab(TabType.Welcome, "Welcome", false);
   }
 
@@ -74,33 +80,40 @@ export class CallerBuddy {
    * Persists the handle, loads songs, opens the playlist editor.
    */
   async setRoot(handle: FileSystemDirectoryHandle): Promise<void> {
+    log.info(`setRoot: ensuring readwrite permission on "${handle.name}"…`);
     const granted = await ensurePermission(handle);
     if (!granted) {
-      log.warn("User denied readwrite permission on root folder.");
+      log.warn("setRoot: user denied readwrite permission on root folder.");
       return;
     }
+    log.info("setRoot: permission granted, storing handle in IndexedDB…");
     await storeRootHandle(handle);
+    log.info("setRoot: handle stored, activating root…");
     await this.activateRoot(handle);
+    log.info("setRoot: complete");
   }
 
   private async activateRoot(handle: FileSystemDirectoryHandle): Promise<void> {
     this.state.setRoot(handle);
-    log.info(`CallerBuddyRoot set to: ${handle.name}`);
+    log.info(`activateRoot: CallerBuddyRoot set to "${handle.name}"`);
 
-    // Load settings
+    log.info("activateRoot: loading settings…");
     await this.loadSettings();
+    log.info("activateRoot: settings loaded");
 
-    // Load songs
+    log.info("activateRoot: loading and merging songs…");
     const songs = await loadAndMergeSongs(handle);
+    log.info(`activateRoot: ${songs.length} songs loaded`);
     this.state.setSongs(songs);
 
-    // Open a playlist editor for the root folder
+    log.info("activateRoot: opening playlist editor tab…");
     this.state.openSingletonTab(
       TabType.PlaylistEditor,
       handle.name,
       true,
       { folderName: handle.name },
     );
+    log.info("activateRoot: complete");
   }
 
   // -----------------------------------------------------------------------

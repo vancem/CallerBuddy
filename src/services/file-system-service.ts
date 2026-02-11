@@ -39,16 +39,19 @@ function openIDB(): Promise<IDBDatabase> {
 export async function storeRootHandle(
   handle: FileSystemDirectoryHandle,
 ): Promise<void> {
+  log.debug("storeRootHandle: opening IndexedDB…");
   const db = await openIDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(IDB_STORE, "readwrite");
     tx.objectStore(IDB_STORE).put(handle, IDB_KEY);
     tx.oncomplete = () => {
       db.close();
+      log.debug("storeRootHandle: handle persisted");
       resolve();
     };
     tx.onerror = () => {
       db.close();
+      log.error("storeRootHandle: IndexedDB transaction error:", tx.error);
       reject(tx.error);
     };
   });
@@ -89,9 +92,13 @@ export async function loadRootHandle(): Promise<FileSystemDirectoryHandle | null
 export async function ensurePermission(
   handle: FileSystemDirectoryHandle,
 ): Promise<boolean> {
+  log.debug(`ensurePermission: querying permission on "${handle.name}"…`);
   const perm = await handle.queryPermission({ mode: "readwrite" });
+  log.debug(`ensurePermission: queryPermission returned "${perm}"`);
   if (perm === "granted") return true;
+  log.info(`ensurePermission: requesting readwrite permission…`);
   const result = await handle.requestPermission({ mode: "readwrite" });
+  log.info(`ensurePermission: requestPermission returned "${result}"`);
   return result === "granted";
 }
 
@@ -108,12 +115,18 @@ export interface DirEntry {
 export async function listDirectory(
   handle: FileSystemDirectoryHandle,
 ): Promise<DirEntry[]> {
+  log.debug(`listDirectory: enumerating "${handle.name}"…`);
   const entries: DirEntry[] = [];
   for await (const entry of handle.values()) {
     entries.push({ name: entry.name, kind: entry.kind });
   }
   entries.sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+  );
+  log.debug(
+    `listDirectory: found ${entries.length} entries ` +
+      `(${entries.filter((e) => e.kind === "file").length} files, ` +
+      `${entries.filter((e) => e.kind === "directory").length} dirs)`,
   );
   return entries;
 }
@@ -148,10 +161,15 @@ export async function writeTextFile(
   contents: string,
 ): Promise<void> {
   assert(typeof contents === "string", "writeTextFile: contents must be string");
+  log.debug(`writeTextFile: writing "${filename}" (${contents.length} chars)…`);
   const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+  log.debug(`writeTextFile: got file handle, creating writable…`);
   const writable = await fileHandle.createWritable();
+  log.debug(`writeTextFile: writable created, writing data…`);
   await writable.write(contents);
+  log.debug(`writeTextFile: data written, closing…`);
   await writable.close();
+  log.debug(`writeTextFile: "${filename}" written successfully`);
 }
 
 /**

@@ -15,7 +15,14 @@ export const LogLevel = {
 
 export type LogLevel = (typeof LogLevel)[keyof typeof LogLevel];
 
-let currentLevel: LogLevel = LogLevel.Info;
+// Default to Debug in dev mode so all diagnostic messages are visible.
+// In production builds, Vite sets import.meta.env.DEV to false.
+const isDev =
+  typeof import.meta !== "undefined" &&
+  typeof import.meta.env !== "undefined" &&
+  import.meta.env.DEV;
+
+let currentLevel: LogLevel = isDev ? LogLevel.Debug : LogLevel.Info;
 
 export function setLogLevel(level: LogLevel): void {
   currentLevel = level;

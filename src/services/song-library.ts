@@ -151,17 +151,23 @@ export function mergeSongs(scanned: Song[], persisted: Song[]): Song[] {
 export async function loadAndMergeSongs(
   dirHandle: FileSystemDirectoryHandle,
 ): Promise<Song[]> {
+  log.info(`loadAndMergeSongs: scanning "${dirHandle.name}"…`);
   const [scanned, persisted] = await Promise.all([
     scanDirectory(dirHandle),
     loadSongsJson(dirHandle),
   ]);
+  log.info(
+    `loadAndMergeSongs: scanned=${scanned.length}, persisted=${persisted.length}`,
+  );
   const merged = mergeSongs(scanned, persisted);
+  log.info(`loadAndMergeSongs: merged=${merged.length}, saving songs.json…`);
 
   // Persist the merged result so new songs are saved
   try {
     await saveSongsJson(dirHandle, merged);
+    log.info("loadAndMergeSongs: songs.json saved");
   } catch (err) {
-    log.warn("Could not save songs.json (permission issue?):", err);
+    log.warn("loadAndMergeSongs: could not save songs.json:", err);
   }
   return merged;
 }
