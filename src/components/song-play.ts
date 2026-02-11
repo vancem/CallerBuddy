@@ -85,6 +85,11 @@ export class SongPlay extends LitElement {
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
     this.updateClock();
 
+    // Focus right panel so shortcuts work (not lyrics); run after first paint
+    setTimeout(() => this.focusControlsPanel(), 0);
+
+    document.addEventListener("keydown", this._boundKeydown, true);
+
     // Listen for time updates from audio engine
     callerBuddy.audio.onTimeUpdate((t) => {
       this.currentTime = t;
@@ -105,9 +110,72 @@ export class SongPlay extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    document.removeEventListener("keydown", this._boundKeydown, true);
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     if (this.elapsedInterval !== null) clearInterval(this.elapsedInterval);
     this.stopPatterTimer();
+  }
+
+  private focusControlsPanel() {
+    const panel = this.shadowRoot?.querySelector(".right-panel") as HTMLElement | undefined;
+    panel?.focus();
+  }
+
+  private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
+
+  private onKeydown(e: KeyboardEvent) {
+    const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
+
+    switch (e.key) {
+      case " ":
+        if (inInput) return;
+        e.preventDefault();
+        this.onPlayPause();
+        break;
+      case "Enter":
+        if (inInput) return;
+        e.preventDefault();
+        this.onPlayPause();
+        break;
+      case "Home":
+        e.preventDefault();
+        this.onRestart();
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        this.onSeekDelta(e.ctrlKey ? -5 : -2);
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        this.onSeekDelta(e.ctrlKey ? 5 : 2);
+        break;
+      case "V":
+        e.preventDefault();
+        this.adjustVolume(5);
+        break;
+      case "v":
+        e.preventDefault();
+        this.adjustVolume(-5);
+        break;
+      case "P":
+        e.preventDefault();
+        this.adjustPitch(1);
+        break;
+      case "p":
+        e.preventDefault();
+        this.adjustPitch(-1);
+        break;
+      case "T":
+        e.preventDefault();
+        this.adjustTempo(1);
+        break;
+      case "t":
+        e.preventDefault();
+        this.adjustTempo(-1);
+        break;
+      default:
+        break;
+    }
   }
 
   private async initSong() {
@@ -138,8 +206,8 @@ export class SongPlay extends LitElement {
             : this.renderPatterControls()}
         </div>
 
-        <!-- Right panel: controls and info -->
-        <div class="right-panel">
+        <!-- Right panel: controls and info (focus anchor so shortcuts work) -->
+        <div class="right-panel" tabindex="-1">
           ${this.renderTransport()}
           ${this.renderAdjustments(song)}
           ${this.renderTimeInfo()}
@@ -250,21 +318,21 @@ export class SongPlay extends LitElement {
       <div class="adjustments">
         <div class="adj-row">
           <span class="adj-label">Volume</span>
-          <button class="adj-btn" @click=${() => this.adjustVolume(-5)}>◄</button>
+          <button class="adj-btn" title="Decrease volume (v)" @click=${() => this.adjustVolume(-5)}>◄</button>
           <span class="adj-value">${song.volume}</span>
-          <button class="adj-btn" @click=${() => this.adjustVolume(5)}>►</button>
+          <button class="adj-btn" title="Increase volume (V)" @click=${() => this.adjustVolume(5)}>►</button>
         </div>
         <div class="adj-row">
           <span class="adj-label">Pitch</span>
-          <button class="adj-btn" @click=${() => this.adjustPitch(-1)}>◄</button>
+          <button class="adj-btn" title="Decrease pitch (p)" @click=${() => this.adjustPitch(-1)}>◄</button>
           <span class="adj-value">${song.pitch > 0 ? "+" : ""}${song.pitch}</span>
-          <button class="adj-btn" @click=${() => this.adjustPitch(1)}>►</button>
+          <button class="adj-btn" title="Increase pitch (P)" @click=${() => this.adjustPitch(1)}>►</button>
         </div>
         <div class="adj-row">
           <span class="adj-label">Tempo</span>
-          <button class="adj-btn" @click=${() => this.adjustTempo(-1)}>◄</button>
+          <button class="adj-btn" title="Decrease tempo (t)" @click=${() => this.adjustTempo(-1)}>◄</button>
           <span class="adj-value">${song.deltaTempo > 0 ? "+" : ""}${song.deltaTempo}</span>
-          <button class="adj-btn" @click=${() => this.adjustTempo(1)}>►</button>
+          <button class="adj-btn" title="Increase tempo (T)" @click=${() => this.adjustTempo(1)}>►</button>
           <span class="adj-hint">${this.getEffectiveBPM() > 0 ? `${this.getEffectiveBPM()} BPM` : ""}</span>
         </div>
       </div>
@@ -356,9 +424,11 @@ export class SongPlay extends LitElement {
     if (this.playing) {
       callerBuddy.audio.pause();
       this.playing = false;
+      this.pausePatterTimer();
     } else {
       callerBuddy.audio.play();
       this.playing = true;
+      this.resumePatterTimer();
       if (this.firstPlayTime === null) {
         this.firstPlayTime = Date.now();
         this.startElapsedTimer();
@@ -470,6 +540,14 @@ export class SongPlay extends LitElement {
     this.patterCountdown = this.patterMinutes * 60;
     this.patterTimerRunning = true;
     this.patterAlarmFired = false;
+    if (this.playing) {
+      this.startPatterTick();
+    }
+  }
+
+  /** Start the 1s tick; only runs while music is playing. */
+  private startPatterTick() {
+    if (this.patterInterval !== null) return;
     this.patterInterval = window.setInterval(() => {
       this.patterCountdown--;
       if (this.patterCountdown === 0 && !this.patterAlarmFired) {
@@ -477,6 +555,21 @@ export class SongPlay extends LitElement {
         this.patterAlarmFired = true; // only beep once per spec
       }
     }, 1000);
+  }
+
+  /** Pause countdown (music paused); keeps remaining time. */
+  private pausePatterTimer() {
+    if (this.patterInterval !== null) {
+      clearInterval(this.patterInterval);
+      this.patterInterval = null;
+    }
+  }
+
+  /** Resume countdown when music resumes. */
+  private resumePatterTimer() {
+    if (this.patterTimerRunning && this.playing && this.patterInterval === null) {
+      this.startPatterTick();
+    }
   }
 
   private stopPatterTimer() {
@@ -521,13 +614,6 @@ export class SongPlay extends LitElement {
     const min = Math.floor(abs / 60);
     const sec = abs % 60;
     return `${sign}${min}:${sec.toString().padStart(2, "0")}`;
-  }
-
-  // -- Keyboard shortcuts ---------------------------------------------------
-
-  connectedCallback2() {
-    // Keyboard shortcut handler attached at the document level
-    // (Handled via the component for now; can be promoted to app-level later)
   }
 
   static styles = css`

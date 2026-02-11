@@ -210,10 +210,16 @@ export class WebAudioEngine implements AudioEngine {
     const clampedTime = Math.max(0, Math.min(timeSeconds, duration));
 
     if (this.shifter && duration > 0) {
-      // Set percentage to seek the PitchShifter to the desired position
-      const pct = (clampedTime / duration) * 100;
-      this.shifter.percentagePlayed = pct;
+      // PitchShifter.percentagePlayed setter expects 0–1 fraction
+      const fraction = clampedTime / duration;
+      this.shifter.percentagePlayed = fraction;
       this.lastReportedTime = clampedTime;
+      // Read-back uses getter which returns 0–100 (asymmetric API)
+      const readBackPct = this.shifter.percentagePlayed;
+      log.info(
+        `seek: time=${clampedTime.toFixed(2)}s, duration=${duration.toFixed(2)}s, ` +
+          `set fraction=${fraction.toFixed(4)}, readBackPct=${readBackPct.toFixed(4)}`,
+      );
     } else {
       this.lastReportedTime = clampedTime;
     }
@@ -327,25 +333,16 @@ export class WebAudioEngine implements AudioEngine {
     this.shifter.pitchSemitones = this.pitchHalfSteps;
     this.shifter.tempo = this.tempoRatio;
 
-    // Listen for play events (time updates from the ScriptProcessorNode)
-    this.shifter.on("play", (detail) => {
-      this.lastReportedTime = detail.timePlayed;
+    // Note: we do NOT use the "play" event for position tracking because
+    // the ScriptProcessorNode can emit stale timePlayed values after a seek.
+    // Instead, we read the shifter's percentagePlayed getter directly in the
+    // RAF loop (see startTimeUpdates), making the shifter's internal
+    // sourcePosition the single source of truth for playback position.
 
-      // Check loop points — if looping is active and we've passed the end,
-      // seek back to the start
-      if (
-        this.loopEnd > 0 &&
-        this.loopEnd > this.loopStart &&
-        detail.timePlayed >= this.loopEnd
-      ) {
-        this.seek(this.loopStart);
-      }
-    });
-
-    // If we had a saved position, seek to it
+    // If we had a saved position, seek to it (setter expects 0–1 fraction)
     if (this.lastReportedTime > 0 && this.getDuration() > 0) {
-      const pct = (this.lastReportedTime / this.getDuration()) * 100;
-      this.shifter.percentagePlayed = pct;
+      const fraction = this.lastReportedTime / this.getDuration();
+      this.shifter.percentagePlayed = fraction;
     }
 
     log.info("SoundTouchJS PitchShifter created");
@@ -382,9 +379,44 @@ export class WebAudioEngine implements AudioEngine {
     }
   }
 
+  /** Last time we logged position (for throttling). */
+  private lastPositionLogTime = 0;
+
   private startTimeUpdates(): void {
     this.stopTimeUpdates();
     const tick = () => {
+      // Read current position directly from the shifter's internal state.
+      // NOTE: SoundTouchJS has an asymmetric API:
+      //   - setter expects a 0–1 fraction (see seek())
+      //   - getter returns a 0–100 percentage
+      // So we divide by 100 here to convert to a fraction, then multiply by
+      // duration to get seconds.
+      if (this.shifter && this.playing) {
+        const duration = this.getDuration();
+        if (duration > 0) {
+          const pctRaw = this.shifter.percentagePlayed; // 0–100
+          this.lastReportedTime = (pctRaw / 100) * duration;
+
+          // Throttled position log (about once per second)
+          const now = Date.now();
+          if (now - this.lastPositionLogTime >= 1000) {
+            this.lastPositionLogTime = now;
+            log.info(
+              `position: pctRaw=${pctRaw.toFixed(4)}, time=${this.lastReportedTime.toFixed(2)}s, duration=${duration.toFixed(2)}s`,
+            );
+          }
+        }
+
+        // Check loop points
+        if (
+          this.loopEnd > 0 &&
+          this.loopEnd > this.loopStart &&
+          this.lastReportedTime >= this.loopEnd
+        ) {
+          this.seek(this.loopStart);
+        }
+      }
+
       this.timeUpdateCb?.(this.lastReportedTime);
       this.rafId = requestAnimationFrame(tick);
     };

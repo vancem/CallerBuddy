@@ -38,12 +38,25 @@ export class PlaylistEditor extends LitElement {
     super.connectedCallback();
     callerBuddy.state.addEventListener(StateEvents.SONGS_LOADED, this.refresh);
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
+    document.addEventListener("keydown", this._boundKeydown);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    document.removeEventListener("keydown", this._boundKeydown);
     callerBuddy.state.removeEventListener(StateEvents.SONGS_LOADED, this.refresh);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
+  }
+
+  private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
+
+  private onKeydown(e: KeyboardEvent) {
+    if (e.key !== "Enter") return;
+    const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+    if (inInput) return;
+    if (callerBuddy.state.playlist.length === 0) return;
+    e.preventDefault();
+    this.onPlayPlaylist();
   }
 
   private refresh = () => {

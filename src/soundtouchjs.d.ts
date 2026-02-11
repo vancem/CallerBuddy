@@ -58,8 +58,10 @@ declare module "soundtouchjs" {
     readonly formattedTimePlayed: string;
 
     /**
-     * Percentage of the source buffer that has been played (0–100).
-     * Can be SET to seek to an arbitrary position.
+     * ASYMMETRIC API — getter and setter use different scales:
+     *   - Getter returns 0–100 (percentage).
+     *   - Setter expects 0–1 (fraction).
+     * Verified from the official example (public/example.js).
      */
     get percentagePlayed(): number;
     set percentagePlayed(perc: number);

@@ -44,6 +44,7 @@ export class PlaylistPlay extends LitElement {
     this.breakMinutes = callerBuddy.state.settings.breakTimerMinutes;
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.addEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
+    document.addEventListener("keydown", this._boundKeydown);
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
     this.updateClock();
     this.advanceCursor();
@@ -51,10 +52,22 @@ export class PlaylistPlay extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    document.removeEventListener("keydown", this._boundKeydown);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.removeEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     this.stopBreakTimer();
+  }
+
+  private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
+
+  private onKeydown(e: KeyboardEvent) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+    if (inInput) return;
+    if (callerBuddy.state.playlist.length === 0 || callerBuddy.state.currentSong !== null) return;
+    e.preventDefault();
+    this.playSelected();
   }
 
   private refresh = () => {
@@ -82,6 +95,7 @@ export class PlaylistPlay extends LitElement {
                       <li
                         class="pl-item ${played ? "played" : ""} ${isCursor ? "cursor" : ""}"
                         @click=${() => this.selectSong(i)}
+                        @dblclick=${() => this.onPlaySongAt(i)}
                       >
                         <span class="pl-indicator">${isCursor ? "▸" : ""}</span>
                         <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
@@ -160,6 +174,13 @@ export class PlaylistPlay extends LitElement {
 
   private selectSong(index: number) {
     this.selectedIndex = index;
+  }
+
+  /** Double-click: play the song at this index (same as selecting and clicking Play). */
+  private onPlaySongAt(index: number) {
+    if (callerBuddy.state.currentSong !== null) return;
+    this.selectSong(index);
+    this.playSelected();
   }
 
   private async playSelected() {
