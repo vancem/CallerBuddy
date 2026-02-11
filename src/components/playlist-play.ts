@@ -58,6 +58,10 @@ export class PlaylistPlay extends LitElement {
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
 
   private onKeydown(e: KeyboardEvent) {
+    // This component stays alive (hidden) while other tabs are active.
+    // Only handle keys when we're actually visible.
+    if ((this.parentElement as HTMLElement)?.hidden) return;
+
     const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     if (inInput) return;
 

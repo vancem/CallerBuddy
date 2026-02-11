@@ -15,7 +15,6 @@
 
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { repeat } from "lit/directives/repeat.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { StateEvents, TabType } from "../services/app-state.js";
 import { APP_VERSION } from "../version.js";
@@ -73,17 +72,20 @@ export class AppShell extends LitElement {
           </div>
         </header>
         <main class="content">
-          ${tabs.length > 0
-            ? repeat(
-                tabs,
-                (t) => t.id,
-                (tab) => html`
-                  <div class="tab-pane" ?hidden=${tab.id !== activeTabId}>
-                    ${this.renderTab(tab.type)}
-                  </div>
-                `,
-              )
-            : this.renderEmpty()}
+          ${/* PlaylistPlay is kept alive (hidden when inactive) so its break
+              timer, clock, and SONG_ENDED listener survive tab switches.
+              All other tabs use normal create/destroy on tab switch. */
+            ''}
+          ${tabs.some((t) => t.type === TabType.PlaylistPlay)
+            ? html`<div class="keep-alive-pane"
+                ?hidden=${activeTab?.type !== TabType.PlaylistPlay}>
+                <playlist-play></playlist-play>
+              </div>`
+            : nothing}
+          ${activeTab && activeTab.type !== TabType.PlaylistPlay
+            ? this.renderTab(activeTab.type)
+            : nothing}
+          ${!activeTab ? this.renderEmpty() : nothing}
         </main>
       </div>
     `;
@@ -264,14 +266,13 @@ export class AppShell extends LitElement {
       overflow: auto;
     }
 
-    /* All open tabs stay in the DOM; inactive ones are hidden via the
-       [hidden] attribute. This preserves component state (timers, event
-       listeners, scroll position, etc.) across tab switches. */
-    .tab-pane {
+    /* PlaylistPlay is kept alive across tab switches so its break timer
+       and event listeners survive. Hidden via [hidden] when not active. */
+    .keep-alive-pane {
       height: 100%;
     }
 
-    .tab-pane[hidden] {
+    .keep-alive-pane[hidden] {
       display: none;
     }
 
