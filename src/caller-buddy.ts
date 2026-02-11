@@ -25,6 +25,7 @@ import {
   WebAudioEngine,
   type AudioEngine,
 } from "./services/audio-engine.js";
+import { detectBPM } from "./services/bpm-detector.js";
 import { defaultSettings, type Settings } from "./models/settings.js";
 import type { Song } from "./models/song.js";
 import { log } from "./services/logger.js";
@@ -114,6 +115,10 @@ export class CallerBuddy {
       { folderName: handle.name },
     );
     log.info("activateRoot: complete");
+
+    // Kick off background BPM detection for songs that don't have it yet.
+    // This runs after the UI is ready so it doesn't block the user.
+    this.detectBpmForAllSongs();
   }
 
   // -----------------------------------------------------------------------
@@ -191,9 +196,84 @@ export class CallerBuddy {
     await this.audio.loadAudio(data);
     this.audio.setVolume(song.volume);
     this.audio.setLoopPoints(song.loopStartTime, song.loopEndTime);
-    // Pitch and tempo are stubbed but the call is here for the data flow
     this.audio.setPitch(song.pitch);
-    this.audio.setTempo(song.deltaTempo);
+    this.audio.setTempo(song.deltaTempo, song.originalTempo);
+  }
+
+  // -----------------------------------------------------------------------
+  // BPM detection (background)
+  // -----------------------------------------------------------------------
+
+  /** Whether a BPM detection pass is currently running. */
+  private bpmDetectionRunning = false;
+
+  /**
+   * Run BPM detection on all songs that have originalTempo === 0.
+   * Processes sequentially (one at a time) to avoid overloading the system.
+   * Results are persisted to songs.json after each successful detection.
+   *
+   * This method is intentionally fire-and-forget: it logs errors and moves on.
+   * It does NOT block the UI or any other operation.
+   */
+  private async detectBpmForAllSongs(): Promise<void> {
+    if (this.bpmDetectionRunning) {
+      log.info("BPM detection already running, skipping duplicate request");
+      return;
+    }
+    const handle = this.state.rootHandle;
+    if (!handle) return;
+
+    const songsNeedingBpm = this.state.songs.filter(
+      (s) => s.originalTempo === 0,
+    );
+    if (songsNeedingBpm.length === 0) {
+      log.info("All songs already have BPM data");
+      return;
+    }
+
+    this.bpmDetectionRunning = true;
+    log.info(
+      `Starting background BPM detection for ${songsNeedingBpm.length} songs…`,
+    );
+
+    let detected = 0;
+    for (const song of songsNeedingBpm) {
+      try {
+        const audioData = await readBinaryFile(handle, song.musicFile);
+        const bpm = await detectBPM(audioData);
+        if (bpm > 0) {
+          song.originalTempo = bpm;
+          detected++;
+          log.info(`BPM for "${song.title}": ${bpm}`);
+          // Update the song list in state so the UI can reflect the change
+          const idx = this.state.songs.findIndex(
+            (s) => s.musicFile === song.musicFile,
+          );
+          if (idx >= 0) {
+            this.state.songs[idx] = song;
+          }
+        }
+      } catch (err) {
+        log.warn(`BPM detection failed for "${song.title}":`, err);
+      }
+    }
+
+    // Persist all results in a single write at the end
+    if (detected > 0) {
+      try {
+        this.state.emit(StateEvents.SONGS_LOADED);
+        await saveSongsJson(handle, this.state.songs);
+        log.info(
+          `BPM detection complete: ${detected}/${songsNeedingBpm.length} songs updated`,
+        );
+      } catch (err) {
+        log.warn("Could not persist BPM results:", err);
+      }
+    } else {
+      log.info("BPM detection complete: no songs could be analyzed");
+    }
+
+    this.bpmDetectionRunning = false;
   }
 
   // -----------------------------------------------------------------------

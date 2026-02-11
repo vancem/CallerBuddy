@@ -3,10 +3,14 @@
 These item have been moved out of the current release, but we don't want to lose
 track of them. But they are low priority right now.
 
-- [] Finding the tempo of music simply by analyzing the MP3 data. If the digital
+- [x] Finding the tempo of music simply by analyzing the MP3 data. If the digital
   signal processing code can reliably find the tempo (Beats per minute), it
   should to that and fill that in on the songs.json data for every song it
   encounters.
+  - DONE: Implemented using web-audio-beat-detector (MIT). BPM is auto-detected
+    in the background after songs load and persisted to songs.json. Visible in
+    the playlist editor table and song-play UI. Used as reference BPM for more
+    accurate tempo adjustment calculations.
 - [] Singing calls all have a similar structure of 7 parts that are each 64
   beats long. Typically there is a short (4-16 beat) lead in, and a short (4-16
   beat) trail out. The 7 parts consist of a opener, 2 figures, a middle break,

@@ -65,16 +65,14 @@ export interface AudioEngine {
   setPitch(halfSteps: number): void;
 
   /**
-   * Set tempo adjustment as a ratio.
+   * Set tempo adjustment.
    *
-   * The caller provides a **BPM delta** (e.g. +5 means "5 BPM faster").
-   * Since the original BPM of the song may not be known, we approximate
-   * the tempo ratio as: ratio = 1 + deltaBPM / referenceBPM, where
-   * referenceBPM defaults to 128 (a typical square dance tempo). When
-   * originalTempo is available on the Song model, the caller should pass
-   * that for higher accuracy.
+   * @param deltaBPM  Signed BPM delta (e.g. +5 means "5 BPM faster").
+   * @param referenceBPM  The song's original tempo in BPM. When provided
+   *   (> 0), the ratio is computed exactly as (reference + delta) / reference.
+   *   When omitted or 0, a default of 128 BPM is assumed.
    */
-  setTempo(deltaBPM: number): void;
+  setTempo(deltaBPM: number, referenceBPM?: number): void;
 
   /** Configure loop points. Set end = 0 to disable looping. */
   setLoopPoints(startSeconds: number, endSeconds: number): void;
@@ -248,10 +246,11 @@ export class WebAudioEngine implements AudioEngine {
     log.info(`setPitch(${halfSteps}) — pitch shift set to ${halfSteps} half-steps`);
   }
 
-  setTempo(deltaBPM: number): void {
-    // Convert BPM delta to a ratio: ratio = 1 + delta/reference
-    // e.g. +5 BPM at 128 reference = 1.039 (3.9% faster)
-    this.tempoRatio = 1.0 + deltaBPM / DEFAULT_REFERENCE_BPM;
+  setTempo(deltaBPM: number, referenceBPM?: number): void {
+    const ref = referenceBPM && referenceBPM > 0 ? referenceBPM : DEFAULT_REFERENCE_BPM;
+    // Convert BPM delta to a ratio: ratio = (ref + delta) / ref
+    // e.g. +5 BPM at 128 reference = 133/128 = 1.039 (3.9% faster)
+    this.tempoRatio = (ref + deltaBPM) / ref;
     // Clamp to reasonable range (0.5x to 2.0x)
     this.tempoRatio = Math.max(0.5, Math.min(2.0, this.tempoRatio));
 
@@ -259,8 +258,8 @@ export class WebAudioEngine implements AudioEngine {
       this.shifter.tempo = this.tempoRatio;
     }
     log.info(
-      `setTempo(${deltaBPM}) — tempo ratio set to ${this.tempoRatio.toFixed(3)} ` +
-        `(${deltaBPM >= 0 ? "+" : ""}${deltaBPM} BPM from reference ${DEFAULT_REFERENCE_BPM})`,
+      `setTempo(${deltaBPM}, ref=${ref}) — tempo ratio ${this.tempoRatio.toFixed(3)} ` +
+        `(${deltaBPM >= 0 ? "+" : ""}${deltaBPM} BPM from ${ref} BPM)`,
     );
   }
 

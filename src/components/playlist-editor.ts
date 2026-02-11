@@ -135,6 +135,7 @@ export class PlaylistEditor extends LitElement {
                     Rank ${this.sortIndicator("rank")}
                   </th>
                   <th>Type</th>
+                  <th>BPM</th>
                   <th></th>
                 </tr>
               </thead>
@@ -163,6 +164,9 @@ export class PlaylistEditor extends LitElement {
                           title="${isSingingCall(song) ? "Singing call" : "Patter (no lyrics)"}"
                         >${isSingingCall(song) ? "Singing" : "Patter"}</span>
                       </td>
+                      <td class="bpm-cell"
+                        title="${song.originalTempo > 0 ? `Detected tempo: ${song.originalTempo} BPM` : "BPM not yet detected"}"
+                      >${song.originalTempo > 0 ? song.originalTempo : "—"}</td>
                       <td class="play-cell">
                         <button
                           class="icon-btn"
@@ -489,6 +493,13 @@ export class PlaylistEditor extends LitElement {
 
     .type-cell .patter {
       color: #ffaa44;
+    }
+
+    .bpm-cell {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.85rem;
     }
 
     .add-cell,

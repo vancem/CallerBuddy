@@ -96,6 +96,24 @@ rationale.
   - For future BPM detection (FUTURE.md), the web-audio-beat-detector package
     (MIT, TypeScript, ~42 KB) is a good fit. It can be added independently
     without replacing SoundTouchJS since they serve different purposes.
+- We will use web-audio-beat-detector (v8.2.35, MIT) for automatic BPM
+  detection of songs.
+  - Rationale: The library uses a Web Worker internally so analysis doesn't
+    block the main thread. It accepts an AudioBuffer and returns the estimated
+    BPM. Works well for electronic/rhythmic music like square dance tracks.
+    Detection runs in the background after songs are loaded, processing one
+    song at a time (sequential, per design philosophy). Results are persisted
+    to songs.json so each song is only analyzed once. The detected BPM is used
+    as the reference for tempo adjustment calculations (replacing the default
+    128 BPM assumption) and displayed in both the playlist editor and song-play
+    UI.
+  - Analysis window: for songs >45 seconds, we analyze 30 seconds starting at
+    25% into the track (avoids intros/outros). Tempo search range is 90–170
+    BPM to match square dance music characteristics.
+  - Triggers to reconsider: if detection accuracy is poor for certain music
+    styles, the tempo range or analysis window can be tuned. If the ~27 KB
+    gzipped addition to the bundle is a concern, detection could be made
+    opt-in rather than automatic.
 - We will use the File System Access API for accessing CallerBuddyRoot folder.
   - Rationale: This is the standard PWA approach for folder access. The API
     provides persistent permission handles that can be stored and reused across
@@ -172,7 +190,7 @@ rationale.
 - [x] Decide on a logging strategy (do we use a logging package, which one?)
   - Decision: Custom lightweight logger wrapper. Rationale moved to Design
     Decisions section.
-- [x] HIGH: Evaluate and integrate a pitch/tempo processing library.
+- [x] Evaluate and integrate a pitch/tempo processing library.
   - Decision: SoundTouchJS (soundtouchjs v0.3.0). Integrated into
     WebAudioEngine. setPitch() uses pitchSemitones, setTempo() converts BPM
     delta to a ratio. See Design Decisions for full analysis. TypeScript type

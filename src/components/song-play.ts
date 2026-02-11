@@ -237,6 +237,7 @@ export class SongPlay extends LitElement {
           <button class="adj-btn" @click=${() => this.adjustTempo(-1)}>◄</button>
           <span class="adj-value">${song.deltaTempo > 0 ? "+" : ""}${song.deltaTempo}</span>
           <button class="adj-btn" @click=${() => this.adjustTempo(1)}>►</button>
+          <span class="adj-hint">${song.originalTempo > 0 ? `${song.originalTempo} BPM` : ""}</span>
         </div>
       </div>
     `;
@@ -381,7 +382,7 @@ export class SongPlay extends LitElement {
   private adjustTempo(delta: number) {
     if (!this.song) return;
     this.song.deltaTempo += delta;
-    callerBuddy.audio.setTempo(this.song.deltaTempo);
+    callerBuddy.audio.setTempo(this.song.deltaTempo, this.song.originalTempo);
     this.requestUpdate();
     callerBuddy.updateSong(this.song);
   }
@@ -715,6 +716,12 @@ export class SongPlay extends LitElement {
 
     .adj-btn:hover {
       background: rgba(255, 255, 255, 0.1);
+    }
+
+    .adj-hint {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.4);
+      margin-left: 4px;
     }
 
     /* -- Time info --------------------------------------------------------- */
