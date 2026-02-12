@@ -30,7 +30,6 @@ export class PlaylistEditor extends LitElement {
   @state() private filterText = "";
   @state() private sortField: SortField = "title";
   @state() private sortDir: SortDir = "asc";
-  @state() private _tick = 0;
   @state() private contextMenuSong: Song | null = null;
   @state() private contextMenuPos = { x: 0, y: 0 };
 
@@ -60,7 +59,7 @@ export class PlaylistEditor extends LitElement {
   }
 
   private refresh = () => {
-    this._tick++;
+    this.requestUpdate();
   };
 
   render() {
@@ -318,8 +317,7 @@ export class PlaylistEditor extends LitElement {
   private addToPlaylistFromCtx(position: "start" | "end") {
     if (!this.contextMenuSong) return;
     if (position === "start") {
-      callerBuddy.state.playlist.unshift(this.contextMenuSong);
-      callerBuddy.state.emit(StateEvents.PLAYLIST_CHANGED);
+      callerBuddy.state.insertAtStartOfPlaylist(this.contextMenuSong);
     } else {
       callerBuddy.state.addToPlaylist(this.contextMenuSong);
     }

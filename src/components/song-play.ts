@@ -20,6 +20,7 @@ import { customElement, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { isSingingCall, isPatter } from "../models/song.js";
+import { formatTime, formatCountdown, formatClock } from "../utils/format.js";
 import type { Song } from "../models/song.js";
 
 @customElement("song-play")
@@ -85,10 +86,7 @@ export class SongPlay extends LitElement {
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
     this.updateClock();
 
-    // Focus right panel so shortcuts work (not lyrics); run after first paint
-    setTimeout(() => this.focusControlsPanel(), 0);
-
-    document.addEventListener("keydown", this._boundKeydown, true);
+    document.addEventListener("keydown", this._boundKeydown);
 
     // Listen for time updates from audio engine
     callerBuddy.audio.onTimeUpdate((t) => {
@@ -110,10 +108,15 @@ export class SongPlay extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener("keydown", this._boundKeydown, true);
+    document.removeEventListener("keydown", this._boundKeydown);
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     if (this.elapsedInterval !== null) clearInterval(this.elapsedInterval);
     this.stopPatterTimer();
+  }
+
+  /** Focus the controls panel after first render so keyboard shortcuts work. */
+  protected firstUpdated() {
+    this.focusControlsPanel();
   }
 
   private focusControlsPanel() {
@@ -295,7 +298,7 @@ export class SongPlay extends LitElement {
           ${this.patterTimerRunning
             ? html`
                 <div class="patter-countdown ${this.patterCountdown <= 0 ? "overtime" : ""}">
-                  ${this.formatCountdown(this.patterCountdown)}
+                  ${formatCountdown(this.patterCountdown)}
                 </div>
               `
             : nothing}
@@ -360,15 +363,15 @@ export class SongPlay extends LitElement {
       <div class="time-info">
         <div class="time-row">
           <span class="time-label">Position</span>
-          <span class="time-value">${this.formatTime(effectivePosition)}</span>
+          <span class="time-value">${formatTime(effectivePosition)}</span>
         </div>
         <div class="time-row">
           <span class="time-label">Duration</span>
-          <span class="time-value">${this.formatTime(effectiveDuration)}</span>
+          <span class="time-value">${formatTime(effectiveDuration)}</span>
         </div>
         <div class="time-row">
           <span class="time-label">Elapsed</span>
-          <span class="time-value">${this.formatTime(this.totalElapsed)}</span>
+          <span class="time-value">${formatTime(this.totalElapsed)}</span>
         </div>
         <div class="time-row clock-row">
           <span class="time-label">Clock</span>
@@ -615,27 +618,7 @@ export class SongPlay extends LitElement {
   // -- Clock ----------------------------------------------------------------
 
   private updateClock() {
-    this.clockTime = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  // -- Formatting -----------------------------------------------------------
-
-  private formatTime(seconds: number): string {
-    const abs = Math.abs(Math.floor(seconds));
-    const m = Math.floor(abs / 60);
-    const s = abs % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  }
-
-  private formatCountdown(totalSeconds: number): string {
-    const abs = Math.abs(totalSeconds);
-    const sign = totalSeconds < 0 ? "-" : "";
-    const min = Math.floor(abs / 60);
-    const sec = abs % 60;
-    return `${sign}${min}:${sec.toString().padStart(2, "0")}`;
+    this.clockTime = formatClock();
   }
 
   static styles = css`

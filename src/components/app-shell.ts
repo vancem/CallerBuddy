@@ -28,7 +28,6 @@ import "./song-play.js";
 
 @customElement("app-shell")
 export class AppShell extends LitElement {
-  @state() private _tick = 0; // incremented to force re-render on state changes
   @state() private showMenu = false;
 
   connectedCallback() {
@@ -42,7 +41,7 @@ export class AppShell extends LitElement {
   }
 
   private onStateChanged = () => {
-    this._tick++;
+    this.requestUpdate();
   };
 
   render() {
@@ -79,7 +78,7 @@ export class AppShell extends LitElement {
           ${tabs.some((t) => t.type === TabType.PlaylistPlay)
             ? html`<div class="keep-alive-pane"
                 ?hidden=${activeTab?.type !== TabType.PlaylistPlay}>
-                <playlist-play></playlist-play>
+                <playlist-play .active=${activeTab?.type === TabType.PlaylistPlay}></playlist-play>
               </div>`
             : nothing}
           ${activeTab && activeTab.type !== TabType.PlaylistPlay
@@ -91,14 +90,14 @@ export class AppShell extends LitElement {
     `;
   }
 
+  /** Render the content for a non-keep-alive tab.
+   *  PlaylistPlay is excluded — it is rendered by the keep-alive block above. */
   private renderTab(type: TabType) {
     switch (type) {
       case TabType.Welcome:
         return html`<welcome-view></welcome-view>`;
       case TabType.PlaylistEditor:
         return html`<playlist-editor></playlist-editor>`;
-      case TabType.PlaylistPlay:
-        return html`<playlist-play></playlist-play>`;
       case TabType.SongPlay:
         return html`<song-play></song-play>`;
       default:

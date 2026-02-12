@@ -10,15 +10,19 @@
  */
 
 import { LitElement, css, html, nothing } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { DEFAULT_BREAK_TIMER_MINUTES } from "../models/settings.js";
 import { StateEvents } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
+import { formatCountdown, formatClock } from "../utils/format.js";
 
 @customElement("playlist-play")
 export class PlaylistPlay extends LitElement {
-  @state() private _tick = 0;
+  /** Whether this component's tab is currently visible. Set by app-shell.
+   *  Used to suppress keyboard shortcuts when the tab is in the background
+   *  (this component is kept alive across tab switches for its timers). */
+  @property({ type: Boolean }) active = false;
 
   /** User-clicked override; null = default to first unplayed. */
   @state() private selectedIndex: number | null = null;
@@ -58,9 +62,9 @@ export class PlaylistPlay extends LitElement {
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
 
   private onKeydown(e: KeyboardEvent) {
-    // This component stays alive (hidden) while other tabs are active.
-    // Only handle keys when we're actually visible.
-    if ((this.parentElement as HTMLElement)?.hidden) return;
+    // This component stays alive while other tabs are active.
+    // Only handle keys when our tab is the active one.
+    if (!this.active) return;
 
     const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     if (inInput) return;
@@ -82,7 +86,7 @@ export class PlaylistPlay extends LitElement {
   }
 
   private refresh = () => {
-    this._tick++;
+    this.requestUpdate();
   };
 
   /** The effective selected index: user override or first unplayed. */
@@ -190,8 +194,8 @@ export class PlaylistPlay extends LitElement {
                 <span class="time-label">Time left</span>
                 <span class="time-value ${this.breakTimerRunning && this.breakCountdown <= 0 ? "alarm" : ""}">
                   ${this.breakTimerRunning && this.breakTimerEnabled
-                    ? this.formatCountdown(this.breakCountdown)
-                    : this.formatCountdown(Math.round(this.breakMinutes * 60))}
+                    ? formatCountdown(this.breakCountdown)
+                    : formatCountdown(Math.round(this.breakMinutes * 60))}
                 </span>
               </div>
             </div>
@@ -308,21 +312,7 @@ export class PlaylistPlay extends LitElement {
   // -- Clock ----------------------------------------------------------------
 
   private updateClock() {
-    const now = new Date();
-    this.clockTime = now.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  // -- Formatting -----------------------------------------------------------
-
-  private formatCountdown(totalSeconds: number): string {
-    const abs = Math.abs(totalSeconds);
-    const sign = totalSeconds < 0 ? "-" : "";
-    const min = Math.floor(abs / 60);
-    const sec = abs % 60;
-    return `${sign}${min}:${sec.toString().padStart(2, "0")}`;
+    this.clockTime = formatClock();
   }
 
   static styles = css`

@@ -106,6 +106,11 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
+  insertAtStartOfPlaylist(song: Song): void {
+    this.playlist.unshift(song);
+    this.emit(StateEvents.PLAYLIST_CHANGED);
+  }
+
   removeFromPlaylist(index: number): void {
     if (index >= 0 && index < this.playlist.length) {
       this.playlist.splice(index, 1);

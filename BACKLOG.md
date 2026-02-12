@@ -20,13 +20,14 @@ Please also see CallerBuddySpec.md for the specification of user behavior.
   decision has become questionable (it is causing ongoing grief) we should
   create a HIGH: priority task list item in BACKLOG.md to revisit this
   spec/design issue.
-- When the cursor Chatbot is modifying files, if it creates a summary in the
-  chat (as it usually does) it should also make a markdown file named with the
-  convention Summary.YY-MM-DD.NN.md Where NN starts at 01, is a zero padded and
-  increases with every new log made that day (So the Summary files are all
-  unique and sorted (if fewer than 100)). This allows both humans and the
-  chatbot to look back over the past to see the history of what the chatbot did
-  and any notes in the summary.
+- **AI summary logging (IMPORTANT):** For all but small, trivial changes, when
+  the Cursor Chatbot modifies source files it MUST create a summary markdown
+  file in AI_Logs/ named with the convention `Summary.YY-MM-DD.NN.md` where NN
+  starts at 01 and is zero-padded, incrementing for each new log that day. When
+  in doubt about whether a change is "trivial enough" to skip, create the
+  summary — it is cheap and valuable. The summary should describe what was done,
+  which files were touched, and why. This allows both humans and the chatbot to
+  look back over the history of changes and any notes.
 
 ## Design Philosophy
 
