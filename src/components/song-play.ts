@@ -654,8 +654,8 @@ export class SongPlay extends LitElement {
     .lyrics-content {
       font-size: 1rem;
       line-height: 1.7;
-      max-width: 700px;
-      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
       background: #fff;
       color: #212121;
       padding: 16px;
