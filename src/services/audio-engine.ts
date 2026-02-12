@@ -273,11 +273,17 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   setLoopPoints(startSeconds: number, endSeconds: number): void {
-    this.loopStart = startSeconds;
-    this.loopEnd = endSeconds;
+    let start = startSeconds;
+    let end = endSeconds;
+    // Require start < end when looping is on (end > 0); allow both 0 = disabled
+    if (end > 0 && start >= end) {
+      start = Math.max(0, end - 0.001);
+    }
+    this.loopStart = start;
+    this.loopEnd = end;
     log.info(
-      `setLoopPoints(${startSeconds.toFixed(2)}, ${endSeconds.toFixed(2)}) — ` +
-        (endSeconds > 0 ? "looping enabled" : "looping disabled"),
+      `setLoopPoints(${start.toFixed(2)}, ${end.toFixed(2)}) — ` +
+        (end > 0 ? "looping enabled" : "looping disabled"),
     );
   }
 
