@@ -38,6 +38,7 @@ export class SongPlay extends LitElement {
   // Loop controls (patter)
   @state() private loopStart = 0;
   @state() private loopEnd = 0;
+  private draggingMarker: "start" | "end" | null = null;
 
   // Patter timer
   @state() private patterTimerEnabled = true;
@@ -419,28 +420,36 @@ export class SongPlay extends LitElement {
 
     return html`
       <div class="slider-container">
-        <!-- 7-segment background -->
-        <div class="segments">
-          ${[0, 1, 2, 3, 4, 5, 6].map(
-            (i) => html`
-              <div
-                class="segment ${i % 2 === 0 ? "even" : "odd"}"
-                style="width: ${100 / 7}%"
-              ></div>
-            `,
-          )}
+        <!-- Track with rounded corners (clips segments + progress) -->
+        <div class="slider-track">
+          <div class="segments">
+            ${[0, 1, 2, 3, 4, 5, 6].map(
+              (i) => html`
+                <div
+                  class="segment ${i % 2 === 0 ? "even" : "odd"}"
+                  style="width: ${100 / 7}%"
+                ></div>
+              `,
+            )}
+          </div>
+          <div class="progress" style="width: ${pct}%"></div>
         </div>
 
-        <!-- Progress bar (by effective playback position) -->
-        <div class="progress" style="width: ${pct}%"></div>
-
-        <!-- Loop markers -->
+        <!-- Loop markers (outside track so not clipped by border-radius) -->
         ${this.loopEnd > 0
           ? html`
               <div class="loop-marker start" style="left: ${loopStartPct}%"
-                title="Loop start: ${this.loopStart.toFixed(2)}s"></div>
+                title="Loop start: ${this.loopStart.toFixed(2)}s \u2014 drag to reposition"
+                @pointerdown=${(e: PointerEvent) => this.onLoopMarkerPointerDown("start", e)}
+                @pointermove=${this.onLoopMarkerPointerMove}
+                @pointerup=${this.onLoopMarkerPointerUp}
+              ></div>
               <div class="loop-marker end" style="left: ${loopEndPct}%"
-                title="Loop end: ${this.loopEnd.toFixed(2)}s"></div>
+                title="Loop end: ${this.loopEnd.toFixed(2)}s \u2014 drag to reposition"
+                @pointerdown=${(e: PointerEvent) => this.onLoopMarkerPointerDown("end", e)}
+                @pointermove=${this.onLoopMarkerPointerMove}
+                @pointerup=${this.onLoopMarkerPointerUp}
+              ></div>
             `
           : nothing}
 
@@ -593,6 +602,39 @@ export class SongPlay extends LitElement {
       this.song.loopEndTime = this.loopEnd;
       callerBuddy.updateSong(this.song);
     }
+  }
+
+  // -- Loop marker drag (progress bar) --------------------------------------
+
+  private onLoopMarkerPointerDown(which: "start" | "end", e: PointerEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.draggingMarker = which;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  private onLoopMarkerPointerMove(e: PointerEvent) {
+    if (!this.draggingMarker) return;
+    e.preventDefault();
+    const container = this.shadowRoot?.querySelector(".slider-container") as HTMLElement | null;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const time = pct * this.duration;
+    if (this.draggingMarker === "start") {
+      this.loopStart = time;
+    } else {
+      this.loopEnd = time;
+    }
+    // Update audio engine live, but don't persist to disk during drag
+    callerBuddy.audio.setLoopPoints(this.loopStart, this.loopEnd);
+  }
+
+  private onLoopMarkerPointerUp(_e: PointerEvent) {
+    if (!this.draggingMarker) return;
+    this.draggingMarker = null;
+    // Persist to disk now that drag is complete
+    this.applyLoopPoints();
   }
 
   // -- Patter timer ---------------------------------------------------------
@@ -1030,6 +1072,11 @@ export class SongPlay extends LitElement {
     .slider-container {
       position: relative;
       height: 28px;
+    }
+
+    .slider-track {
+      position: absolute;
+      inset: 0;
       border-radius: 4px;
       overflow: hidden;
     }
@@ -1060,18 +1107,39 @@ export class SongPlay extends LitElement {
 
     .loop-marker {
       position: absolute;
-      top: 0;
-      bottom: 0;
+      top: -2px;
+      bottom: -2px;
       width: 2px;
-      z-index: 2;
+      padding: 0 5px;
+      margin-left: -6px;
+      box-sizing: content-box;
+      background-clip: content-box;
+      z-index: 3;
+      cursor: ew-resize;
+      touch-action: none;
+    }
+
+    .loop-marker:hover {
+      padding: 0 4px;
+      margin-left: -5px;
+      border-left: 1px solid;
+      border-right: 1px solid;
     }
 
     .loop-marker.start {
-      background: var(--cb-success);
+      background-color: var(--cb-success);
+    }
+
+    .loop-marker.start:hover {
+      border-color: var(--cb-success);
     }
 
     .loop-marker.end {
-      background: var(--cb-error);
+      background-color: var(--cb-error);
+    }
+
+    .loop-marker.end:hover {
+      border-color: var(--cb-error);
     }
 
     .slider-input {
@@ -1082,6 +1150,7 @@ export class SongPlay extends LitElement {
       opacity: 0;
       cursor: pointer;
       margin: 0;
+      z-index: 1;
     }
 
     /* -- Shared ------------------------------------------------------------ */
