@@ -295,7 +295,13 @@ export class PlaylistEditor extends LitElement {
   private async playSongNow(song: Song) {
     callerBuddy.state.addToPlaylist(song);
     callerBuddy.openPlaylistPlay();
-    await callerBuddy.openSongPlay(song);
+    const prevCursor = document.body.style.cursor;
+    document.body.style.cursor = "wait";
+    try {
+      await callerBuddy.openSongPlay(song);
+    } finally {
+      document.body.style.cursor = prevCursor;
+    }
   }
 
   private onPlayPlaylist() {

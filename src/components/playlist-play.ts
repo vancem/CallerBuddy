@@ -232,7 +232,14 @@ export class PlaylistPlay extends LitElement {
     const song = playlist[idx];
     callerBuddy.state.markSongPlayed(song.musicFile);
     this.selectedIndex = null; // reset to auto-select next unplayed
-    await callerBuddy.openSongPlay(song);
+
+    const prevCursor = document.body.style.cursor;
+    document.body.style.cursor = "wait";
+    try {
+      await callerBuddy.openSongPlay(song);
+    } finally {
+      document.body.style.cursor = prevCursor;
+    }
   }
 
   private onSongEnded = () => {
