@@ -40,6 +40,7 @@ export class SongPlay extends LitElement {
   @state() private loopEnd = 0;
 
   // Patter timer
+  @state() private patterTimerEnabled = true;
   @state() private patterMinutes = 5;
   @state() private patterCountdown = 0;
   @state() private patterTimerRunning = false;
@@ -193,6 +194,7 @@ export class SongPlay extends LitElement {
     this.loopStart = song.loopStartTime;
     this.loopEnd = song.loopEndTime;
     this.patterMinutes = callerBuddy.state.settings.patterTimerMinutes;
+    this.patterCountdown = this.patterMinutes * 60;
 
     if (isSingingCall(song)) {
       this.lyrics = await callerBuddy.loadLyrics(song);
@@ -278,7 +280,17 @@ export class SongPlay extends LitElement {
         <hr />
 
         <h3>Patter Timer</h3>
-        <div class="patter-timer-controls">
+        <div class="patter-timer-controls ${this.patterTimerEnabled ? "" : "timer-disabled"}">
+          <div class="patter-toggle-row">
+            <label class="patter-toggle">
+              <input
+                type="checkbox"
+                .checked=${this.patterTimerEnabled}
+                @change=${this.onPatterTimerEnabledChange}
+              />
+              Enabled
+            </label>
+          </div>
           <div class="patter-row">
             <label>Duration (min):</label>
             <input
@@ -289,19 +301,11 @@ export class SongPlay extends LitElement {
               .value=${String(this.patterMinutes)}
               @change=${this.onPatterMinutesChange}
               @keydown=${this.onPatterMinutesKeydown}
-              ?disabled=${this.patterTimerRunning}
             />
-            <button class="secondary" @click=${this.togglePatterTimer}>
-              ${this.patterTimerRunning ? "Reset" : "Start"}
-            </button>
           </div>
-          ${this.patterTimerRunning
-            ? html`
-                <div class="patter-countdown ${this.patterCountdown <= 0 ? "overtime" : ""}">
-                  ${formatCountdown(this.patterCountdown)}
-                </div>
-              `
-            : nothing}
+          <div class="patter-countdown ${!this.patterTimerEnabled ? "disabled" : ""} ${this.patterCountdown <= 0 ? "overtime" : ""}">
+            ${formatCountdown(this.patterCountdown)}
+          </div>
         </div>
       </div>
     `;
@@ -448,7 +452,7 @@ export class SongPlay extends LitElement {
         this.firstPlayTime = Date.now();
         this.startElapsedTimer();
         // Start patter timer automatically if this is patter
-        if (this.song && isPatter(this.song) && !this.patterTimerRunning) {
+        if (this.song && isPatter(this.song) && this.patterTimerEnabled && !this.patterTimerRunning) {
           this.startPatterTimer();
         }
       }
@@ -458,6 +462,10 @@ export class SongPlay extends LitElement {
   private onRestart() {
     callerBuddy.audio.seek(0);
     this.currentTime = 0;
+    this.resetPatterTimer();
+    if (this.patterTimerEnabled && this.playing && this.song && isPatter(this.song)) {
+      this.startPatterTimer();
+    }
   }
 
   private onSeekDelta(seconds: number) {
@@ -549,15 +557,33 @@ export class SongPlay extends LitElement {
 
   private onPatterMinutesChange(e: Event) {
     this.patterMinutes = Number((e.target as HTMLInputElement).value) || 5;
+    this.resetPatterTimer();
+    if (this.patterTimerEnabled && this.playing && this.song && isPatter(this.song)) {
+      this.startPatterTimer();
+    }
   }
 
-  private togglePatterTimer() {
-    if (this.patterTimerRunning) {
+  private onPatterTimerEnabledChange(e: Event) {
+    const enabled = (e.target as HTMLInputElement).checked;
+    this.patterTimerEnabled = enabled;
+    if (!enabled) {
       this.stopPatterTimer();
-      // Reset
-      this.patterAlarmFired = false;
     } else {
-      this.startPatterTimer();
+      this.resetPatterTimer();
+      if (this.playing && this.song && isPatter(this.song)) {
+        this.startPatterTimer();
+      }
+    }
+  }
+
+  /** Set countdown to duration and clear running state; does not start tick. */
+  private resetPatterTimer() {
+    this.patterCountdown = this.patterMinutes * 60;
+    this.patterTimerRunning = false;
+    this.patterAlarmFired = false;
+    if (this.patterInterval !== null) {
+      clearInterval(this.patterInterval);
+      this.patterInterval = null;
     }
   }
 
@@ -592,7 +618,7 @@ export class SongPlay extends LitElement {
 
   /** Resume countdown when music resumes. */
   private resumePatterTimer() {
-    if (this.patterTimerRunning && this.playing && this.patterInterval === null) {
+    if (this.patterTimerEnabled && this.patterTimerRunning && this.playing && this.patterInterval === null) {
       this.startPatterTick();
     }
   }
@@ -742,6 +768,31 @@ export class SongPlay extends LitElement {
       background: var(--cb-hover);
     }
 
+    .patter-timer-controls.timer-disabled .patter-row,
+    .patter-timer-controls.timer-disabled .patter-countdown {
+      opacity: 0.5;
+    }
+
+    .patter-timer-controls .patter-toggle {
+      opacity: 1;
+    }
+
+    .patter-toggle-row {
+      margin-bottom: 8px;
+    }
+
+    .patter-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .patter-toggle input {
+      cursor: pointer;
+    }
+
     .patter-row {
       display: flex;
       align-items: center;
@@ -765,8 +816,16 @@ export class SongPlay extends LitElement {
       margin-top: 8px;
     }
 
+    .patter-countdown.disabled {
+      color: var(--cb-fg-tertiary);
+    }
+
     .patter-countdown.overtime {
       color: var(--cb-error);
+    }
+
+    .patter-countdown.disabled.overtime {
+      color: var(--cb-fg-tertiary);
     }
 
     /* -- Right panel: controls and info ------------------------------------ */

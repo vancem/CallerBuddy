@@ -230,7 +230,11 @@ export class PlaylistPlay extends LitElement {
   private async playSelected() {
     const playlist = callerBuddy.state.playlist;
     const idx = this.getSelectedIndex();
-    if (idx < 0 || idx >= playlist.length) return;
+    if (idx < 0 || idx >= playlist.length) {
+      // No song to play (e.g. all songs already played) — play error beep
+      callerBuddy.audio.playErrorBeep();
+      return;
+    }
 
     this.stopBreakTimer();
     const song = playlist[idx];

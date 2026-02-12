@@ -88,6 +88,9 @@ export interface AudioEngine {
   /** Play a short alert beep (for timers). */
   playBeep(): void;
 
+  /** Play a short beep indicating an error (e.g. no song to play). Same sound as playBeep but semantically distinct. */
+  playErrorBeep(): void;
+
   /** Release all resources. */
   dispose(): void;
 }
@@ -292,18 +295,27 @@ export class WebAudioEngine implements AudioEngine {
 
   /** Play a short non-obtrusive beep using an oscillator (for timer alerts). */
   playBeep(): void {
+    this.playTone(880, 0.5);
+  }
+
+  /** Play a short beep for errors (e.g. no song to play). Uses same sound as timer for consistency. */
+  playErrorBeep(): void {
+    this.playTone(880, 0.5);
+  }
+
+  private playTone(frequencyHz: number, durationSeconds: number): void {
     const osc = this.context.createOscillator();
     const g = this.context.createGain();
     osc.type = "sine";
-    osc.frequency.value = 880; // A5
+    osc.frequency.value = frequencyHz;
     g.gain.setValueAtTime(0.15, this.context.currentTime);
     g.gain.exponentialRampToValueAtTime(
       0.001,
-      this.context.currentTime + 0.5,
+      this.context.currentTime + durationSeconds,
     );
     osc.connect(g).connect(this.context.destination);
     osc.start();
-    osc.stop(this.context.currentTime + 0.5);
+    osc.stop(this.context.currentTime + durationSeconds);
   }
 
   dispose(): void {
