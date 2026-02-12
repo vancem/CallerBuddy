@@ -182,6 +182,7 @@ export class PlaylistPlay extends LitElement {
                   step="any"
                   .value=${String(this.breakMinutes)}
                   @change=${this.onBreakMinutesChange}
+                  @keydown=${this.onBreakMinutesKeydown}
                   ?disabled=${!this.breakTimerEnabled}
                 />
               </div>
@@ -255,9 +256,21 @@ export class PlaylistPlay extends LitElement {
     }
   }
 
+  /** Handle Enter inside the Minutes input: commit, stop timer, and consume
+   *  the event so it doesn't bubble up to the page-level keydown handler. */
+  private onBreakMinutesKeydown(e: KeyboardEvent) {
+    if (e.key !== "Enter") return;
+    e.stopPropagation();
+    // Force the input to fire its change event now
+    (e.target as HTMLInputElement).blur();
+  }
+
   private onBreakMinutesChange(e: Event) {
     const v = Number((e.target as HTMLInputElement).value);
     this.breakMinutes = Number.isFinite(v) && v >= 0 ? v : DEFAULT_BREAK_TIMER_MINUTES;
+    if (this.breakTimerRunning) {
+      this.stopBreakTimer();
+    }
   }
 
   private startBreakTimer() {

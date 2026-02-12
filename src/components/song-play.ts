@@ -285,6 +285,7 @@ export class SongPlay extends LitElement {
               step="0.5"
               .value=${String(this.patterMinutes)}
               @change=${this.onPatterMinutesChange}
+              @keydown=${this.onPatterMinutesKeydown}
               ?disabled=${this.patterTimerRunning}
             />
             <button class="secondary" @click=${this.togglePatterTimer}>
@@ -534,6 +535,14 @@ export class SongPlay extends LitElement {
   }
 
   // -- Patter timer ---------------------------------------------------------
+
+  /** Handle Enter inside the Duration input: commit and consume the event so
+   *  it doesn't bubble up to the page-level keydown handler. */
+  private onPatterMinutesKeydown(e: KeyboardEvent) {
+    if (e.key !== "Enter") return;
+    e.stopPropagation();
+    (e.target as HTMLInputElement).blur();
+  }
 
   private onPatterMinutesChange(e: Event) {
     this.patterMinutes = Number((e.target as HTMLInputElement).value) || 5;

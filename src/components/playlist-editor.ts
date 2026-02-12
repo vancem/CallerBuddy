@@ -126,6 +126,7 @@ export class PlaylistEditor extends LitElement {
               placeholder="Filter songs by title, label, or category…"
               .value=${this.filterText}
               @input=${this.onFilterInput}
+              @keydown=${this.onFilterKeydown}
             />
             <span class="song-count">${songs.length} songs</span>
           </div>
@@ -270,6 +271,12 @@ export class PlaylistEditor extends LitElement {
   private sortIndicator(field: SortField): string {
     if (this.sortField !== field) return "";
     return this.sortDir === "asc" ? " ▲" : " ▼";
+  }
+
+  /** Consume Enter inside the filter so it doesn't bubble up to the
+   *  page-level keydown handler (which would start playback). */
+  private onFilterKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter") e.stopPropagation();
   }
 
   private onFilterInput(e: Event) {
