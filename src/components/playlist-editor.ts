@@ -348,11 +348,11 @@ export class PlaylistEditor extends LitElement {
     .playlist-panel {
       width: 260px;
       min-width: 200px;
-      border-right: 1px solid var(--cb-border, #333);
+      border-right: 1px solid var(--cb-border);
       display: flex;
       flex-direction: column;
       padding: 12px;
-      background: var(--cb-panel-bg, #1e1e2e);
+      background: var(--cb-panel-bg);
     }
 
     .playlist-panel h2 {
@@ -379,7 +379,7 @@ export class PlaylistEditor extends LitElement {
     }
 
     .playlist-item:hover {
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--cb-hover);
     }
 
     .pl-type {
@@ -390,11 +390,11 @@ export class PlaylistEditor extends LitElement {
     }
 
     .pl-type.singing {
-      color: #66bbff;
+      color: var(--cb-singing);
     }
 
     .pl-type.patter {
-      color: #ffaa44;
+      color: var(--cb-patter);
     }
 
     .pl-title {
@@ -424,27 +424,27 @@ export class PlaylistEditor extends LitElement {
       align-items: center;
       gap: 12px;
       padding: 8px 12px;
-      border-bottom: 1px solid var(--cb-border, #333);
+      border-bottom: 1px solid var(--cb-border);
     }
 
     .filter-input {
       flex: 1;
       padding: 6px 10px;
-      border: 1px solid var(--cb-border, #555);
+      border: 1px solid var(--cb-border);
       border-radius: 6px;
-      background: var(--cb-input-bg, #2a2a3e);
-      color: var(--cb-fg, #fff);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
       font-size: 0.9rem;
       outline: none;
     }
 
     .filter-input:focus {
-      border-color: var(--cb-accent, #646cff);
+      border-color: var(--cb-accent);
     }
 
     .song-count {
       font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--cb-fg-secondary);
       white-space: nowrap;
     }
 
@@ -470,13 +470,13 @@ export class PlaylistEditor extends LitElement {
     .song-table th {
       position: sticky;
       top: 0;
-      background: var(--cb-panel-bg, #1e1e2e);
-      border-bottom: 2px solid var(--cb-border, #444);
+      background: var(--cb-panel-bg);
+      border-bottom: 2px solid var(--cb-border-strong);
       font-weight: 600;
       font-size: 0.8rem;
       text-transform: uppercase;
       letter-spacing: 0.03em;
-      color: rgba(255, 255, 255, 0.65);
+      color: var(--cb-fg-secondary);
     }
 
     .sortable {
@@ -485,19 +485,19 @@ export class PlaylistEditor extends LitElement {
     }
 
     .sortable:hover {
-      color: var(--cb-accent, #646cff);
+      color: var(--cb-accent);
     }
 
     .song-table tbody tr {
-      border-bottom: 1px solid var(--cb-border, #2a2a3a);
+      border-bottom: 1px solid var(--cb-border);
     }
 
     .song-table tbody tr:hover {
-      background: rgba(255, 255, 255, 0.04);
+      background: var(--cb-hover);
     }
 
     .label-cell {
-      color: rgba(255, 255, 255, 0.6);
+      color: var(--cb-fg-secondary);
       font-family: monospace;
     }
 
@@ -506,17 +506,17 @@ export class PlaylistEditor extends LitElement {
     }
 
     .type-cell .singing {
-      color: #66bbff;
+      color: var(--cb-singing);
     }
 
     .type-cell .patter {
-      color: #ffaa44;
+      color: var(--cb-patter);
     }
 
     .bpm-cell {
       text-align: center;
       font-variant-numeric: tabular-nums;
-      color: rgba(255, 255, 255, 0.6);
+      color: var(--cb-fg-secondary);
       font-size: 0.85rem;
     }
 
@@ -535,10 +535,10 @@ export class PlaylistEditor extends LitElement {
 
     .context-menu {
       position: fixed;
-      background: var(--cb-menu-bg, #2a2a3e);
-      border: 1px solid var(--cb-border, #444);
+      background: var(--cb-menu-bg);
+      border: 1px solid var(--cb-border);
       border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 4px 16px var(--cb-shadow);
       z-index: 1000;
       min-width: 200px;
       padding: 4px 0;
@@ -551,19 +551,19 @@ export class PlaylistEditor extends LitElement {
       text-align: left;
       background: none;
       border: none;
-      color: var(--cb-fg, rgba(255, 255, 255, 0.87));
+      color: var(--cb-fg);
       font-size: 0.85rem;
       cursor: pointer;
     }
 
     .context-menu .menu-item:hover {
-      background: var(--cb-accent, #646cff);
-      color: #fff;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
     }
 
     .context-menu hr {
       border: none;
-      border-top: 1px solid var(--cb-border, #444);
+      border-top: 1px solid var(--cb-border);
       margin: 4px 0;
     }
 
@@ -575,13 +575,13 @@ export class PlaylistEditor extends LitElement {
       padding: 6px 16px;
       font-size: 0.9rem;
       font-weight: 500;
-      background: var(--cb-accent, #646cff);
-      color: #fff;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
       cursor: pointer;
     }
 
     .primary:hover:not(:disabled) {
-      background: #535bf2;
+      background: var(--cb-accent-hover);
     }
 
     .primary:disabled {
@@ -591,22 +591,22 @@ export class PlaylistEditor extends LitElement {
 
     .secondary {
       border-radius: 6px;
-      border: 1px solid var(--cb-border, #555);
+      border: 1px solid var(--cb-border);
       padding: 6px 16px;
       font-size: 0.9rem;
       background: transparent;
-      color: var(--cb-fg, rgba(255, 255, 255, 0.87));
+      color: var(--cb-fg);
       cursor: pointer;
     }
 
     .secondary:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--cb-hover);
     }
 
     .icon-btn {
       background: none;
       border: none;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--cb-fg-secondary);
       font-size: 1rem;
       cursor: pointer;
       padding: 2px 6px;
@@ -615,12 +615,12 @@ export class PlaylistEditor extends LitElement {
     }
 
     .icon-btn:hover {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.1);
+      color: var(--cb-fg);
+      background: var(--cb-hover);
     }
 
     .muted {
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--cb-fg-tertiary);
       font-size: 0.85rem;
     }
   `;

@@ -640,7 +640,7 @@ export class SongPlay extends LitElement {
       grid-column: 1;
       grid-row: 1;
       overflow-y: auto;
-      border-right: 1px solid var(--cb-border, #333);
+      border-right: 1px solid var(--cb-border);
     }
 
     .lyrics-content {
@@ -648,8 +648,8 @@ export class SongPlay extends LitElement {
       line-height: 1.7;
       width: 100%;
       box-sizing: border-box;
-      background: #fff;
-      color: #212121;
+      background: var(--cb-bg);
+      color: var(--cb-fg);
       padding: 16px;
     }
 
@@ -660,19 +660,19 @@ export class SongPlay extends LitElement {
     .lyrics-content h1,
     .lyrics-content h2,
     .lyrics-content h3 {
-      color: #212121;
+      color: var(--cb-fg);
     }
 
     .lyrics-content a {
-      color: #0000ee;
+      color: var(--cb-accent);
     }
 
     .lyrics-content a:visited {
-      color: #551a8b;
+      color: var(--cb-accent-hover);
     }
 
     .lyrics-content hr {
-      border-color: #ddd;
+      border-color: var(--cb-border);
     }
 
     /* -- Patter controls --------------------------------------------------- */
@@ -690,7 +690,7 @@ export class SongPlay extends LitElement {
 
     .patter-controls hr {
       border: none;
-      border-top: 1px solid var(--cb-border, #333);
+      border-top: 1px solid var(--cb-border);
       margin: 16px 0;
     }
 
@@ -720,26 +720,26 @@ export class SongPlay extends LitElement {
     }
 
     .loop-status.active {
-      color: #4caf50;
-      background: rgba(76, 175, 80, 0.1);
+      color: var(--cb-success);
+      background: var(--cb-success-bg);
     }
 
     .loop-status.inactive {
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--cb-fg-tertiary);
     }
 
     .nudge {
       padding: 4px 8px;
-      border: 1px solid var(--cb-border, #555);
+      border: 1px solid var(--cb-border);
       border-radius: 4px;
-      background: var(--cb-input-bg, #2a2a3e);
-      color: var(--cb-fg, #fff);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
       cursor: pointer;
       font-size: 0.8rem;
     }
 
     .nudge:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--cb-hover);
     }
 
     .patter-row {
@@ -752,10 +752,10 @@ export class SongPlay extends LitElement {
     .patter-row input {
       width: 60px;
       padding: 4px 8px;
-      border: 1px solid var(--cb-border, #555);
+      border: 1px solid var(--cb-border);
       border-radius: 4px;
-      background: var(--cb-input-bg, #2a2a3e);
-      color: var(--cb-fg, #fff);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
     }
 
     .patter-countdown {
@@ -766,7 +766,7 @@ export class SongPlay extends LitElement {
     }
 
     .patter-countdown.overtime {
-      color: #f66;
+      color: var(--cb-error);
     }
 
     /* -- Right panel: controls and info ------------------------------------ */
@@ -792,8 +792,8 @@ export class SongPlay extends LitElement {
 
     .ctrl-btn {
       background: none;
-      border: 1px solid var(--cb-border, #555);
-      color: var(--cb-fg, #fff);
+      border: 1px solid var(--cb-border);
+      color: var(--cb-fg);
       font-size: 1.1rem;
       width: 36px;
       height: 36px;
@@ -805,19 +805,20 @@ export class SongPlay extends LitElement {
     }
 
     .ctrl-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--cb-hover);
     }
 
     .ctrl-btn.play-btn {
       width: 44px;
       height: 44px;
       font-size: 1.3rem;
-      background: var(--cb-accent, #646cff);
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
       border-color: transparent;
     }
 
     .ctrl-btn.play-btn:hover {
-      background: #535bf2;
+      background: var(--cb-accent-hover);
     }
 
     /* -- Adjustments (volume/pitch/tempo) ---------------------------------- */
@@ -837,7 +838,7 @@ export class SongPlay extends LitElement {
     .adj-label {
       width: 60px;
       font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.6);
+      color: var(--cb-fg-secondary);
     }
 
     .adj-value {
@@ -849,8 +850,8 @@ export class SongPlay extends LitElement {
 
     .adj-btn {
       background: none;
-      border: 1px solid var(--cb-border, #555);
-      color: var(--cb-fg, #fff);
+      border: 1px solid var(--cb-border);
+      color: var(--cb-fg);
       padding: 4px 10px;
       border-radius: 4px;
       cursor: pointer;
@@ -858,12 +859,12 @@ export class SongPlay extends LitElement {
     }
 
     .adj-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--cb-hover);
     }
 
     .adj-hint {
       font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--cb-fg-tertiary);
       margin-left: 4px;
     }
 
@@ -884,7 +885,7 @@ export class SongPlay extends LitElement {
     .time-label {
       width: 60px;
       font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--cb-fg-secondary);
     }
 
     .time-value {
@@ -903,7 +904,7 @@ export class SongPlay extends LitElement {
       grid-column: 1 / -1;
       grid-row: 2;
       padding: 8px 12px 12px;
-      border-top: 1px solid var(--cb-border, #333);
+      border-top: 1px solid var(--cb-border);
     }
 
     .slider-container {
@@ -920,11 +921,11 @@ export class SongPlay extends LitElement {
     }
 
     .segment.even {
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--cb-segment-even);
     }
 
     .segment.odd {
-      background: rgba(255, 255, 255, 0.03);
+      background: var(--cb-segment-odd);
     }
 
     .progress {
@@ -932,7 +933,7 @@ export class SongPlay extends LitElement {
       top: 0;
       left: 0;
       bottom: 0;
-      background: rgba(100, 108, 255, 0.3);
+      background: var(--cb-progress);
       pointer-events: none;
       transition: width 0.1s linear;
     }
@@ -946,11 +947,11 @@ export class SongPlay extends LitElement {
     }
 
     .loop-marker.start {
-      background: #4caf50;
+      background: var(--cb-success);
     }
 
     .loop-marker.end {
-      background: #f44336;
+      background: var(--cb-error);
     }
 
     .slider-input {
@@ -967,20 +968,20 @@ export class SongPlay extends LitElement {
 
     .secondary {
       border-radius: 6px;
-      border: 1px solid var(--cb-border, #555);
+      border: 1px solid var(--cb-border);
       padding: 6px 14px;
       font-size: 0.85rem;
       background: transparent;
-      color: var(--cb-fg, #fff);
+      color: var(--cb-fg);
       cursor: pointer;
     }
 
     .secondary:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--cb-hover);
     }
 
     .muted {
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--cb-fg-tertiary);
     }
 
     .centered {

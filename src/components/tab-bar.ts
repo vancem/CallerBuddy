@@ -73,8 +73,8 @@ export class CbTabBar extends LitElement {
 
     .tab-bar {
       display: flex;
-      background: var(--cb-tab-bar-bg, #1e1e2e);
-      border-bottom: 1px solid var(--cb-border, #333);
+      background: var(--cb-tab-bar-bg);
+      border-bottom: 1px solid var(--cb-border);
       overflow-x: auto;
       min-height: 36px;
     }
@@ -85,22 +85,22 @@ export class CbTabBar extends LitElement {
       gap: 6px;
       padding: 6px 12px;
       font-size: 0.85rem;
-      color: var(--cb-tab-fg, rgba(255, 255, 255, 0.6));
+      color: var(--cb-tab-fg);
       cursor: pointer;
-      border-right: 1px solid var(--cb-border, #333);
+      border-right: 1px solid var(--cb-border);
       white-space: nowrap;
       user-select: none;
       transition: background-color 0.15s;
     }
 
     .tab:hover {
-      background: var(--cb-tab-hover, rgba(255, 255, 255, 0.06));
+      background: var(--cb-tab-hover);
     }
 
     .tab.active {
-      color: var(--cb-tab-active-fg, #fff);
-      background: var(--cb-tab-active-bg, #242434);
-      border-bottom: 2px solid var(--cb-accent, #646cff);
+      color: var(--cb-tab-active-fg);
+      background: var(--cb-tab-active-bg);
+      border-bottom: 2px solid var(--cb-accent);
     }
 
     .tab-title {
@@ -123,7 +123,7 @@ export class CbTabBar extends LitElement {
 
     .close-btn:hover {
       opacity: 1;
-      background: rgba(255, 255, 255, 0.12);
+      background: var(--cb-hover);
     }
   `;
 }

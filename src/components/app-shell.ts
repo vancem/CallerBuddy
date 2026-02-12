@@ -168,16 +168,16 @@ export class AppShell extends LitElement {
       display: flex;
       flex-direction: column;
       height: 100%;
-      background: var(--cb-bg, #1a1a2e);
-      color: var(--cb-fg, rgba(255, 255, 255, 0.87));
+      background: var(--cb-bg);
+      color: var(--cb-fg);
       font-family: system-ui, -apple-system, sans-serif;
     }
 
     .top-bar {
       display: flex;
       align-items: stretch;
-      background: var(--cb-tab-bar-bg, #1e1e2e);
-      border-bottom: 1px solid var(--cb-border, #333);
+      background: var(--cb-tab-bar-bg);
+      border-bottom: 1px solid var(--cb-border);
     }
 
     cb-tab-bar {
@@ -195,7 +195,7 @@ export class AppShell extends LitElement {
     .menu-btn {
       background: none;
       border: none;
-      color: var(--cb-fg, rgba(255, 255, 255, 0.87));
+      color: var(--cb-fg);
       font-size: 1.2rem;
       cursor: pointer;
       padding: 4px 8px;
@@ -203,7 +203,7 @@ export class AppShell extends LitElement {
     }
 
     .menu-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--cb-hover);
     }
 
     .menu-overlay {
@@ -216,10 +216,10 @@ export class AppShell extends LitElement {
       position: absolute;
       top: 100%;
       right: 0;
-      background: var(--cb-menu-bg, #2a2a3e);
-      border: 1px solid var(--cb-border, #444);
+      background: var(--cb-menu-bg);
+      border: 1px solid var(--cb-border);
       border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 4px 16px var(--cb-shadow);
       z-index: 1000;
       min-width: 220px;
       padding: 4px 0;
@@ -232,31 +232,31 @@ export class AppShell extends LitElement {
       text-align: left;
       background: none;
       border: none;
-      color: var(--cb-fg, rgba(255, 255, 255, 0.87));
+      color: var(--cb-fg);
       font-size: 0.9rem;
       cursor: pointer;
       white-space: nowrap;
     }
 
     .menu-item:hover {
-      background: var(--cb-accent, #646cff);
-      color: #fff;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
     }
 
     .menu-item.version {
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--cb-fg-tertiary);
       font-size: 0.8rem;
       cursor: default;
     }
 
     .menu-item.version:hover {
       background: none;
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--cb-fg-tertiary);
     }
 
     .menu hr {
       border: none;
-      border-top: 1px solid var(--cb-border, #444);
+      border-top: 1px solid var(--cb-border);
       margin: 4px 0;
     }
 
@@ -280,7 +280,7 @@ export class AppShell extends LitElement {
       align-items: center;
       justify-content: center;
       height: 100%;
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--cb-fg-tertiary);
     }
   `;
 }

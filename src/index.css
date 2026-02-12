@@ -2,23 +2,81 @@
  * Global styles for CallerBuddy.
  * Component-specific styles live inside each Lit component's static `styles`.
  * This file covers only the bare page defaults.
+ *
+ * ══════════════════════════════════════════════════════════════════════
+ *  THEMING
+ *
+ *  All colours are governed by CSS custom properties defined here.
+ *  Components reference *only* these variables — no hardcoded colours.
+ *
+ *  Accent shades are derived from two primitives:
+ *    --cb-hue   (hue angle, 0-360)
+ *    --cb-sat   (saturation percentage)
+ *
+ *  Changing those two values re-colours every accent shade at once.
+ *  Surface, text, border, and semantic colours are separate but still
+ *  live in this one file so a future dark-mode toggle is trivial.
+ * ══════════════════════════════════════════════════════════════════════
  */
 
 :root {
-  --cb-bg: #1a1a2e;
-  --cb-fg: rgba(255, 255, 255, 0.87);
-  --cb-accent: #646cff;
-  --cb-border: #333;
-  --cb-panel-bg: #1e1e2e;
-  --cb-tab-bar-bg: #1e1e2e;
-  --cb-menu-bg: #2a2a3e;
-  --cb-input-bg: #2a2a3e;
+  /* ── Accent primitives (from CallerBuddy.svg: rgb(25,25,140) ≈ hsl 240 70%) ── */
+  --cb-hue: 240;
+  --cb-sat: 70%;
 
+  /* ── Derived accent shades — only change the two primitives above ── */
+  --cb-accent:        hsl(var(--cb-hue), var(--cb-sat), 42%);
+  --cb-accent-hover:  hsl(var(--cb-hue), var(--cb-sat), 34%);
+  --cb-accent-light:  hsl(var(--cb-hue), var(--cb-sat), 94%);
+  --cb-accent-subtle: hsla(var(--cb-hue), var(--cb-sat), 42%, 0.12);
+
+  /* ── Surfaces (Chrome-like light) ─────────────────────────────────── */
+  --cb-bg:          #ffffff;
+  --cb-panel-bg:    #f1f3f4;
+  --cb-tab-bar-bg:  #dee1e6;
+  --cb-menu-bg:     #ffffff;
+  --cb-input-bg:    #ffffff;
+
+  /* ── Text ─────────────────────────────────────────────────────────── */
+  --cb-fg:           #202124;
+  --cb-fg-secondary: #5f6368;
+  --cb-fg-tertiary:  #80868b;
+  --cb-fg-on-accent: #ffffff;
+
+  /* ── Borders ──────────────────────────────────────────────────────── */
+  --cb-border:        #dadce0;
+  --cb-border-strong: #bdc1c6;
+
+  /* ── Interactive states ───────────────────────────────────────────── */
+  --cb-hover:   rgba(0, 0, 0, 0.04);
+  --cb-active:  rgba(0, 0, 0, 0.08);
+  --cb-shadow:  rgba(0, 0, 0, 0.15);
+
+  /* ── Semantic colours ─────────────────────────────────────────────── */
+  --cb-success:    #188038;
+  --cb-success-bg: rgba(24, 128, 56, 0.10);
+  --cb-error:      #d93025;
+  --cb-error-light:#fce8e6;
+  --cb-singing:    hsl(var(--cb-hue), var(--cb-sat), 42%);
+  --cb-patter:     #e37400;
+
+  /* ── Tab bar ──────────────────────────────────────────────────────── */
+  --cb-tab-fg:        var(--cb-fg-secondary);
+  --cb-tab-hover:     var(--cb-hover);
+  --cb-tab-active-fg: var(--cb-fg);
+  --cb-tab-active-bg: var(--cb-bg);
+
+  /* ── Progress slider ──────────────────────────────────────────────── */
+  --cb-progress:     hsla(var(--cb-hue), var(--cb-sat), 42%, 0.25);
+  --cb-segment-even: rgba(0, 0, 0, 0.05);
+  --cb-segment-odd:  rgba(0, 0, 0, 0.02);
+
+  /* ── Typography (unchanged) ───────────────────────────────────────── */
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: dark;
+  color-scheme: light;
   color: var(--cb-fg);
   background-color: var(--cb-bg);
   font-synthesis: none;

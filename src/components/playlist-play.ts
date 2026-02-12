@@ -336,11 +336,11 @@ export class PlaylistPlay extends LitElement {
     .playlist-panel {
       width: 280px;
       min-width: 220px;
-      border-right: 1px solid var(--cb-border, #333);
+      border-right: 1px solid var(--cb-border);
       display: flex;
       flex-direction: column;
       padding: 12px;
-      background: var(--cb-panel-bg, #1e1e2e);
+      background: var(--cb-panel-bg);
     }
 
     .playlist-panel h2 {
@@ -368,16 +368,16 @@ export class PlaylistPlay extends LitElement {
     }
 
     .pl-item:hover {
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--cb-hover);
     }
 
     .pl-item.played {
       opacity: 0.5;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--cb-fg-secondary);
     }
 
     .pl-item.selected {
-      background: rgba(100, 108, 255, 0.2);
+      background: var(--cb-accent-subtle);
     }
 
     .pl-type {
@@ -386,11 +386,11 @@ export class PlaylistPlay extends LitElement {
     }
 
     .pl-type.singing {
-      color: #66bbff;
+      color: var(--cb-singing);
     }
 
     .pl-type.patter {
-      color: #ffaa44;
+      color: var(--cb-patter);
     }
 
     .pl-title {
@@ -409,16 +409,16 @@ export class PlaylistPlay extends LitElement {
 
     .play-actions button:not(.primary) {
       border-radius: 6px;
-      border: 1px solid var(--cb-border, #555);
+      border: 1px solid var(--cb-border);
       padding: 8px 16px;
       font-size: 0.9rem;
-      background: var(--cb-input-bg, #2a2a3e);
-      color: var(--cb-fg, #fff);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
       cursor: pointer;
     }
 
     .play-actions button:not(.primary):hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--cb-hover);
     }
 
     /* -- Info panel --------------------------------------------------------- */
@@ -439,7 +439,7 @@ export class PlaylistPlay extends LitElement {
 
     .clock-label {
       font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--cb-fg-secondary);
     }
 
     .clock-value {
@@ -478,14 +478,14 @@ export class PlaylistPlay extends LitElement {
       font-size: 0.8rem;
       padding: 4px 10px;
       border-radius: 4px;
-      border: 1px solid var(--cb-border, #555);
-      background: var(--cb-input-bg, #2a2a3e);
-      color: var(--cb-fg, #fff);
+      border: 1px solid var(--cb-border);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
       cursor: pointer;
     }
 
     .break-start-stop:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--cb-hover);
     }
 
     .break-start-stop:disabled {
@@ -514,10 +514,10 @@ export class PlaylistPlay extends LitElement {
     .break-input-row input {
       width: 60px;
       padding: 4px 8px;
-      border: 1px solid var(--cb-border, #555);
+      border: 1px solid var(--cb-border);
       border-radius: 4px;
-      background: var(--cb-input-bg, #2a2a3e);
-      color: var(--cb-fg, #fff);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
       font-size: 0.9rem;
     }
 
@@ -530,7 +530,7 @@ export class PlaylistPlay extends LitElement {
     .break-section .time-label {
       width: 60px;
       font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--cb-fg-secondary);
     }
 
     .break-section .time-value {
@@ -539,15 +539,15 @@ export class PlaylistPlay extends LitElement {
     }
 
     .countdown-idle .time-value {
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--cb-fg-secondary);
     }
 
     .break-section .time-value.alarm {
-      color: #f66;
+      color: var(--cb-error);
     }
 
     .playing-info {
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--cb-fg-secondary);
       font-style: italic;
     }
 
@@ -559,13 +559,13 @@ export class PlaylistPlay extends LitElement {
       padding: 8px 20px;
       font-size: 1rem;
       font-weight: 500;
-      background: var(--cb-accent, #646cff);
-      color: #fff;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
       cursor: pointer;
     }
 
     .primary:hover:not(:disabled) {
-      background: #535bf2;
+      background: var(--cb-accent-hover);
     }
 
     .primary:disabled {
@@ -574,7 +574,7 @@ export class PlaylistPlay extends LitElement {
     }
 
     .muted {
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--cb-fg-tertiary);
       font-size: 0.85rem;
     }
   `;

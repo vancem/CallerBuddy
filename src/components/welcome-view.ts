@@ -123,7 +123,7 @@ export class WelcomeView extends LitElement {
 
     .explanation {
       margin: 1rem 0;
-      color: rgba(255, 255, 255, 0.85);
+      color: var(--cb-fg);
       line-height: 1.6;
     }
 
@@ -134,14 +134,14 @@ export class WelcomeView extends LitElement {
       font-size: 1rem;
       font-weight: 500;
       font-family: inherit;
-      background-color: var(--cb-accent, #646cff);
-      color: #fff;
+      background-color: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
       cursor: pointer;
       transition: background-color 0.2s;
     }
 
     .primary:hover:not(:disabled) {
-      background-color: #535bf2;
+      background-color: var(--cb-accent-hover);
     }
 
     .primary:disabled {
@@ -150,7 +150,7 @@ export class WelcomeView extends LitElement {
     }
 
     .error {
-      color: #f66;
+      color: var(--cb-error);
       margin-top: 0.75rem;
     }
 
@@ -162,7 +162,7 @@ export class WelcomeView extends LitElement {
     .version {
       margin-top: 2rem;
       font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.45);
+      color: var(--cb-fg-tertiary);
     }
   `;
 }
