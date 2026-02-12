@@ -2,7 +2,7 @@
  * Playlist playback view.
  *
  * Shows the playlist with selection highlighting, break timer, and clock.
- * Played songs are grayed out. The selected song defaults to the first
+ * Played songs show a checked checkbox. The selected song defaults to the first
  * unplayed song; clicking a song overrides the selection. Play/Enter/Space
  * plays the selected song. S starts/stops the break timer.
  *
@@ -14,7 +14,6 @@ import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { DEFAULT_BREAK_TIMER_MINUTES } from "../models/settings.js";
 import { StateEvents } from "../services/app-state.js";
-import { isSingingCall } from "../models/song.js";
 import { formatCountdown, formatClock } from "../utils/format.js";
 
 @customElement("playlist-play")
@@ -116,13 +115,19 @@ export class PlaylistPlay extends LitElement {
                     const played = playedPaths.has(song.musicFile);
                     return html`
                       <li
-                        class="pl-item ${played ? "played" : ""} ${i === sel ? "selected" : ""}"
+                        class="pl-item ${i === sel ? "selected" : ""}"
                         @click=${() => (this.selectedIndex = i)}
                         @dblclick=${() => this.playAt(i)}
                       >
-                        <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
-                          >${isSingingCall(song) ? "♪" : "♫"}</span
-                        >
+                        <label class="pl-check" @click=${(e: Event) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            .checked=${played}
+                            title=${played ? "Mark as unplayed" : "Mark as played"}
+                            @change=${() =>
+                              callerBuddy.state.setSongPlayed(song.musicFile, !played)}
+                          />
+                        </label>
                         <span class="pl-title">${song.title}</span>
                       </li>
                     `;
@@ -371,26 +376,20 @@ export class PlaylistPlay extends LitElement {
       background: var(--cb-hover);
     }
 
-    .pl-item.played {
-      opacity: 0.5;
-      color: var(--cb-fg-secondary);
-    }
-
     .pl-item.selected {
       background: var(--cb-accent-subtle);
     }
 
-    .pl-type {
+    .pl-check {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .pl-check input {
       width: 16px;
-      text-align: center;
-    }
-
-    .pl-type.singing {
-      color: var(--cb-singing);
-    }
-
-    .pl-type.patter {
-      color: var(--cb-patter);
+      height: 16px;
+      cursor: pointer;
     }
 
     .pl-title {

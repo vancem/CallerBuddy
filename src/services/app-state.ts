@@ -138,9 +138,20 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
-  /** Mark a song as played (by music file path) for Now Playing gray-out. */
+  /** Mark a song as played (by music file path) for Now Playing. */
   markSongPlayed(musicFile: string): void {
     this.playedSongPaths.add(musicFile);
+    this.emit(StateEvents.PLAYLIST_CHANGED);
+  }
+
+  /** Set whether a song is marked as played (e.g. from checkbox toggle). */
+  setSongPlayed(musicFile: string, played: boolean): void {
+    if (played) {
+      this.playedSongPaths.add(musicFile);
+    } else {
+      this.playedSongPaths.delete(musicFile);
+    }
+    this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
   /** Read-only set of music file paths that have been played this session. */
