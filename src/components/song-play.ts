@@ -253,25 +253,47 @@ export class SongPlay extends LitElement {
     return html`
       <div class="patter-controls">
         <h3>Loop Controls</h3>
-        <div class="loop-row">
+        <div class="loop-box" tabindex="0"
+             title="Click to focus \u2014 ←/→ nudge \u00b110ms, Ctrl+←/→ nudge \u00b1100ms, Enter = Set"
+             @keydown=${(e: KeyboardEvent) => this.onLoopBoxKeydown("start", e)}>
           <label>Loop Start:</label>
           <span class="loop-value">${this.loopStart.toFixed(2)}s</span>
-          <button class="nudge" title="-100ms" @click=${() => this.nudgeLoop("start", -0.1)}>◄◄</button>
-          <button class="nudge" title="-10ms" @click=${() => this.nudgeLoop("start", -0.01)}>◄</button>
-          <button class="nudge" title="Set to current position"
+          <button class="nudge" tabindex="-1" title="Nudge \u2212100ms (Ctrl+\u2190)"
+            @mousedown=${this.onLoopBtnMousedown}
+            @click=${() => this.nudgeLoop("start", -0.1)}>\u25c4\u25c4</button>
+          <button class="nudge" tabindex="-1" title="Nudge \u221210ms (\u2190)"
+            @mousedown=${this.onLoopBtnMousedown}
+            @click=${() => this.nudgeLoop("start", -0.01)}>\u25c4</button>
+          <button class="nudge set-btn" tabindex="-1" title="Set to current position (Enter)"
+            @mousedown=${this.onLoopBtnMousedown}
             @click=${() => this.setLoopFromCurrent("start")}>Set</button>
-          <button class="nudge" title="+10ms" @click=${() => this.nudgeLoop("start", 0.01)}>►</button>
-          <button class="nudge" title="+100ms" @click=${() => this.nudgeLoop("start", 0.1)}>►►</button>
+          <button class="nudge" tabindex="-1" title="Nudge +10ms (\u2192)"
+            @mousedown=${this.onLoopBtnMousedown}
+            @click=${() => this.nudgeLoop("start", 0.01)}>\u25ba</button>
+          <button class="nudge" tabindex="-1" title="Nudge +100ms (Ctrl+\u2192)"
+            @mousedown=${this.onLoopBtnMousedown}
+            @click=${() => this.nudgeLoop("start", 0.1)}>\u25ba\u25ba</button>
         </div>
-        <div class="loop-row">
+        <div class="loop-box" tabindex="0"
+             title="Click to focus \u2014 ←/→ nudge \u00b110ms, Ctrl+←/→ nudge \u00b1100ms, Enter = Set"
+             @keydown=${(e: KeyboardEvent) => this.onLoopBoxKeydown("end", e)}>
           <label>Loop End:</label>
           <span class="loop-value">${this.loopEnd.toFixed(2)}s</span>
-          <button class="nudge" title="-100ms" @click=${() => this.nudgeLoop("end", -0.1)}>◄◄</button>
-          <button class="nudge" title="-10ms" @click=${() => this.nudgeLoop("end", -0.01)}>◄</button>
-          <button class="nudge" title="Set to current position"
+          <button class="nudge" tabindex="-1" title="Nudge \u2212100ms (Ctrl+\u2190)"
+            @mousedown=${this.onLoopBtnMousedown}
+            @click=${() => this.nudgeLoop("end", -0.1)}>\u25c4\u25c4</button>
+          <button class="nudge" tabindex="-1" title="Nudge \u221210ms (\u2190)"
+            @mousedown=${this.onLoopBtnMousedown}
+            @click=${() => this.nudgeLoop("end", -0.01)}>\u25c4</button>
+          <button class="nudge set-btn" tabindex="-1" title="Set to current position (Enter)"
+            @mousedown=${this.onLoopBtnMousedown}
             @click=${() => this.setLoopFromCurrent("end")}>Set</button>
-          <button class="nudge" title="+10ms" @click=${() => this.nudgeLoop("end", 0.01)}>►</button>
-          <button class="nudge" title="+100ms" @click=${() => this.nudgeLoop("end", 0.1)}>►►</button>
+          <button class="nudge" tabindex="-1" title="Nudge +10ms (\u2192)"
+            @mousedown=${this.onLoopBtnMousedown}
+            @click=${() => this.nudgeLoop("end", 0.01)}>\u25ba</button>
+          <button class="nudge" tabindex="-1" title="Nudge +100ms (Ctrl+\u2192)"
+            @mousedown=${this.onLoopBtnMousedown}
+            @click=${() => this.nudgeLoop("end", 0.1)}>\u25ba\u25ba</button>
         </div>
         <div class="loop-status ${this.loopEnd > 0 ? "active" : "inactive"}">
           ${this.loopEnd > 0 ? "Looping active" : "Looping inactive (set Loop End to enable)"}
@@ -518,6 +540,34 @@ export class SongPlay extends LitElement {
 
   // -- Loop controls --------------------------------------------------------
 
+  /** Handle keyboard shortcuts when a loop box has focus. */
+  private onLoopBoxKeydown(which: "start" | "end", e: KeyboardEvent) {
+    switch (e.key) {
+      case "ArrowLeft":
+        e.preventDefault();
+        e.stopPropagation();
+        this.nudgeLoop(which, e.ctrlKey ? -0.1 : -0.01);
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        e.stopPropagation();
+        this.nudgeLoop(which, e.ctrlKey ? 0.1 : 0.01);
+        break;
+      case "Enter":
+        e.preventDefault();
+        e.stopPropagation();
+        this.setLoopFromCurrent(which);
+        break;
+    }
+  }
+
+  /** Prevent buttons inside loop boxes from stealing focus; focus the box instead. */
+  private onLoopBtnMousedown(e: Event) {
+    e.preventDefault();
+    const box = (e.target as HTMLElement).closest(".loop-box") as HTMLElement | null;
+    box?.focus();
+  }
+
   private nudgeLoop(which: "start" | "end", delta: number) {
     if (which === "start") {
       this.loopStart = Math.max(0, this.loopStart + delta);
@@ -720,15 +770,26 @@ export class SongPlay extends LitElement {
       margin: 16px 0;
     }
 
-    .loop-row {
+    .loop-box {
       display: flex;
       align-items: center;
       gap: 8px;
       margin-bottom: 8px;
       font-size: 0.9rem;
+      padding: 8px;
+      border: 2px solid var(--cb-border);
+      border-radius: 6px;
+      outline: none;
+      cursor: default;
+      transition: border-color 0.15s;
     }
 
-    .loop-row label {
+    .loop-box:focus {
+      border-color: var(--cb-accent);
+      box-shadow: 0 0 0 1px var(--cb-accent);
+    }
+
+    .loop-box label {
       width: 80px;
     }
 
