@@ -1,4 +1,4 @@
-const CACHE_NAME = "callerbuddy-v0.1.0-pre.7";
+const CACHE_NAME = "callerbuddy-v0.1.0-pre.8";
 const CACHE_URLS = ["/","/index.html"];
 
 self.addEventListener("install", (event) => {
