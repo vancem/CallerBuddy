@@ -33,3 +33,6 @@ dist-ssr
 # App-generated data files (created when CallerBuddyRoot is inside the project)
 songs.json
 settings.json
+
+# Backup directories
+bak/

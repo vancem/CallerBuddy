@@ -286,6 +286,7 @@ export class PlaylistEditor extends LitElement {
 
   private addToPlaylist(song: Song) {
     callerBuddy.state.addToPlaylist(song);
+    this.filterText = "";
   }
 
   /**
@@ -294,6 +295,7 @@ export class PlaylistEditor extends LitElement {
    */
   private async playSongNow(song: Song) {
     callerBuddy.state.addToPlaylist(song);
+    this.filterText = "";
     callerBuddy.openPlaylistPlay();
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = "wait";
@@ -328,6 +330,7 @@ export class PlaylistEditor extends LitElement {
       callerBuddy.state.addToPlaylist(this.contextMenuSong);
     }
     this.contextMenuSong = null;
+    this.filterText = "";
   }
 
   private async playSongFromCtx() {

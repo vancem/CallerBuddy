@@ -374,7 +374,7 @@ export class SongPlay extends LitElement {
           <span class="time-value">${formatTime(this.totalElapsed)}</span>
         </div>
         <div class="time-row clock-row">
-          <span class="time-label">Clock</span>
+          <span class="time-label">Time</span>
           <span class="time-value clock">${this.clockTime}</span>
         </div>
       </div>

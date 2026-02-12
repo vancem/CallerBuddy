@@ -14,6 +14,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { DEFAULT_BREAK_TIMER_MINUTES } from "../models/settings.js";
 import { StateEvents } from "../services/app-state.js";
+import { isSingingCall } from "../models/song.js";
 import { formatCountdown, formatClock } from "../utils/format.js";
 
 @customElement("playlist-play")
@@ -128,6 +129,9 @@ export class PlaylistPlay extends LitElement {
                               callerBuddy.state.setSongPlayed(song.musicFile, !played)}
                           />
                         </label>
+                        <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
+                          >${isSingingCall(song) ? "♪" : "♫"}</span
+                        >
                         <span class="pl-title">${song.title}</span>
                       </li>
                     `;
@@ -399,6 +403,20 @@ export class PlaylistPlay extends LitElement {
       cursor: pointer;
     }
 
+    .pl-type {
+      width: 16px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .pl-type.singing {
+      color: var(--cb-singing);
+    }
+
+    .pl-type.patter {
+      color: var(--cb-patter);
+    }
+
     .pl-title {
       flex: 1;
       overflow: hidden;
@@ -535,8 +553,7 @@ export class PlaylistPlay extends LitElement {
 
     .break-section .time-label {
       width: 60px;
-      font-size: 0.8rem;
-      color: var(--cb-fg-secondary);
+      font-size: 0.9rem;
     }
 
     .break-section .time-value {
