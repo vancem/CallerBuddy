@@ -135,6 +135,7 @@ export class PlaylistEditor extends LitElement {
               <thead>
                 <tr>
                   <th></th>
+                  <th></th>
                   <th class="sortable" @click=${() => this.toggleSort("title")}>
                     Title ${this.sortIndicator("title")}
                   </th>
@@ -149,7 +150,6 @@ export class PlaylistEditor extends LitElement {
                   </th>
                   <th>Type</th>
                   <th>BPM</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -160,6 +160,13 @@ export class PlaylistEditor extends LitElement {
                       @dblclick=${() => this.addToPlaylist(song)}
                       title="Double-click or right-click to add to playlist"
                     >
+                      <td class="play-cell">
+                        <button
+                          class="icon-btn"
+                          title="Play now"
+                          @click=${() => this.playSongNow(song)}
+                        >▶</button>
+                      </td>
                       <td class="add-cell">
                         <button
                           class="icon-btn add-btn"
@@ -180,13 +187,6 @@ export class PlaylistEditor extends LitElement {
                       <td class="bpm-cell"
                         title="${song.originalTempo > 0 ? `Detected tempo: ${song.originalTempo} BPM` : "BPM not yet detected"}"
                       >${song.originalTempo > 0 ? song.originalTempo : "—"}</td>
-                      <td class="play-cell">
-                        <button
-                          class="icon-btn"
-                          title="Play now"
-                          @click=${() => this.playSongNow(song)}
-                        >▶</button>
-                      </td>
                     </tr>
                   `,
                 )}
