@@ -4,10 +4,10 @@
  */
 
 /** Canonical default for break timer duration (minutes). Used by defaultSettings() and UI fallbacks. */
-export const DEFAULT_BREAK_TIMER_MINUTES = 0.1;
+export const DEFAULT_BREAK_TIMER_MINUTES = 5;
 
 export interface Settings {
-  /** Break timer default duration in minutes (decimal allowed). Default 0.1 for testing. */
+  /** Break timer default duration in minutes (decimal allowed). Default 5. */
   breakTimerMinutes: number;
   /** Patter timer default duration in minutes. Default 5. */
   patterTimerMinutes: number;
