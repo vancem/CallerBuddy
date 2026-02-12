@@ -146,7 +146,7 @@ function main() {
   console.log(`Test data generated in: ${OUT_DIR}`);
   console.log("Files:");
   fs.readdirSync(OUT_DIR).forEach((f) => console.log("  " + f));
-  console.log("\nPoint CallerBuddyRoot at this folder to test the app.");
+  console.log("\nPoint CallerBuddy at this folder to test the app.");
 }
 
 main();

@@ -1,7 +1,7 @@
 /**
  * Welcome / initialization screen.
  *
- * Shown on first launch or when the user wants to change CallerBuddyRoot.
+ * Shown on first launch or when the user wants to change the CallerBuddy folder.
  * Explains the app and provides a folder picker button.
  *
  * When a folder is chosen, CallerBuddy scans it for songs and opens the
@@ -44,7 +44,7 @@ export class WelcomeView extends LitElement {
         </p>
 
         <p class="explanation">
-          Choose the folder you want to use as your CallerBuddy root. You
+          Choose the folder you want to use as your CallerBuddy folder. You
           only need to pick it once; the app will remember your choice.
         </p>
 
@@ -53,7 +53,7 @@ export class WelcomeView extends LitElement {
           @click=${this.pickFolder}
           ?disabled=${this.loading}
         >
-          ${this.loading ? "Loading…" : "Choose CallerBuddyRoot folder"}
+          ${this.loading ? "Loading…" : "Choose CallerBuddy folder"}
         </button>
 
         ${this.pickerError

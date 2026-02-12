@@ -118,7 +118,7 @@ export class AppShell extends LitElement {
       <div class="menu-overlay" @click=${this.closeMenu}></div>
       <div class="menu" role="menu">
         <button class="menu-item" role="menuitem" @click=${this.onWelcome}>
-          Set CallerBuddyRoot folder…
+          Set CallerBuddy folder…
         </button>
         <hr />
         <div class="menu-item version" role="menuitem">
@@ -151,9 +151,14 @@ export class AppShell extends LitElement {
     this.showMenu = false;
   }
 
-  private onWelcome() {
+  private async onWelcome() {
     this.showMenu = false;
-    callerBuddy.state.openSingletonTab(TabType.Welcome, "Welcome", false);
+    try {
+      const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+      await callerBuddy.setRoot(handle);
+    } catch {
+      // user cancelled or picker unavailable — do nothing
+    }
   }
 
   static styles = css`
