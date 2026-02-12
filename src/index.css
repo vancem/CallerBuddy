@@ -66,10 +66,10 @@
   --cb-tab-active-fg: var(--cb-fg);
   --cb-tab-active-bg: var(--cb-bg);
 
-  /* ── Progress slider ──────────────────────────────────────────────── */
-  --cb-progress:     hsla(var(--cb-hue), var(--cb-sat), 42%, 0.25);
-  --cb-segment-even: rgba(0, 0, 0, 0.05);
-  --cb-segment-odd:  rgba(0, 0, 0, 0.02);
+  /* ── Progress slider ────────────────────────────────────────────── */
+  --cb-progress:     hsla(var(--cb-hue), var(--cb-sat), 35%, 0.70);
+  --cb-segment-even: rgba(0, 0, 0, 35%);
+  --cb-segment-odd:  rgba(0, 0, 0, 10%);
 
   /* ── Typography (unchanged) ───────────────────────────────────────── */
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,

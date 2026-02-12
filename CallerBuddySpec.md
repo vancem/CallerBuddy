@@ -271,17 +271,15 @@ editor pointing a the CallerBuddyRoot.
 Like the file explorer, in addition to songs in the right list, there can be
 folders. These correspond to folders in the playlist editor's folder. You can
 open these folders and change the playlist's folder to the folder the user
-indicated. There should be a .. folder in the list (assuming you can go to the
-parent folder, depending on how the folder APIs work the playlist may need to
-keep track of its parent, and only show the .. folder when it is possible to do
-so) You can also right click on the folder and open a new tab (playlist editor)
-with the new folder to the right of the current playlist editor but in the same
-tab (thus you can have two editors open at the same time). The two editors are
-able to close independently of one another. Thus they each probably have a title
-bar (which is the name of the folder they represent, and an X icon to close
-each). They will both be operating on the same playlist (there is only one per
-app). Playlist editors don't close automatically they need to be closed by the
-user (the x on the tab or title bar).
+indicated. Note that you do NOT have to support .. (parent) directories if that
+is problematic. You can also right click on the folder and open a new tab
+(playlist editor) with the new folder to the right of the current playlist
+editor but in the same tab (thus you can have two editors open at the same
+time). The two editors are able to close independently of one another. Thus they
+each probably have a title bar (which is the name of the folder they represent,
+and an X icon to close each). They will both be operating on the same playlist
+(there is only one per app). Playlist editors don't close automatically they
+need to be closed by the user (the x on the tab or title bar).
 
 There should be a button near (above) the playlist that indicates 'play'
 (probably a triangle to the right) clicking that will bring you to the
