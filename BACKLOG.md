@@ -67,22 +67,22 @@ rationale.
   - Rationale: Web Audio API alone cannot independently change pitch and tempo
     (playbackRate changes both together; detune is broken on Safari/Firefox).
     SoundTouchJS is a JS port of the proven SoundTouch C++ library that uses
-    WSOLA (Waveform Similarity Overlap-Add) for high-quality time stretching.
-    It is lightweight (~25 KB gzipped in the bundle), zero-dependency,
-    purpose-built for exactly this use case, and integrates cleanly with the
-    Web Audio graph via its PitchShifter wrapper.
+    WSOLA (Waveform Similarity Overlap-Add) for high-quality time stretching. It
+    is lightweight (~25 KB gzipped in the bundle), zero-dependency,
+    purpose-built for exactly this use case, and integrates cleanly with the Web
+    Audio graph via its PitchShifter wrapper.
   - Alternatives evaluated and rejected:
-    - **Tone.js** (MIT, 232K weekly downloads): Full DAW framework with
-      synths, effects, scheduling. Has pitch shifting but is massive overkill
-      for our needs (5.4 MB unpacked, 886 files). Would add unnecessary
-      complexity and bundle bloat.
+    - **Tone.js** (MIT, 232K weekly downloads): Full DAW framework with synths,
+      effects, scheduling. Has pitch shifting but is massive overkill for our
+      needs (5.4 MB unpacked, 886 files). Would add unnecessary complexity and
+      bundle bloat.
     - **soundtouch-ts** (LGPL-2.1, 13 stars): TypeScript port of the core
       SoundTouch algorithm but stripped-down, fewer utilities, no PitchShifter
       wrapper, much less maintained. Not ready for production use.
     - **Raw Web Audio API**: playbackRate changes pitch AND tempo together.
-      detune property is broken on Safari (not supported) and limited on
-      Firefox (max 1 octave range). Independent control requires implementing
-      WSOLA or phase-vocoder from scratch — enormous effort, error-prone.
+      detune property is broken on Safari (not supported) and limited on Firefox
+      (max 1 octave range). Independent control requires implementing WSOLA or
+      phase-vocoder from scratch — enormous effort, error-prone.
     - **Rubber Band (WASM)**: High-quality C++ library but no maintained JS/WASM
       port exists. Would require building from source with Emscripten, complex
       integration. Overkill for our needs.
@@ -92,29 +92,28 @@ rationale.
     - If audio quality on extreme pitch shifts (>4 half-steps) is poor, consider
       a phase-vocoder approach (Rubber Band WASM or similar).
     - If the LGPL-2.1 license becomes a concern for distribution, soundtouchjs
-      is used as an unmodified separate module (compliant with LGPL 6b), but
-      an MIT-licensed alternative could be sought.
+      is used as an unmodified separate module (compliant with LGPL 6b), but an
+      MIT-licensed alternative could be sought.
   - For future BPM detection (FUTURE.md), the web-audio-beat-detector package
     (MIT, TypeScript, ~42 KB) is a good fit. It can be added independently
     without replacing SoundTouchJS since they serve different purposes.
-- We will use web-audio-beat-detector (v8.2.35, MIT) for automatic BPM
-  detection of songs.
+- We will use web-audio-beat-detector (v8.2.35, MIT) for automatic BPM detection
+  of songs.
   - Rationale: The library uses a Web Worker internally so analysis doesn't
     block the main thread. It accepts an AudioBuffer and returns the estimated
     BPM. Works well for electronic/rhythmic music like square dance tracks.
-    Detection runs in the background after songs are loaded, processing one
-    song at a time (sequential, per design philosophy). Results are persisted
-    to songs.json so each song is only analyzed once. The detected BPM is used
-    as the reference for tempo adjustment calculations (replacing the default
-    128 BPM assumption) and displayed in both the playlist editor and song-play
-    UI.
+    Detection runs in the background after songs are loaded, processing one song
+    at a time (sequential, per design philosophy). Results are persisted to
+    songs.json so each song is only analyzed once. The detected BPM is used as
+    the reference for tempo adjustment calculations (replacing the default 128
+    BPM assumption) and displayed in both the playlist editor and song-play UI.
   - Analysis window: for songs >45 seconds, we analyze 30 seconds starting at
-    25% into the track (avoids intros/outros). Tempo search range is 90–170
-    BPM to match square dance music characteristics.
+    25% into the track (avoids intros/outros). Tempo search range is 90–170 BPM
+    to match square dance music characteristics.
   - Triggers to reconsider: if detection accuracy is poor for certain music
     styles, the tempo range or analysis window can be tuned. If the ~27 KB
-    gzipped addition to the bundle is a concern, detection could be made
-    opt-in rather than automatic.
+    gzipped addition to the bundle is a concern, detection could be made opt-in
+    rather than automatic.
 - We will use the File System Access API for accessing CallerBuddyRoot folder.
   - Rationale: This is the standard PWA approach for folder access. The API
     provides persistent permission handles that can be stored and reused across
@@ -348,7 +347,7 @@ rationale.
     noting as a potential concern if CallerBuddyRoot ever comes from an
     untrusted source. For V1, this is acceptable.
 - [] LOW: Should we handle the case where the CallerBuddy singleton's audio
-  context is suspended?
+  context is suspended ?
   - Browsers require a user gesture before playing audio. The WebAudioEngine
     calls context.resume() on play(), but if this fails, audio won't play. Need
     to verify this works reliably and add user-facing feedback if it doesn't.
