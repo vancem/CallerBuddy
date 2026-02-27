@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 
 // For GitHub Pages: set BASE_PATH to your repo name, e.g. BASE_PATH=/CallerBuddy
@@ -6,6 +7,9 @@ const base = basePath ? `/${basePath}/` : "/";
 
 export default defineConfig({
   base,
+  test: {
+    globals: true,
+  },
   server: {
     open: false, // use ctrl-click on the URL to open in browser
     watch: {
