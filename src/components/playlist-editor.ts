@@ -1,13 +1,17 @@
 /**
- * Playlist editor: browse songs, filter, and build a playlist.
+ * Playlist editor: browse songs in a folder, filter, and build a playlist.
+ *
+ * Each editor instance is self-contained: it owns its own directory handle,
+ * song list, and subfolder state. Multiple instances can coexist in separate
+ * tabs, all sharing the global playlist via AppState events.
  *
  * Layout:
  *  ┌─────────────┬──────────────────────────────────────┐
- *  │  Playlist   │  [Filter: ________________]          │
- *  │             │  ┌──────┬───────┬─────┬──────┐       │
- *  │  1. Song A  │  │Title │ Label │ Cat │ Rank │       │
- *  │  2. Song B  │  ├──────┼───────┼─────┼──────┤       │
- *  │  3. Song C  │  │ ...  │       │     │      │       │
+ *  │  Playlist   │  Root > subfolder1 > subfolder2      │
+ *  │             │  [Filter: ________________]          │
+ *  │  1. Song A  │  ┌──────┬───────┬─────┬──────┐       │
+ *  │  2. Song B  │  │📁 sub│       │     │      │       │
+ *  │  3. Song C  │  │Title │ Label │ Cat │ Rank │       │
  *  │             │  └──────┴───────┴─────┴──────┘       │
  *  │  [▶ Play]   │                                      │
  *  └─────────────┴──────────────────────────────────────┘
@@ -16,26 +20,56 @@
  */
 
 import { LitElement, css, html, nothing } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { StateEvents } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import type { Song } from "../models/song.js";
+import { loadAndMergeSongs } from "../services/song-library.js";
+import { listDirectory, type DirEntry } from "../services/file-system-service.js";
+import { log } from "../services/logger.js";
 
 type SortField = "title" | "label" | "category" | "rank" | "dateAdded";
 type SortDir = "asc" | "desc";
 
+/** Discriminated union for the context menu target (song or folder). */
+type ContextTarget =
+  | { kind: "song"; song: Song }
+  | { kind: "folder"; entry: DirEntry };
+
 @customElement("playlist-editor")
 export class PlaylistEditor extends LitElement {
+  /**
+   * The directory handle for the folder this editor is browsing.
+   * Set by app-shell from TabInfo.data when the tab is rendered.
+   */
+  @property({ attribute: false })
+  dirHandle: FileSystemDirectoryHandle | null = null;
+
   @state() private filterText = "";
   @state() private sortField: SortField = "title";
   @state() private sortDir: SortDir = "asc";
-  @state() private contextMenuSong: Song | null = null;
+  @state() private contextTarget: ContextTarget | null = null;
   @state() private contextMenuPos = { x: 0, y: 0 };
+
+  /** Songs loaded from the current folder's songs.json + disk scan. */
+  @state() private localSongs: Song[] = [];
+
+  /** Subdirectories in the current folder. */
+  @state() private subfolders: DirEntry[] = [];
+
+  /**
+   * Navigation stack for breadcrumb traversal. stack[0] is the initial
+   * folder this editor was opened with (the "root" for this editor).
+   * The current folder is always the last entry.
+   */
+  private handleStack: FileSystemDirectoryHandle[] = [];
+
+  /** True while the initial (or navigated) folder is being scanned. */
+  @state() private loading = false;
 
   connectedCallback() {
     super.connectedCallback();
-    callerBuddy.state.addEventListener(StateEvents.SONGS_LOADED, this.refresh);
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     document.addEventListener("keydown", this._boundKeydown);
   }
@@ -43,7 +77,6 @@ export class PlaylistEditor extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this._boundKeydown);
-    callerBuddy.state.removeEventListener(StateEvents.SONGS_LOADED, this.refresh);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
   }
 
@@ -62,9 +95,91 @@ export class PlaylistEditor extends LitElement {
     this.requestUpdate();
   };
 
+  // -- Folder loading -------------------------------------------------------
+
+  /**
+   * Respond to the dirHandle property being set or changed by the parent.
+   * Resets navigation and loads the new folder.
+   */
+  protected override updated(changed: Map<PropertyKey, unknown>) {
+    if (changed.has("dirHandle") && this.dirHandle) {
+      const prev = changed.get("dirHandle") as FileSystemDirectoryHandle | null;
+      if (prev !== this.dirHandle) {
+        this.initFolder(this.dirHandle);
+      }
+    }
+  }
+
+  private async initFolder(handle: FileSystemDirectoryHandle): Promise<void> {
+    this.handleStack = [handle];
+    await this.loadCurrentFolder();
+  }
+
+  private async loadCurrentFolder(): Promise<void> {
+    const handle = this.currentHandle;
+    if (!handle) return;
+
+    this.loading = true;
+    try {
+      // Sequential: concurrent use of the same directory handle can hang
+      // (handle.values() is not safe to call concurrently).
+      const songs = await loadAndMergeSongs(handle);
+      const entries = await listDirectory(handle);
+
+      for (const song of songs) {
+        song.dirHandle = handle;
+      }
+
+      this.localSongs = songs;
+      this.subfolders = entries.filter((e) => e.kind === "directory");
+
+      // Kick off background BPM detection for this folder's songs
+      callerBuddy.detectBpmForSongs(handle, songs, (updated) => {
+        this.localSongs = [...updated];
+      });
+    } catch (err) {
+      log.error(`Failed to load folder "${handle.name}":`, err);
+      this.localSongs = [];
+      this.subfolders = [];
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  private get currentHandle(): FileSystemDirectoryHandle | null {
+    return this.handleStack.length > 0
+      ? this.handleStack[this.handleStack.length - 1]
+      : null;
+  }
+
+  // -- Folder navigation ----------------------------------------------------
+
+  private async navigateInto(folderName: string): Promise<void> {
+    const parent = this.currentHandle;
+    if (!parent) return;
+    try {
+      const child = await parent.getDirectoryHandle(folderName);
+      this.handleStack = [...this.handleStack, child];
+      this.filterText = "";
+      await this.loadCurrentFolder();
+    } catch (err) {
+      log.error(`Failed to open subfolder "${folderName}":`, err);
+    }
+  }
+
+  private async navigateTo(stackIndex: number): Promise<void> {
+    if (stackIndex < 0 || stackIndex >= this.handleStack.length) return;
+    this.handleStack = this.handleStack.slice(0, stackIndex + 1);
+    this.filterText = "";
+    await this.loadCurrentFolder();
+  }
+
+  // -- Render ---------------------------------------------------------------
+
   render() {
     const songs = this.getFilteredSongs();
     const playlist = callerBuddy.state.playlist;
+
 
     return html`
       <div class="editor" @click=${this.closeContextMenu}>
@@ -118,6 +233,7 @@ export class PlaylistEditor extends LitElement {
 
         <!-- Right: Song browser -->
         <section class="browser-panel">
+          ${this.renderBreadcrumb()}
           <div class="browser-toolbar">
             <input
               type="text"
@@ -127,110 +243,234 @@ export class PlaylistEditor extends LitElement {
               @input=${this.onFilterInput}
               @keydown=${this.onFilterKeydown}
             />
-            <span class="song-count">${songs.length} songs</span>
+            <span class="song-count">
+              ${this.subfolders.length > 0
+                ? `${this.subfolders.length} folders, `
+                : ""}${songs.length} songs
+            </span>
           </div>
 
           <div class="table-wrapper">
-            <table class="song-table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th></th>
-                  <th class="sortable" @click=${() => this.toggleSort("title")}>
-                    Title ${this.sortIndicator("title")}
-                  </th>
-                  <th class="sortable" @click=${() => this.toggleSort("label")}>
-                    Label ${this.sortIndicator("label")}
-                  </th>
-                  <th class="sortable" @click=${() => this.toggleSort("category")}>
-                    Category ${this.sortIndicator("category")}
-                  </th>
-                  <th class="sortable" @click=${() => this.toggleSort("rank")}>
-                    Rank ${this.sortIndicator("rank")}
-                  </th>
-                  <th>Type</th>
-                  <th>BPM</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${songs.map(
-                  (song) => html`
-                    <tr
-                      @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, song)}
-                      @dblclick=${() => this.addToPlaylist(song)}
-                      title="Double-click or right-click to add to playlist"
-                    >
-                      <td class="play-cell">
-                        <button
-                          class="icon-btn"
-                          title="Play now"
-                          @click=${() => this.playSongNow(song)}
-                        >▶</button>
-                      </td>
-                      <td class="add-cell">
-                        <button
-                          class="icon-btn add-btn"
-                          title="Add to playlist"
-                          @click=${() => this.addToPlaylist(song)}
-                        >+</button>
-                      </td>
-                      <td>${song.title}</td>
-                      <td class="label-cell">${song.label}</td>
-                      <td>${song.category}</td>
-                      <td class="rank-cell">${song.rank}</td>
-                      <td class="type-cell">
-                        <span
-                          class="${isSingingCall(song) ? "singing" : "patter"}"
-                          title="${isSingingCall(song) ? "Singing call" : "Patter (no lyrics)"}"
-                        >${isSingingCall(song) ? "Singing" : "Patter"}</span>
-                      </td>
-                      <td class="bpm-cell"
-                        title="${song.originalTempo > 0 ? `Detected tempo: ${song.originalTempo} BPM` : "BPM not yet detected"}"
-                      >${song.originalTempo > 0 ? song.originalTempo : "—"}</td>
+            ${this.loading
+              ? html`<p class="muted table-empty">Loading…</p>`
+              : html`
+                <table class="song-table">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th></th>
+                      <th class="sortable" @click=${() => this.toggleSort("title")}>
+                        Title ${this.sortIndicator("title")}
+                      </th>
+                      <th class="sortable" @click=${() => this.toggleSort("label")}>
+                        Label ${this.sortIndicator("label")}
+                      </th>
+                      <th class="sortable" @click=${() => this.toggleSort("category")}>
+                        Category ${this.sortIndicator("category")}
+                      </th>
+                      <th class="sortable" @click=${() => this.toggleSort("rank")}>
+                        Rank ${this.sortIndicator("rank")}
+                      </th>
+                      <th>Type</th>
+                      <th>BPM</th>
                     </tr>
-                  `,
-                )}
-              </tbody>
-            </table>
-            ${songs.length === 0
-              ? html`<p class="muted table-empty">
-                  ${this.filterText
-                    ? "No songs match the filter."
-                    : "No songs found. Make sure your CallerBuddy folder contains MP3 files."}
-                </p>`
-              : nothing}
+                  </thead>
+                  <tbody>
+                    ${this.renderFolderRows()}
+                    ${songs.map(
+                      (song) => html`
+                        <tr
+                          @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "song", song })}
+                          @dblclick=${() => this.addToPlaylist(song)}
+                          title="Double-click or right-click to add to playlist"
+                        >
+                          <td class="play-cell">
+                            <button
+                              class="icon-btn"
+                              title="Play now"
+                              @click=${() => this.playSongNow(song)}
+                            >▶</button>
+                          </td>
+                          <td class="add-cell">
+                            <button
+                              class="icon-btn add-btn"
+                              title="Add to playlist"
+                              @click=${() => this.addToPlaylist(song)}
+                            >+</button>
+                          </td>
+                          <td>${song.title}</td>
+                          <td class="label-cell">${song.label}</td>
+                          <td>${song.category}</td>
+                          <td class="rank-cell">${song.rank}</td>
+                          <td class="type-cell">
+                            <span
+                              class="${isSingingCall(song) ? "singing" : "patter"}"
+                              title="${isSingingCall(song) ? "Singing call" : "Patter (no lyrics)"}"
+                            >${isSingingCall(song) ? "Singing" : "Patter"}</span>
+                          </td>
+                          <td class="bpm-cell"
+                            title="${song.originalTempo > 0 ? `Detected tempo: ${song.originalTempo} BPM` : "BPM not yet detected"}"
+                          >${song.originalTempo > 0 ? song.originalTempo : "—"}</td>
+                        </tr>
+                      `,
+                    )}
+                  </tbody>
+                </table>
+                ${songs.length === 0 && this.subfolders.length === 0
+                  ? html`<p class="muted table-empty">
+                      ${this.filterText
+                        ? "No songs match the filter."
+                        : "No songs found. Make sure your CallerBuddy folder contains MP3 files."}
+                    </p>`
+                  : nothing}
+              `}
           </div>
         </section>
 
         <!-- Context menu -->
-        ${this.contextMenuSong
-          ? html`
-              <div
-                class="context-menu"
-                style="left:${this.contextMenuPos.x}px; top:${this.contextMenuPos.y}px"
-                role="menu"
-              >
-                <button class="menu-item" role="menuitem"
-                  @click=${() => this.addToPlaylistFromCtx("end")}
-                >Add to end of playlist</button>
-                <button class="menu-item" role="menuitem"
-                  @click=${() => this.addToPlaylistFromCtx("start")}
-                >Add to start of playlist</button>
-                <hr />
-                <button class="menu-item" role="menuitem"
-                  @click=${() => this.playSongFromCtx()}
-                >Play now</button>
-              </div>
-            `
-          : nothing}
+        ${this.renderContextMenu()}
       </div>
     `;
+  }
+
+  // -- Breadcrumb -----------------------------------------------------------
+
+  private renderBreadcrumb() {
+    if (this.handleStack.length <= 1) return nothing;
+
+    return html`
+      <nav class="breadcrumb" aria-label="Folder navigation">
+        ${this.handleStack.map(
+          (handle, i) => html`
+            ${i > 0 ? html`<span class="breadcrumb-sep">›</span>` : nothing}
+            ${i < this.handleStack.length - 1
+              ? html`<button
+                  class="breadcrumb-link"
+                  @click=${() => this.navigateTo(i)}
+                  title="Navigate to ${handle.name}"
+                >${handle.name}</button>`
+              : html`<span class="breadcrumb-current">${handle.name}</span>`}
+          `,
+        )}
+      </nav>
+    `;
+  }
+
+  // -- Folder rows ----------------------------------------------------------
+
+  private renderFolderRows() {
+    if (this.subfolders.length === 0) return nothing;
+
+    return this.subfolders.map(
+      (entry) => html`
+        <tr
+          class="folder-row"
+          @click=${() => this.navigateInto(entry.name)}
+          @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "folder", entry })}
+          title="Click to open, right-click for options"
+        >
+          <td class="folder-icon-cell" colspan="2">📁</td>
+          <td colspan="6" class="folder-name">${entry.name}</td>
+        </tr>
+      `,
+    );
+  }
+
+  // -- Context menu ---------------------------------------------------------
+
+  private renderContextMenu() {
+    if (!this.contextTarget) return nothing;
+
+    if (this.contextTarget.kind === "song") {
+      return html`
+        <div
+          class="context-menu"
+          style="left:${this.contextMenuPos.x}px; top:${this.contextMenuPos.y}px"
+          role="menu"
+        >
+          <button class="menu-item" role="menuitem"
+            @click=${() => this.addToPlaylistFromCtx("end")}
+          >Add to end of playlist</button>
+          <button class="menu-item" role="menuitem"
+            @click=${() => this.addToPlaylistFromCtx("start")}
+          >Add to start of playlist</button>
+          <hr />
+          <button class="menu-item" role="menuitem"
+            @click=${() => this.playSongFromCtx()}
+          >Play now</button>
+        </div>
+      `;
+    }
+
+    // Folder context menu
+    const folderName = this.contextTarget.entry.name;
+    return html`
+      <div
+        class="context-menu"
+        style="left:${this.contextMenuPos.x}px; top:${this.contextMenuPos.y}px"
+        role="menu"
+      >
+        <button class="menu-item" role="menuitem"
+          @click=${() => this.navigateIntoFromCtx(folderName)}
+        >Open folder</button>
+        <button class="menu-item" role="menuitem"
+          @click=${() => this.openFolderInNewTabFromCtx(folderName)}
+        >Open in new tab</button>
+      </div>
+    `;
+  }
+
+  private onRowContextMenu(e: MouseEvent, target: ContextTarget) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.contextTarget = target;
+    this.contextMenuPos = { x: e.clientX, y: e.clientY };
+  }
+
+  private closeContextMenu() {
+    this.contextTarget = null;
+  }
+
+  private async navigateIntoFromCtx(folderName: string) {
+    this.contextTarget = null;
+    await this.navigateInto(folderName);
+  }
+
+  private async openFolderInNewTabFromCtx(folderName: string) {
+    this.contextTarget = null;
+    const parent = this.currentHandle;
+    if (!parent) return;
+    try {
+      const child = await parent.getDirectoryHandle(folderName);
+      await callerBuddy.openFolderTab(child, folderName);
+    } catch (err) {
+      log.error(`Failed to open subfolder "${folderName}" in new tab:`, err);
+    }
+  }
+
+  private addToPlaylistFromCtx(position: "start" | "end") {
+    if (!this.contextTarget || this.contextTarget.kind !== "song") return;
+    const song = this.contextTarget.song;
+    if (position === "start") {
+      callerBuddy.state.insertAtStartOfPlaylist(song);
+    } else {
+      callerBuddy.state.addToPlaylist(song);
+    }
+    this.contextTarget = null;
+    this.filterText = "";
+  }
+
+  private async playSongFromCtx() {
+    if (!this.contextTarget || this.contextTarget.kind !== "song") return;
+    const song = this.contextTarget.song;
+    this.contextTarget = null;
+    await this.playSongNow(song);
   }
 
   // -- Filtering and sorting ------------------------------------------------
 
   private getFilteredSongs(): Song[] {
-    let songs = [...callerBuddy.state.songs];
+    let songs = [...this.localSongs];
 
     if (this.filterText) {
       const lower = this.filterText.toLowerCase();
@@ -310,36 +550,6 @@ export class PlaylistEditor extends LitElement {
     callerBuddy.openPlaylistPlay();
   }
 
-  // -- Context menu ---------------------------------------------------------
-
-  private onRowContextMenu(e: MouseEvent, song: Song) {
-    e.preventDefault();
-    this.contextMenuSong = song;
-    this.contextMenuPos = { x: e.clientX, y: e.clientY };
-  }
-
-  private closeContextMenu() {
-    this.contextMenuSong = null;
-  }
-
-  private addToPlaylistFromCtx(position: "start" | "end") {
-    if (!this.contextMenuSong) return;
-    if (position === "start") {
-      callerBuddy.state.insertAtStartOfPlaylist(this.contextMenuSong);
-    } else {
-      callerBuddy.state.addToPlaylist(this.contextMenuSong);
-    }
-    this.contextMenuSong = null;
-    this.filterText = "";
-  }
-
-  private async playSongFromCtx() {
-    if (!this.contextMenuSong) return;
-    const song = this.contextMenuSong;
-    this.contextMenuSong = null;
-    await this.playSongNow(song);
-  }
-
   static styles = css`
     :host {
       display: block;
@@ -417,6 +627,43 @@ export class PlaylistEditor extends LitElement {
       display: flex;
       gap: 8px;
       margin-top: 8px;
+    }
+
+    /* -- Breadcrumb -------------------------------------------------------- */
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      border-bottom: 1px solid var(--cb-border);
+      background: var(--cb-panel-bg);
+      flex-wrap: wrap;
+    }
+
+    .breadcrumb-link {
+      background: none;
+      border: none;
+      color: var(--cb-accent);
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+
+    .breadcrumb-link:hover {
+      background: var(--cb-hover);
+      text-decoration: underline;
+    }
+
+    .breadcrumb-current {
+      font-weight: 600;
+      padding: 2px 4px;
+    }
+
+    .breadcrumb-sep {
+      color: var(--cb-fg-tertiary);
     }
 
     /* -- Song browser panel ------------------------------------------------ */
@@ -504,6 +751,27 @@ export class PlaylistEditor extends LitElement {
     .song-table tbody tr:hover {
       background: var(--cb-hover);
     }
+
+    /* -- Folder rows ------------------------------------------------------- */
+
+    .folder-row {
+      cursor: pointer;
+    }
+
+    .folder-row:hover {
+      background: var(--cb-hover);
+    }
+
+    .folder-icon-cell {
+      text-align: center;
+      font-size: 1rem;
+    }
+
+    .folder-name {
+      font-weight: 500;
+    }
+
+    /* -- Song cells -------------------------------------------------------- */
 
     .label-cell {
       color: var(--cb-fg-secondary);

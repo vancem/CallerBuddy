@@ -208,11 +208,14 @@ rationale.
   - The spec emphasizes keyboard usability (on-stage use). Need to add keyboard
     handlers for: play/pause (Space), seek (arrows), stop (Esc), volume (+/-),
     tab switching (Ctrl+Tab), etc. Shortcuts should appear in tooltips.
-- [] MEDIUM: Subfolder navigation in the playlist editor.
+- [x] MEDIUM: Subfolder navigation in the playlist editor.
   - The spec describes navigating into sub-folders of CallerBuddyRoot and
     opening additional editors in new tabs. Currently the editor only shows the
-    root folder contents. Need to add folder entry rendering, ".." navigation,
+    root folder contents. Need to add folder entry rendering 
     and "open in new tab" for sub-folders.
+  - DONE: Implemented click-to-navigate folders with breadcrumb navigation, and
+    open-in-new-tab via folder context menu. Side-by-side split pane deferred.
+    See AI_Logs/Summary.26-02-26.01.subfolderNavigation.md.
 - [] LOW: Help documentation tab.
   - The spec mentions a help tab displaying an HTML help document. This is a
     stub; the infrastructure is there (tab system supports it) but no help

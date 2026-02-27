@@ -37,6 +37,22 @@ export interface Song {
   originalTempo: number;
   /** Tempo adjustment in BPM (signed). Default 0 */
   deltaTempo: number;
+
+  /**
+   * Runtime-only: the directory handle containing this song's files.
+   * Set when songs are loaded by a playlist editor instance.
+   * NOT persisted to songs.json — stripped by saveSongsJson().
+   */
+  dirHandle?: FileSystemDirectoryHandle;
+}
+
+/**
+ * Strip runtime-only fields (dirHandle) from a Song for JSON serialization.
+ * Returns a shallow copy without non-persistable properties.
+ */
+export function songForPersistence(song: Song): Omit<Song, "dirHandle"> {
+  const { dirHandle: _, ...persistable } = song;
+  return persistable;
 }
 
 /** Supported music file extensions (lower-case, with dot). */

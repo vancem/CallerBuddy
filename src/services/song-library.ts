@@ -14,6 +14,7 @@ import {
   isLyricsFile,
   baseName,
   createSongFromFile,
+  songForPersistence,
 } from "../models/song.js";
 import {
   listDirectory,
@@ -89,12 +90,13 @@ export async function loadSongsJson(
   }
 }
 
-/** Save songs array to songs.json in the directory. */
+/** Save songs array to songs.json in the directory. Strips runtime-only fields. */
 export async function saveSongsJson(
   dirHandle: FileSystemDirectoryHandle,
   songs: Song[],
 ): Promise<void> {
-  const json = JSON.stringify(songs, null, 2);
+  const clean = songs.map(songForPersistence);
+  const json = JSON.stringify(clean, null, 2);
   await writeTextFile(dirHandle, SONGS_JSON, json);
   log.info(`Saved ${songs.length} songs to songs.json`);
 }

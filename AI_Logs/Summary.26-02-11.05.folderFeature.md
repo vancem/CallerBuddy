@@ -18,8 +18,10 @@ Summary of evaluation of the three subfolder-navigation features (MEDIUM backlog
 ### What's moderately hard
 
 - **The playlist editor needs new state: a `currentFolderHandle`.** Right now it has none — it just reads from the global `state.songs`. You'll need to add a folder handle (and probably a breadcrumb path for display), and when the user clicks a folder, you call `getDirectoryHandle()`, scan that folder, and update the editor's local song list. This is the core of the feature but it's well-scoped.
-- **Where do songs.json files live?** Today there's one `songs.json` at the root. If a user navigates into `subfolder/`, should that folder have its own `songs.json`? Or does the root one track everything with relative paths? The simplest answer for now: **one songs.json per folder that has MP3s**, which matches how `scanDirectory` + `loadAndMergeSongs` already work (they operate on a single directory handle). This means each folder is self-contained.
+- **Where do songs.json files live?** Today there's one `songs.json` at the root. If a user navigates into `subfolder/`, should that folder have its own `songs.json`? Or does the root one track everything with relative paths? The simplest answer for now: **one songs.json per folder that has MP3s**, which matches how `scanDirectory` + `loadAndMergeSongs` already work (they operate on a single directory handle). This means each folder is self-contained.  
+  - DECISION : each folder will have its own songs.json
 - **Song paths in the playlist.** When a song from a subfolder gets added to the playlist, you need enough information to find and play it later (you need the directory handle or a path). Today `Song.musicFile` is just a filename. You'd need to either store a relative path from the root, or stash the directory handle on the Song object. Storing the handle is simpler and more robust (no path reconstruction needed).
+- DECISION : either store a path from CallerBuddyRoot, or the handle, whatever is easier
 
 ### What's hard
 
@@ -44,6 +46,8 @@ Summary of evaluation of the three subfolder-navigation features (MEDIUM backlog
 ### What's moderately hard
 
 - **Switching from singleton to multi-instance tabs.** Today, `openSingletonTab(TabType.PlaylistEditor, ...)` ensures exactly one editor. You'd switch to `openTab()` instead and give each tab a unique ID (e.g., based on folder path). This is a small change in `caller-buddy.ts` and `app-state.ts`, but you need to think about: when do you prevent duplicates? (Probably: don't open two tabs for the same folder.)
+- Decision:  You do NOT need to provide a parent folder  mechanism (so . or .. entries) I would however like to avoid two open tabs to
+  the same folder.  Probably the parent Editor's folder entry keeps track of the child folder editor, so you just give it focus already created.
 - **Each tab needs its own component instance with its own state.** Currently `app-shell.ts` renders a single `<cb-playlist-editor>`. With multiple editor tabs, you need to render one per tab and pass the folder handle as a property. Lit handles this fine, but the rendering logic in `app-shell.ts` needs updating from a simple switch to a loop/map.
 - **Tab titles and identity.** Each tab needs to show the folder name. This already works via `TabInfo.title`, just needs to be set correctly.
 
@@ -69,13 +73,23 @@ Medium. The tab system changes are small, but refactoring songs from global to p
 ### What's moderately hard
 
 - **The shared playlist panel.** The spec says both editors operate on the same playlist and the playlist UI is on the left. If two editors are side-by-side, should there be one shared playlist panel on the left and two song browsers on the right? This is a layout/UX decision that changes the component structure. Today the playlist panel is inside `<cb-playlist-editor>`. You'd need to extract it into its own component, or have one editor "own" the playlist display while the other just has the song browser. Either way, it's a refactor of the editor's template.
+- DECISION: Each editor is one tab, and the playlist is inside that tab (thus if you have two editors you see the playlist in both (and it
+  udpates in both))  Thus when updates are made to the playlist multiple tabs may be affected.  If this is problematic or complex please bring it 
+  up and we can decide if a simpler alternative is called for.  
 - **The "within one tab" part.** The spec says you right-click a folder and it opens "to the right of the current playlist editor but in the same tab." This means one tab contains two editors with independent close buttons (X on a title bar). This is a layout container concept — a split pane or panel host inside a single tab. It's not rocket science but it's a new component that doesn't exist today.
+- DECISION: yes, I am looking for some sort of split pane UI.  I am flexible on its details, but ideally it is 'standard practice'.  
 
 ### What's hard
 
+- DECISION: if this feature is COMPLEX, then we should defer it for now.   If there are easy ways of making this easier to do later, 
+  great, do them, but this feature is not that important for the first version.   
+
 - **Responsive layout.** Two side-by-side editors each with a song table need horizontal space. On a laptop this is fine; on a phone it's essentially unusable. You'd need responsive breakpoints or a strategy for narrow screens (maybe fall back to separate tabs on mobile).
+- DECISION: the side-by-side is not likely to be used on the phone, we can disable it on the phone if makes things easier.  
 - **The shared-vs-separate playlist panel.** This is the biggest design question. The spec says "they will both be operating on the same playlist." If the playlist is shown once (shared left panel), the layout is: `[playlist | editor1 | editor2]`. If each has its own playlist view, they show the same data but take more space. The clean answer is probably: one shared playlist panel on the far left, extracted into its own component.
+- DECISION each playlist editor has a copy of the playlist (thus you might have this list visible in two editors simultaneously)
 - **Close semantics.** Each editor has its own title bar with an X. When one closes, the other expands to fill the space. When both close, the tab itself closes. This is manageable but needs thought.
+- DECISION: you should do what is easy here and follow patterns for split pane style UI.  
 
 ### Estimated scope
 

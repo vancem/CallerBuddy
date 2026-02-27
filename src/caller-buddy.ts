@@ -10,7 +10,7 @@
  * services and the UI layer.
  */
 
-import { AppState, StateEvents, TabType } from "./services/app-state.js";
+import { AppState, TabType } from "./services/app-state.js";
 import {
   storeRootHandle,
   loadRootHandle,
@@ -20,7 +20,7 @@ import {
   writeTextFile,
   fileExists,
 } from "./services/file-system-service.js";
-import { loadAndMergeSongs, saveSongsJson } from "./services/song-library.js";
+import { loadSongsJson, saveSongsJson } from "./services/song-library.js";
 import {
   WebAudioEngine,
   type AudioEngine,
@@ -102,23 +102,9 @@ export class CallerBuddy {
     await this.loadSettings();
     log.info("activateRoot: settings loaded");
 
-    log.info("activateRoot: loading and merging songs…");
-    const songs = await loadAndMergeSongs(handle);
-    log.info(`activateRoot: ${songs.length} songs loaded`);
-    this.state.setSongs(songs);
-
     log.info("activateRoot: opening playlist editor tab…");
-    this.state.openSingletonTab(
-      TabType.PlaylistEditor,
-      handle.name,
-      true,
-      { folderName: handle.name },
-    );
+    await this.state.openEditorTab(handle, handle.name);
     log.info("activateRoot: complete");
-
-    // Kick off background BPM detection for songs that don't have it yet.
-    // This runs after the UI is ready so it doesn't block the user.
-    this.detectBpmForAllSongs();
   }
 
   // -----------------------------------------------------------------------
@@ -160,29 +146,43 @@ export class CallerBuddy {
   // Song operations
   // -----------------------------------------------------------------------
 
-  /** Update a song's metadata and persist to songs.json. */
+  /**
+   * Update a song's metadata and persist to songs.json in the song's folder.
+   * Uses song.dirHandle to write to the correct folder's songs.json.
+   * Falls back to rootHandle if dirHandle is not set.
+   */
   async updateSong(song: Song): Promise<void> {
+    const handle = song.dirHandle ?? this.state.rootHandle;
+    if (!handle) return;
+
+    // Update in global songs array (backward compat for BPM detection callbacks)
     const idx = this.state.songs.findIndex(
       (s) => s.musicFile === song.musicFile,
     );
     if (idx >= 0) {
       this.state.songs[idx] = song;
-      this.state.emit(StateEvents.SONGS_LOADED);
     }
-    if (this.state.rootHandle) {
-      try {
-        await saveSongsJson(this.state.rootHandle, this.state.songs);
-      } catch (err) {
-        log.warn("Could not persist song update:", err);
+
+    try {
+      const folderSongs = await loadSongsJson(handle);
+      const folderIdx = folderSongs.findIndex(
+        (s) => s.musicFile === song.musicFile,
+      );
+      if (folderIdx >= 0) {
+        folderSongs[folderIdx] = song;
+        await saveSongsJson(handle, folderSongs);
       }
+    } catch (err) {
+      log.warn("Could not persist song update:", err);
     }
   }
 
   /** Read the lyrics file for a song. Returns the HTML/MD text or empty string. */
   async loadLyrics(song: Song): Promise<string> {
-    if (!song.lyricsFile || !this.state.rootHandle) return "";
+    const handle = song.dirHandle ?? this.state.rootHandle;
+    if (!song.lyricsFile || !handle) return "";
     try {
-      return await readTextFile(this.state.rootHandle, song.lyricsFile);
+      return await readTextFile(handle, song.lyricsFile);
     } catch (err) {
       log.warn(`Could not load lyrics for "${song.title}":`, err);
       return "";
@@ -191,8 +191,9 @@ export class CallerBuddy {
 
   /** Load and decode the audio data for a song, prepare the audio engine. */
   async loadSongAudio(song: Song): Promise<void> {
-    if (!this.state.rootHandle) return;
-    const data = await readBinaryFile(this.state.rootHandle, song.musicFile);
+    const handle = song.dirHandle ?? this.state.rootHandle;
+    if (!handle) return;
+    const data = await readBinaryFile(handle, song.musicFile);
     await this.audio.loadAudio(data);
     this.audio.setVolume(song.volume);
     this.audio.setLoopPoints(song.loopStartTime, song.loopEndTime);
@@ -201,79 +202,84 @@ export class CallerBuddy {
   }
 
   // -----------------------------------------------------------------------
-  // BPM detection (background)
+  // BPM detection (background, per-folder)
   // -----------------------------------------------------------------------
 
-  /** Whether a BPM detection pass is currently running. */
-  private bpmDetectionRunning = false;
+  /** Tracks which folders currently have BPM detection running (by handle name). */
+  private bpmDetectionActive = new Set<string>();
 
   /**
-   * Run BPM detection on all songs that have originalTempo === 0.
-   * Processes sequentially (one at a time) to avoid overloading the system.
-   * Results are persisted to songs.json after each successful detection.
+   * Run BPM detection for songs in a specific folder that have originalTempo === 0.
+   * Called by each playlist-editor instance after loading its folder.
    *
-   * This method is intentionally fire-and-forget: it logs errors and moves on.
-   * It does NOT block the UI or any other operation.
+   * @param dirHandle  The folder containing the songs' audio files.
+   * @param songs      The song list to analyze (mutated in place).
+   * @param onUpdate   Callback fired when any song's BPM is updated, receives
+   *                   the full (mutated) songs array so the editor can refresh.
    */
-  private async detectBpmForAllSongs(): Promise<void> {
-    if (this.bpmDetectionRunning) {
-      log.info("BPM detection already running, skipping duplicate request");
-      return;
-    }
-    const handle = this.state.rootHandle;
-    if (!handle) return;
-
-    const songsNeedingBpm = this.state.songs.filter(
-      (s) => s.originalTempo === 0,
-    );
-    if (songsNeedingBpm.length === 0) {
-      log.info("All songs already have BPM data");
+  async detectBpmForSongs(
+    dirHandle: FileSystemDirectoryHandle,
+    songs: Song[],
+    onUpdate: (songs: Song[]) => void,
+  ): Promise<void> {
+    const folderKey = dirHandle.name;
+    if (this.bpmDetectionActive.has(folderKey)) {
+      log.info(`BPM detection already running for "${folderKey}", skipping`);
       return;
     }
 
-    this.bpmDetectionRunning = true;
-    log.info(
-      `Starting background BPM detection for ${songsNeedingBpm.length} songs…`,
-    );
+    const needsBpm = songs.filter((s) => s.originalTempo === 0);
+    if (needsBpm.length === 0) {
+      log.info(`All songs in "${folderKey}" already have BPM data`);
+      return;
+    }
+
+    this.bpmDetectionActive.add(folderKey);
+    log.info(`Starting BPM detection for ${needsBpm.length} songs in "${folderKey}"…`);
 
     let detected = 0;
-    for (const song of songsNeedingBpm) {
+    for (const song of needsBpm) {
       try {
-        const audioData = await readBinaryFile(handle, song.musicFile);
+        const audioData = await readBinaryFile(dirHandle, song.musicFile);
         const bpm = await detectBPM(audioData);
         if (bpm > 0) {
           song.originalTempo = bpm;
           detected++;
           log.info(`BPM for "${song.title}": ${bpm}`);
-          // Update the song list in state so the UI can reflect the change
-          const idx = this.state.songs.findIndex(
-            (s) => s.musicFile === song.musicFile,
-          );
-          if (idx >= 0) {
-            this.state.songs[idx] = song;
-          }
+          onUpdate(songs);
         }
       } catch (err) {
         log.warn(`BPM detection failed for "${song.title}":`, err);
       }
     }
 
-    // Persist all results in a single write at the end
     if (detected > 0) {
       try {
-        this.state.emit(StateEvents.SONGS_LOADED);
-        await saveSongsJson(handle, this.state.songs);
-        log.info(
-          `BPM detection complete: ${detected}/${songsNeedingBpm.length} songs updated`,
-        );
+        await saveSongsJson(dirHandle, songs);
+        log.info(`BPM detection for "${folderKey}": ${detected}/${needsBpm.length} songs updated`);
       } catch (err) {
-        log.warn("Could not persist BPM results:", err);
+        log.warn(`Could not persist BPM results for "${folderKey}":`, err);
       }
     } else {
-      log.info("BPM detection complete: no songs could be analyzed");
+      log.info(`BPM detection for "${folderKey}": no songs could be analyzed`);
     }
 
-    this.bpmDetectionRunning = false;
+    this.bpmDetectionActive.delete(folderKey);
+  }
+
+  // -----------------------------------------------------------------------
+  // Folder tab management
+  // -----------------------------------------------------------------------
+
+  /**
+   * Open a subfolder in a new playlist editor tab.
+   * Prevents duplicate tabs for the same folder.
+   */
+  async openFolderTab(
+    dirHandle: FileSystemDirectoryHandle,
+    folderName: string,
+  ): Promise<void> {
+    await this.state.openEditorTab(dirHandle, folderName);
   }
 
   // -----------------------------------------------------------------------

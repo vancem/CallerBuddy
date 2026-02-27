@@ -10,6 +10,7 @@
 import type { Song } from "../models/song.js";
 import type { Settings } from "../models/settings.js";
 import { defaultSettings } from "../models/settings.js";
+import { log } from "./logger.js";
 
 // ---------------------------------------------------------------------------
 // Tab model
@@ -29,8 +30,14 @@ export interface TabInfo {
   type: TabType;
   title: string;
   closable: boolean;
-  /** Tab-specific payload (e.g. folder name for playlist editor). */
+  /** Tab-specific payload. For PlaylistEditor tabs, see EditorTabData. */
   data?: unknown;
+}
+
+/** Typed payload stored in TabInfo.data for PlaylistEditor tabs. */
+export interface EditorTabData {
+  dirHandle: FileSystemDirectoryHandle;
+  folderName: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,7 +69,14 @@ let nextTabId = 1;
 
 export class AppState extends EventTarget {
   rootHandle: FileSystemDirectoryHandle | null = null;
+
+  /**
+   * @deprecated Songs are now per-editor. Each playlist-editor component
+   * manages its own song list loaded from its dirHandle. This field is
+   * retained only for the updateSong() path in caller-buddy.ts.
+   */
   songs: Song[] = [];
+
   playlist: Song[] = [];
   settings: Settings = defaultSettings();
 
@@ -89,6 +103,7 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.ROOT_CHANGED);
   }
 
+  /** @deprecated Songs are now per-editor. Kept for backward compatibility. */
   setSongs(songs: Song[]): void {
     this.songs = songs;
     this.emit(StateEvents.SONGS_LOADED);
@@ -210,6 +225,51 @@ export class AppState extends EventTarget {
 
   getActiveTab(): TabInfo | undefined {
     return this.tabs.find((t) => t.id === this.activeTabId);
+  }
+
+  /**
+   * Find an existing PlaylistEditor tab whose dirHandle matches the given one.
+   * Uses isSameEntry() for reliable comparison (supported in Chrome/Edge).
+   * Returns the tab if found, undefined otherwise.
+   */
+  async findEditorTabByHandle(
+    dirHandle: FileSystemDirectoryHandle,
+  ): Promise<TabInfo | undefined> {
+    for (const tab of this.tabs) {
+      if (tab.type !== TabType.PlaylistEditor) continue;
+      const data = tab.data as EditorTabData | undefined;
+      if (!data?.dirHandle) continue;
+      try {
+        if (await data.dirHandle.isSameEntry(dirHandle)) {
+          return tab;
+        }
+      } catch {
+        log.debug("findEditorTabByHandle: isSameEntry failed, falling back to name comparison");
+        if (data.dirHandle.name === dirHandle.name) {
+          return tab;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Open a playlist editor tab for a folder, preventing duplicates.
+   * If a tab for the same folder already exists, activates it instead.
+   * Returns the tab ID.
+   */
+  async openEditorTab(
+    dirHandle: FileSystemDirectoryHandle,
+    folderName: string,
+  ): Promise<string> {
+    const existing = await this.findEditorTabByHandle(dirHandle);
+    if (existing) {
+      this.activeTabId = existing.id;
+      this.emit(StateEvents.CHANGED);
+      return existing.id;
+    }
+    const data: EditorTabData = { dirHandle, folderName };
+    return this.openTab(TabType.PlaylistEditor, folderName, true, data);
   }
 
   // -- Song playing state ---------------------------------------------------
