@@ -208,7 +208,6 @@ export class PlaylistEditor extends LitElement {
                         @dragend=${this.onDragEnd}
                         @dragover=${(e: DragEvent) => this.onPlaylistDragOver(e, i)}
                       >
-                        <span class="pl-grip" title="Drag to reorder">⠿</span>
                         <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
                           title="${isSingingCall(song) ? "Singing call" : "Patter"}"
                         >${isSingingCall(song) ? "♪" : "♫"}</span>
@@ -733,14 +732,6 @@ export class PlaylistEditor extends LitElement {
     .empty-playlist-drop.drag-hover {
       border-color: var(--cb-accent);
       background: color-mix(in srgb, var(--cb-accent) 8%, transparent);
-    }
-
-    .pl-grip {
-      color: var(--cb-fg-tertiary);
-      font-size: 0.75rem;
-      cursor: grab;
-      user-select: none;
-      flex-shrink: 0;
     }
 
     .song-table tbody tr[draggable="true"] {
