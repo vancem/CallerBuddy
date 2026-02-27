@@ -52,6 +52,13 @@ export class PlaylistEditor extends LitElement {
   @state() private contextTarget: ContextTarget | null = null;
   @state() private contextMenuPos = { x: 0, y: 0 };
 
+  /** Index of the playlist item the drag is currently hovering over (-1 = none). */
+  @state() private dragOverIndex = -1;
+  /** Whether the drop indicator should appear above or below the hovered item. */
+  @state() private dropPosition: "above" | "below" = "above";
+  /** The playlist index of the item currently being dragged (for reorder). */
+  @state() private draggingPlaylistIndex = -1;
+
   /** Songs loaded from the current folder's songs.json + disk scan. */
   @state() private localSongs: Song[] = [];
 
@@ -174,13 +181,32 @@ export class PlaylistEditor extends LitElement {
         <aside class="playlist-panel">
           <h2>Playlist</h2>
           ${playlist.length === 0
-            ? html`<p class="muted">No songs in playlist. Right-click or use
-                the + button to add songs.</p>`
+            ? html`<div
+                class="empty-playlist-drop"
+                @dragover=${this.onPlaylistContainerDragOver}
+                @drop=${this.onEmptyPlaylistDrop}
+              ><p class="muted">No songs in playlist. Drag songs here, right-click,
+                or use the + button to add songs.</p></div>`
             : html`
-                <ol class="playlist-list">
+                <ol
+                  class="playlist-list"
+                  @dragover=${this.onPlaylistContainerDragOver}
+                  @dragleave=${this.onPlaylistDragLeave}
+                  @drop=${this.onPlaylistDrop}
+                >
                   ${playlist.map(
                     (song, i) => html`
-                      <li class="playlist-item">
+                      <li
+                        class="playlist-item
+                          ${this.draggingPlaylistIndex === i ? "dragging" : ""}
+                          ${this.dragOverIndex === i && this.dropPosition === "above" ? "drop-indicator-above" : ""}
+                          ${this.dragOverIndex === i && this.dropPosition === "below" ? "drop-indicator-below" : ""}"
+                        draggable="true"
+                        @dragstart=${(e: DragEvent) => this.onPlaylistItemDragStart(e, i)}
+                        @dragend=${this.onDragEnd}
+                        @dragover=${(e: DragEvent) => this.onPlaylistDragOver(e, i)}
+                      >
+                        <span class="pl-grip" title="Drag to reorder">⠿</span>
                         <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
                           title="${isSingingCall(song) ? "Singing call" : "Patter"}"
                         >${isSingingCall(song) ? "♪" : "♫"}</span>
@@ -267,9 +293,12 @@ export class PlaylistEditor extends LitElement {
                     ${songs.map(
                       (song) => html`
                         <tr
+                          draggable="true"
+                          @dragstart=${(e: DragEvent) => this.onSongDragStart(e, song)}
+                          @dragend=${this.onDragEnd}
                           @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "song", song })}
                           @dblclick=${() => this.addToPlaylist(song)}
-                          title="Double-click or right-click to add to playlist"
+                          title="Drag to playlist, double-click, or right-click to add"
                         >
                           <td class="play-cell">
                             <button
@@ -446,6 +475,106 @@ export class PlaylistEditor extends LitElement {
     await this.playSongNow(song);
   }
 
+  // -- Drag and drop --------------------------------------------------------
+
+  private onSongDragStart(e: DragEvent, song: Song) {
+    if (!e.dataTransfer) return;
+    e.dataTransfer.setData("application/x-callerbuddy-song", JSON.stringify(song));
+    e.dataTransfer.effectAllowed = "copy";
+  }
+
+  private onPlaylistItemDragStart(e: DragEvent, index: number) {
+    if (!e.dataTransfer) return;
+    e.dataTransfer.setData("application/x-callerbuddy-playlist-item", String(index));
+    e.dataTransfer.effectAllowed = "move";
+    this.draggingPlaylistIndex = index;
+  }
+
+  private onDragEnd() {
+    this.dragOverIndex = -1;
+    this.draggingPlaylistIndex = -1;
+  }
+
+  private onPlaylistDragOver(e: DragEvent, index: number) {
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const hasSong = dt.types.includes("application/x-callerbuddy-song");
+    const hasItem = dt.types.includes("application/x-callerbuddy-playlist-item");
+    if (!hasSong && !hasItem) return;
+
+    e.preventDefault();
+    dt.dropEffect = hasItem ? "move" : "copy";
+
+    const target = (e.currentTarget as HTMLElement);
+    const rect = target.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    this.dropPosition = e.clientY < midY ? "above" : "below";
+    this.dragOverIndex = index;
+  }
+
+  private onPlaylistContainerDragOver(e: DragEvent) {
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const hasSong = dt.types.includes("application/x-callerbuddy-song");
+    const hasItem = dt.types.includes("application/x-callerbuddy-playlist-item");
+    if (!hasSong && !hasItem) return;
+    e.preventDefault();
+    dt.dropEffect = hasItem ? "move" : "copy";
+  }
+
+  private onPlaylistDrop(e: DragEvent) {
+    e.preventDefault();
+    const dt = e.dataTransfer;
+    if (!dt) return;
+
+    const dropIndex = this.dropPosition === "below"
+      ? this.dragOverIndex + 1
+      : this.dragOverIndex;
+
+    const itemData = dt.getData("application/x-callerbuddy-playlist-item");
+    if (itemData) {
+      const fromIndex = Number(itemData);
+      const adjustedTo = dropIndex > fromIndex ? dropIndex - 1 : dropIndex;
+      if (fromIndex !== adjustedTo) {
+        callerBuddy.state.moveInPlaylist(fromIndex, adjustedTo);
+      }
+    } else {
+      const songJson = dt.getData("application/x-callerbuddy-song");
+      if (songJson) {
+        try {
+          const song = JSON.parse(songJson) as Song;
+          callerBuddy.state.insertInPlaylist(song, dropIndex);
+        } catch { /* invalid data, ignore */ }
+      }
+    }
+
+    this.dragOverIndex = -1;
+    this.draggingPlaylistIndex = -1;
+  }
+
+  private onEmptyPlaylistDrop(e: DragEvent) {
+    e.preventDefault();
+    const dt = e.dataTransfer;
+    if (!dt) return;
+
+    const songJson = dt.getData("application/x-callerbuddy-song");
+    if (songJson) {
+      try {
+        const song = JSON.parse(songJson) as Song;
+        callerBuddy.state.addToPlaylist(song);
+      } catch { /* invalid data, ignore */ }
+    }
+
+    this.dragOverIndex = -1;
+  }
+
+  private onPlaylistDragLeave(e: DragEvent) {
+    const related = e.relatedTarget as Node | null;
+    const container = e.currentTarget as HTMLElement;
+    if (related && container.contains(related)) return;
+    this.dragOverIndex = -1;
+  }
+
   // -- Filtering and sorting ------------------------------------------------
 
   private getFilteredSongs(): Song[] {
@@ -578,6 +707,52 @@ export class PlaylistEditor extends LitElement {
 
     .playlist-item:hover {
       background: var(--cb-hover);
+    }
+
+    .playlist-item[draggable="true"] {
+      cursor: grab;
+    }
+
+    .playlist-item.dragging {
+      opacity: 0.4;
+    }
+
+    .playlist-item.drop-indicator-above {
+      box-shadow: inset 0 2px 0 0 var(--cb-accent);
+    }
+
+    .playlist-item.drop-indicator-below {
+      box-shadow: inset 0 -2px 0 0 var(--cb-accent);
+    }
+
+    .empty-playlist-drop {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed var(--cb-border);
+      border-radius: 8px;
+      margin: 4px 0;
+      min-height: 60px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .empty-playlist-drop:hover,
+    .empty-playlist-drop.drag-hover {
+      border-color: var(--cb-accent);
+      background: color-mix(in srgb, var(--cb-accent) 8%, transparent);
+    }
+
+    .pl-grip {
+      color: var(--cb-fg-tertiary);
+      font-size: 0.75rem;
+      cursor: grab;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .song-table tbody tr[draggable="true"] {
+      cursor: grab;
     }
 
     .pl-type {

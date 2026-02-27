@@ -142,6 +142,12 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
+  insertInPlaylist(song: Song, index: number): void {
+    const clamped = Math.max(0, Math.min(index, this.playlist.length));
+    this.playlist.splice(clamped, 0, song);
+    this.emit(StateEvents.PLAYLIST_CHANGED);
+  }
+
   removeFromPlaylist(index: number): void {
     if (index >= 0 && index < this.playlist.length) {
       this.playlist.splice(index, 1);
