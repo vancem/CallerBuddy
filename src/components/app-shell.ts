@@ -95,14 +95,15 @@ export class AppShell extends LitElement {
     }
   }
 
-  private closeActiveTab() {
+  private async closeActiveTab() {
     const tab = callerBuddy.state.getActiveTab();
     if (!tab) return;
     if (tab.type === TabType.SongPlay) {
       callerBuddy.closeSongPlay();
-    } else {
-      callerBuddy.state.closeTab(tab.id);
+      return;
     }
+    if (await callerBuddy.state.isRootEditorTab(tab.id)) return;
+    callerBuddy.state.closeTab(tab.id);
   }
 
   private onStateChanged = () => {
@@ -201,13 +202,15 @@ export class AppShell extends LitElement {
     callerBuddy.state.activateTab(e.detail.id);
   }
 
-  private onTabClose(e: CustomEvent<{ id: string }>) {
+  private async onTabClose(e: CustomEvent<{ id: string }>) {
     const tab = callerBuddy.state.tabs.find((t) => t.id === e.detail.id);
-    if (tab?.type === TabType.SongPlay) {
+    if (!tab) return;
+    if (tab.type === TabType.SongPlay) {
       callerBuddy.closeSongPlay();
-    } else {
-      callerBuddy.state.closeTab(e.detail.id);
+      return;
     }
+    if (await callerBuddy.state.isRootEditorTab(tab.id)) return;
+    callerBuddy.state.closeTab(e.detail.id);
   }
 
   private toggleMenu() {

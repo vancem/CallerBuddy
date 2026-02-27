@@ -96,6 +96,7 @@ export class CallerBuddy {
 
   private async activateRoot(handle: FileSystemDirectoryHandle): Promise<void> {
     this.state.setRoot(handle);
+    await this.state.updateEditorTabsClosable();
     log.info(`activateRoot: CallerBuddyRoot set to "${handle.name}"`);
 
     log.info("activateRoot: loading settings…");

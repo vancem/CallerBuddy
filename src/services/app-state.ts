@@ -108,6 +108,17 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.ROOT_CHANGED);
   }
 
+  /** Update closable on all PlaylistEditor tabs based on current root. Call after setRoot. */
+  async updateEditorTabsClosable(): Promise<void> {
+    for (const tab of this.tabs) {
+      if (tab.type !== TabType.PlaylistEditor) continue;
+      const data = tab.data as EditorTabData | undefined;
+      if (!data?.dirHandle) continue;
+      tab.closable = !(await this.isRootHandle(data.dirHandle));
+    }
+    this.emit(StateEvents.CHANGED);
+  }
+
   /** @deprecated Songs are now per-editor. Kept for backward compatibility. */
   setSongs(songs: Song[]): void {
     this.songs = songs;
@@ -264,6 +275,25 @@ export class AppState extends EventTarget {
     return this.tabs.find((t) => t.id === this.activeTabId);
   }
 
+  /** True if the tab is a PlaylistEditor for the CallerBuddyRoot folder. */
+  async isRootEditorTab(id: string): Promise<boolean> {
+    const tab = this.tabs.find((t) => t.id === id);
+    if (!tab || tab.type !== TabType.PlaylistEditor) return false;
+    const data = tab.data as EditorTabData | undefined;
+    if (!data?.dirHandle) return false;
+    return this.isRootHandle(data.dirHandle);
+  }
+
+  private async isRootHandle(handle: FileSystemDirectoryHandle): Promise<boolean> {
+    const root = this.rootHandle;
+    if (!root) return false;
+    try {
+      return await handle.isSameEntry(root);
+    } catch {
+      return handle.name === root.name;
+    }
+  }
+
   /**
    * Find an existing PlaylistEditor tab whose dirHandle matches the given one.
    * Uses isSameEntry() for reliable comparison (supported in Chrome/Edge).
@@ -310,7 +340,8 @@ export class AppState extends EventTarget {
       return existing.id;
     }
     const data: EditorTabData = { dirHandle, folderName };
-    return this.openTab(TabType.PlaylistEditor, folderName, true, data);
+    const closable = !(await this.isRootHandle(dirHandle));
+    return this.openTab(TabType.PlaylistEditor, folderName, closable, data);
   }
 
   // -- Song playing state ---------------------------------------------------
