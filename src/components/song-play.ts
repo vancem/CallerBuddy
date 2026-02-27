@@ -89,6 +89,7 @@ export class SongPlay extends LitElement {
     this.updateClock();
 
     document.addEventListener("keydown", this._boundKeydown);
+    window.addEventListener("blur", this._boundWindowBlur);
 
     // Listen for time updates from audio engine
     callerBuddy.audio.onTimeUpdate((t) => {
@@ -111,9 +112,12 @@ export class SongPlay extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this._boundKeydown);
+    window.removeEventListener("blur", this._boundWindowBlur);
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     if (this.elapsedInterval !== null) clearInterval(this.elapsedInterval);
     this.stopPatterTimer();
+    // Close when unmounted (tab switch or tab close); blur handles leaving the app
+    callerBuddy.closeSongPlay();
   }
 
   /** Focus the controls panel after first render so keyboard shortcuts work. */
@@ -127,6 +131,7 @@ export class SongPlay extends LitElement {
   }
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
+  private _boundWindowBlur = () => callerBuddy.closeSongPlay();
 
   private onKeydown(e: KeyboardEvent) {
     const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
