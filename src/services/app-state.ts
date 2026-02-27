@@ -83,6 +83,11 @@ export class AppState extends EventTarget {
   tabs: TabInfo[] = [];
   activeTabId = "";
 
+  /** Tab IDs we can go "back" to (Alt+Left). */
+  private tabBackStack: string[] = [];
+  /** Tab IDs we can go "forward" to (Alt+Right). */
+  private tabForwardStack: string[] = [];
+
   /** The song currently being played, or null. */
   currentSong: Song | null = null;
 
@@ -185,6 +190,10 @@ export class AppState extends EventTarget {
   openTab(type: TabType, title: string, closable = true, data?: unknown): string {
     const id = `tab-${nextTabId++}`;
     this.tabs.push({ id, type, title, closable, data });
+    if (this.activeTabId) {
+      this.tabBackStack.push(this.activeTabId);
+      this.tabForwardStack = [];
+    }
     this.activeTabId = id;
     this.emit(StateEvents.CHANGED);
     return id;
@@ -194,6 +203,10 @@ export class AppState extends EventTarget {
   openSingletonTab(type: TabType, title: string, closable = true, data?: unknown): string {
     const existing = this.tabs.find((t) => t.type === type);
     if (existing) {
+      if (this.activeTabId && this.activeTabId !== existing.id) {
+        this.tabBackStack.push(this.activeTabId);
+        this.tabForwardStack = [];
+      }
       this.activeTabId = existing.id;
       if (data !== undefined) existing.data = data;
       this.emit(StateEvents.CHANGED);
@@ -203,10 +216,33 @@ export class AppState extends EventTarget {
   }
 
   activateTab(id: string): void {
-    if (this.tabs.some((t) => t.id === id)) {
-      this.activeTabId = id;
-      this.emit(StateEvents.CHANGED);
+    if (!this.tabs.some((t) => t.id === id)) return;
+    if (this.activeTabId && this.activeTabId !== id) {
+      this.tabBackStack.push(this.activeTabId);
+      this.tabForwardStack = [];
     }
+    this.activeTabId = id;
+    this.emit(StateEvents.CHANGED);
+  }
+
+  /** Go to previously visited tab (Alt+Left). Returns true if navigated. */
+  goBack(): boolean {
+    if (this.tabBackStack.length === 0) return false;
+    if (this.activeTabId) this.tabForwardStack.push(this.activeTabId);
+    const target = this.tabBackStack.pop()!;
+    this.activeTabId = this.tabs.some((t) => t.id === target) ? target : "";
+    this.emit(StateEvents.CHANGED);
+    return true;
+  }
+
+  /** Undo back, go to forward tab (Alt+Right). Returns true if navigated. */
+  goForward(): boolean {
+    if (this.tabForwardStack.length === 0) return false;
+    if (this.activeTabId) this.tabBackStack.push(this.activeTabId);
+    const target = this.tabForwardStack.pop()!;
+    this.activeTabId = this.tabs.some((t) => t.id === target) ? target : "";
+    this.emit(StateEvents.CHANGED);
+    return true;
   }
 
   closeTab(id: string): void {
@@ -215,8 +251,9 @@ export class AppState extends EventTarget {
     const tab = this.tabs[idx];
     if (!tab.closable) return;
     this.tabs.splice(idx, 1);
+    this.tabBackStack = this.tabBackStack.filter((tid) => tid !== id);
+    this.tabForwardStack = this.tabForwardStack.filter((tid) => tid !== id);
     if (this.activeTabId === id) {
-      // Activate nearest tab
       const newIdx = Math.min(idx, this.tabs.length - 1);
       this.activeTabId = newIdx >= 0 ? this.tabs[newIdx].id : "";
     }
@@ -264,6 +301,10 @@ export class AppState extends EventTarget {
   ): Promise<string> {
     const existing = await this.findEditorTabByHandle(dirHandle);
     if (existing) {
+      if (this.activeTabId && this.activeTabId !== existing.id) {
+        this.tabBackStack.push(this.activeTabId);
+        this.tabForwardStack = [];
+      }
       this.activeTabId = existing.id;
       this.emit(StateEvents.CHANGED);
       return existing.id;

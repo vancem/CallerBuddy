@@ -30,14 +30,79 @@ import "./song-play.js";
 export class AppShell extends LitElement {
   @state() private showMenu = false;
 
+  private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
+
   connectedCallback() {
     super.connectedCallback();
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onStateChanged);
+    document.addEventListener("keydown", this._boundKeydown);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
+    document.removeEventListener("keydown", this._boundKeydown);
+  }
+
+  /** Global keyboard shortcuts for tab navigation and close.
+   *  Uses Ctrl+]/[ instead of Ctrl+Tab because browsers reserve Ctrl+Tab
+   *  for browser tab switching and never dispatch it to the page. */
+  private onKeydown(e: KeyboardEvent) {
+    const inInput =
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      e.target instanceof HTMLSelectElement;
+    if (inInput) return;
+
+    const { tabs, activeTabId } = callerBuddy.state;
+    if (tabs.length === 0) return;
+
+    // Ctrl+< or Ctrl+, (back) and Ctrl+> or Ctrl+. (forward).
+    const isBack =
+      (e.ctrlKey && e.key === "<") ||
+      (e.ctrlKey && e.key === ",") ||
+      (e.ctrlKey && e.shiftKey && e.code === "Comma");
+    const isForward =
+      (e.ctrlKey && e.key === ">") ||
+      (e.ctrlKey && e.key === ".") ||
+      (e.ctrlKey && e.shiftKey && e.code === "Period");
+    if (isBack) {
+      e.preventDefault();
+      if (callerBuddy.state.goBack()) return;
+    }
+    if (isForward) {
+      e.preventDefault();
+      if (callerBuddy.state.goForward()) return;
+    }
+    if (e.ctrlKey && e.key === "]") {
+      e.preventDefault();
+      const idx = tabs.findIndex((t) => t.id === activeTabId);
+      const nextIdx = idx < 0 ? 0 : (idx + 1) % tabs.length;
+      callerBuddy.state.activateTab(tabs[nextIdx].id);
+      return;
+    }
+    if (e.ctrlKey && e.key === "[") {
+      e.preventDefault();
+      const idx = tabs.findIndex((t) => t.id === activeTabId);
+      const prevIdx = idx <= 0 ? tabs.length - 1 : idx - 1;
+      callerBuddy.state.activateTab(tabs[prevIdx].id);
+      return;
+    }
+    if (e.ctrlKey && e.key === "w") {
+      e.preventDefault();
+      this.closeActiveTab();
+      return;
+    }
+  }
+
+  private closeActiveTab() {
+    const tab = callerBuddy.state.getActiveTab();
+    if (!tab) return;
+    if (tab.type === TabType.SongPlay) {
+      callerBuddy.closeSongPlay();
+    } else {
+      callerBuddy.state.closeTab(tab.id);
+    }
   }
 
   private onStateChanged = () => {

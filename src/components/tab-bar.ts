@@ -18,7 +18,7 @@ export class CbTabBar extends LitElement {
 
   render() {
     return html`
-      <div class="tab-bar" role="tablist">
+      <div class="tab-bar" role="tablist" title="Ctrl+] next tab, Ctrl+[ previous tab. Ctrl+< back, Ctrl+> forward">
         ${this.tabs.map(
           (tab) => html`
             <div
