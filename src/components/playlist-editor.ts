@@ -58,6 +58,8 @@ export class PlaylistEditor extends LitElement {
   @state() private dropPosition: "above" | "below" = "above";
   /** The playlist index of the item currently being dragged (for reorder). */
   @state() private draggingPlaylistIndex = -1;
+  /** Song object being dragged from the song table (kept as reference to preserve dirHandle). */
+  private draggedSong: Song | null = null;
 
   /** Songs loaded from the current folder's songs.json + disk scan. */
   @state() private localSongs: Song[] = [];
@@ -479,8 +481,9 @@ export class PlaylistEditor extends LitElement {
 
   private onSongDragStart(e: DragEvent, song: Song) {
     if (!e.dataTransfer) return;
-    e.dataTransfer.setData("application/x-callerbuddy-song", JSON.stringify(song));
+    e.dataTransfer.setData("application/x-callerbuddy-song", "1");
     e.dataTransfer.effectAllowed = "copy";
+    this.draggedSong = song;
   }
 
   private onPlaylistItemDragStart(e: DragEvent, index: number) {
@@ -493,6 +496,7 @@ export class PlaylistEditor extends LitElement {
   private onDragEnd() {
     this.dragOverIndex = -1;
     this.draggingPlaylistIndex = -1;
+    this.draggedSong = null;
   }
 
   private onPlaylistDragOver(e: DragEvent, index: number) {
@@ -538,14 +542,8 @@ export class PlaylistEditor extends LitElement {
       if (fromIndex !== adjustedTo) {
         callerBuddy.state.moveInPlaylist(fromIndex, adjustedTo);
       }
-    } else {
-      const songJson = dt.getData("application/x-callerbuddy-song");
-      if (songJson) {
-        try {
-          const song = JSON.parse(songJson) as Song;
-          callerBuddy.state.insertInPlaylist(song, dropIndex);
-        } catch { /* invalid data, ignore */ }
-      }
+    } else if (this.draggedSong) {
+      callerBuddy.state.insertInPlaylist(this.draggedSong, dropIndex);
     }
 
     this.dragOverIndex = -1;
@@ -554,15 +552,9 @@ export class PlaylistEditor extends LitElement {
 
   private onEmptyPlaylistDrop(e: DragEvent) {
     e.preventDefault();
-    const dt = e.dataTransfer;
-    if (!dt) return;
 
-    const songJson = dt.getData("application/x-callerbuddy-song");
-    if (songJson) {
-      try {
-        const song = JSON.parse(songJson) as Song;
-        callerBuddy.state.addToPlaylist(song);
-      } catch { /* invalid data, ignore */ }
+    if (this.draggedSong) {
+      callerBuddy.state.addToPlaylist(this.draggedSong);
     }
 
     this.dragOverIndex = -1;
