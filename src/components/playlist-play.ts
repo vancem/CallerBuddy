@@ -236,14 +236,16 @@ export class PlaylistPlay extends LitElement {
       return;
     }
 
-    this.stopBreakTimer();
-    const song = playlist[idx];
-    callerBuddy.state.markSongPlayed(song.musicFile);
-    this.selectedIndex = null; // reset to auto-select next unplayed
-
+    // Show wait cursor immediately so user knows the click registered
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = "wait";
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+
     try {
+      this.stopBreakTimer();
+      const song = playlist[idx];
+      callerBuddy.state.markSongPlayed(song.musicFile);
+      this.selectedIndex = null; // reset to auto-select next unplayed
       await callerBuddy.openSongPlay(song);
     } finally {
       document.body.style.cursor = prevCursor;

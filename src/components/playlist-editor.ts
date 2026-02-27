@@ -154,19 +154,6 @@ export class PlaylistEditor extends LitElement {
 
   // -- Folder navigation ----------------------------------------------------
 
-  private async navigateInto(folderName: string): Promise<void> {
-    const parent = this.currentHandle;
-    if (!parent) return;
-    try {
-      const child = await parent.getDirectoryHandle(folderName);
-      this.handleStack = [...this.handleStack, child];
-      this.filterText = "";
-      await this.loadCurrentFolder();
-    } catch (err) {
-      log.error(`Failed to open subfolder "${folderName}":`, err);
-    }
-  }
-
   private async navigateTo(stackIndex: number): Promise<void> {
     if (stackIndex < 0 || stackIndex >= this.handleStack.length) return;
     this.handleStack = this.handleStack.slice(0, stackIndex + 1);
@@ -365,9 +352,9 @@ export class PlaylistEditor extends LitElement {
       (entry) => html`
         <tr
           class="folder-row"
-          @click=${() => this.navigateInto(entry.name)}
+          @click=${() => this.openFolderInNewTabFromCtx(entry.name)}
           @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "folder", entry })}
-          title="Click to open, right-click for options"
+          title="Click to open in new tab, right-click for options"
         >
           <td class="folder-icon-cell" colspan="2">📁</td>
           <td colspan="6" class="folder-name">${entry.name}</td>
@@ -411,9 +398,6 @@ export class PlaylistEditor extends LitElement {
         role="menu"
       >
         <button class="menu-item" role="menuitem"
-          @click=${() => this.navigateIntoFromCtx(folderName)}
-        >Open folder</button>
-        <button class="menu-item" role="menuitem"
           @click=${() => this.openFolderInNewTabFromCtx(folderName)}
         >Open in new tab</button>
       </div>
@@ -429,11 +413,6 @@ export class PlaylistEditor extends LitElement {
 
   private closeContextMenu() {
     this.contextTarget = null;
-  }
-
-  private async navigateIntoFromCtx(folderName: string) {
-    this.contextTarget = null;
-    await this.navigateInto(folderName);
   }
 
   private async openFolderInNewTabFromCtx(folderName: string) {
