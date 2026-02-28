@@ -36,6 +36,24 @@ export class AppShell extends LitElement {
     super.connectedCallback();
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.addEventListener("keydown", this._boundKeydown);
+    this.setupMobileFullscreen();
+  }
+
+  /** On phones, request fullscreen on first user interaction (required by browsers). */
+  private setupMobileFullscreen() {
+    const tryFullscreen = () => {
+      document.removeEventListener("click", tryFullscreen, { capture: true });
+      document.removeEventListener("touchstart", tryFullscreen, { capture: true });
+      if (!this.isMobile()) return;
+      if (document.fullscreenElement) return;
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    };
+    document.addEventListener("click", tryFullscreen, { capture: true });
+    document.addEventListener("touchstart", tryFullscreen, { capture: true });
+  }
+
+  private isMobile(): boolean {
+    return window.matchMedia("(max-width: 768px)").matches;
   }
 
   disconnectedCallback() {
@@ -189,6 +207,10 @@ export class AppShell extends LitElement {
           Set CallerBuddy folder…
         </button>
         <hr />
+        <button class="menu-item" role="menuitem" @click=${this.onClose}>
+          Close
+        </button>
+        <hr />
         <div class="menu-item version" role="menuitem">
           CallerBuddy v${APP_VERSION}
         </div>
@@ -229,6 +251,11 @@ export class AppShell extends LitElement {
     } catch {
       // user cancelled or picker unavailable — do nothing
     }
+  }
+
+  private onClose() {
+    this.showMenu = false;
+    window.close();
   }
 
   static styles = css`
