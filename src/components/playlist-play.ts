@@ -33,6 +33,10 @@ export class PlaylistPlay extends LitElement {
   /** User-clicked override; null = default to first unplayed. */
   @state() private selectedIndex: number | null = null;
 
+  /** True from the moment Play is clicked until song play view is ready.
+   *  Used to grey out the playlist immediately for feedback, before async work completes. */
+  @state() private isStartingPlayback = false;
+
   // Break timer
   @state() private breakTimerEnabled = true;
   @state() private breakMinutes = DEFAULT_BREAK_TIMER_MINUTES;
@@ -94,7 +98,7 @@ export class PlaylistPlay extends LitElement {
       return;
     }
     if (e.key !== "Enter" && e.key !== " ") return;
-    if (callerBuddy.state.playlist.length === 0 || callerBuddy.state.currentSong !== null) return;
+    if (callerBuddy.state.playlist.length === 0 || callerBuddy.state.currentSong !== null || this.isStartingPlayback) return;
     e.preventDefault();
     this.playSelected();
   }
@@ -122,11 +126,12 @@ export class PlaylistPlay extends LitElement {
   render() {
     const playlist = callerBuddy.state.playlist;
     const isPlayingSong = callerBuddy.state.currentSong !== null;
+    const isInactive = isPlayingSong || this.isStartingPlayback;
     const sel = this.getSelectedIndex();
     const playedPaths = callerBuddy.state.getPlayedSongPaths();
 
     return html`
-      <div class="play-view ${isPlayingSong ? "inactive" : ""}">
+      <div class="play-view ${isInactive ? "inactive" : ""}">
         <aside class="playlist-panel" style="width: ${this.playlistWidth}px">
           <h2>Playlist</h2>
           ${playlist.length === 0
@@ -163,7 +168,7 @@ export class PlaylistPlay extends LitElement {
           <div class="play-actions">
             <button
               class="primary"
-              ?disabled=${playlist.length === 0 || isPlayingSong}
+              ?disabled=${playlist.length === 0 || isInactive}
               title="Play selected song (Enter / Space)"
               @click=${() => this.playSelected()}
             >
@@ -236,8 +241,8 @@ export class PlaylistPlay extends LitElement {
             </div>
           </div>
 
-          ${isPlayingSong
-            ? html`<p class="playing-info">A song is currently playing…</p>`
+          ${isInactive
+            ? html`<p class="playing-info">${isPlayingSong ? "A song is currently playing…" : "Loading…"}</p>`
             : nothing}
         </section>
       </div>
@@ -248,7 +253,7 @@ export class PlaylistPlay extends LitElement {
 
   /** Play song at a specific index (double-click). */
   private playAt(index: number) {
-    if (callerBuddy.state.currentSong !== null) return;
+    if (callerBuddy.state.currentSong !== null || this.isStartingPlayback) return;
     this.selectedIndex = index;
     this.playSelected();
   }
@@ -262,7 +267,8 @@ export class PlaylistPlay extends LitElement {
       return;
     }
 
-    // Show wait cursor immediately so user knows the click registered
+    // Grey out playlist immediately (first thing) so user gets instant feedback
+    this.isStartingPlayback = true;
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = "wait";
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
@@ -274,6 +280,7 @@ export class PlaylistPlay extends LitElement {
       this.selectedIndex = null; // reset to auto-select next unplayed
       await callerBuddy.openSongPlay(song);
     } finally {
+      this.isStartingPlayback = false;
       document.body.style.cursor = prevCursor;
     }
   }
