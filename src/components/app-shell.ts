@@ -44,7 +44,7 @@ export class AppShell extends LitElement {
     const tryFullscreen = () => {
       document.removeEventListener("click", tryFullscreen, { capture: true });
       document.removeEventListener("touchstart", tryFullscreen, { capture: true });
-      if (!this.isMobile()) return;
+      if (!this.isPhone()) return;
       if (document.fullscreenElement) return;
       document.documentElement.requestFullscreen?.().catch(() => {});
     };
@@ -52,8 +52,9 @@ export class AppShell extends LitElement {
     document.addEventListener("touchstart", tryFullscreen, { capture: true });
   }
 
-  private isMobile(): boolean {
-    return window.matchMedia("(max-width: 768px)").matches;
+  /** True only on touch-primary devices without hover (phones/tablets, not desktops). */
+  private isPhone(): boolean {
+    return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
   }
 
   disconnectedCallback() {
@@ -253,8 +254,11 @@ export class AppShell extends LitElement {
     }
   }
 
-  private onClose() {
+  private async onClose() {
     this.showMenu = false;
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {});
+    }
     window.close();
   }
 
@@ -262,6 +266,7 @@ export class AppShell extends LitElement {
     :host {
       display: block;
       height: 100vh;
+      height: 100dvh;
       width: 100vw;
       overflow: hidden;
     }

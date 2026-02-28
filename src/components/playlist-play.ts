@@ -701,6 +701,31 @@ export class PlaylistPlay extends LitElement {
         width: auto !important;
         min-width: 0;
         max-height: 50vh;
+        max-height: 50dvh;
+        border-right: none;
+        border-bottom: 1px solid var(--cb-border);
+      }
+
+      .resizer {
+        display: none;
+      }
+
+      .info-panel {
+        padding: 12px;
+        gap: 16px;
+      }
+    }
+
+    @media (max-height: 500px) {
+      .play-view {
+        flex-direction: column;
+      }
+
+      .playlist-panel {
+        width: auto !important;
+        min-width: 0;
+        max-height: 50vh;
+        max-height: 50dvh;
         border-right: none;
         border-bottom: 1px solid var(--cb-border);
       }

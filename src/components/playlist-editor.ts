@@ -1121,6 +1121,35 @@ export class PlaylistEditor extends LitElement {
         width: auto !important;
         min-width: 0;
         max-height: 35vh;
+        max-height: 35dvh;
+        border-right: none;
+        border-bottom: 1px solid var(--cb-border);
+      }
+
+      .resizer {
+        display: none;
+      }
+
+      .browser-toolbar {
+        flex-wrap: wrap;
+      }
+
+      .song-table th,
+      .song-table td {
+        padding: 6px 6px;
+      }
+    }
+
+    @media (max-height: 500px) {
+      .editor {
+        flex-direction: column;
+      }
+
+      .playlist-panel {
+        width: auto !important;
+        min-width: 0;
+        max-height: 40vh;
+        max-height: 40dvh;
         border-right: none;
         border-bottom: 1px solid var(--cb-border);
       }
