@@ -88,8 +88,13 @@ export class CallerBuddy {
       return;
     }
     log.info("setRoot: permission granted, storing handle in IndexedDB…");
-    await storeRootHandle(handle);
-    log.info("setRoot: handle stored, activating root…");
+    try {
+      await storeRootHandle(handle);
+      log.info("setRoot: handle stored");
+    } catch (err) {
+      log.warn("setRoot: could not persist handle to IndexedDB:", err);
+    }
+    log.info("setRoot: activating root…");
     await this.activateRoot(handle);
     log.info("setRoot: complete");
   }

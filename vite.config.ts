@@ -9,6 +9,7 @@ export default defineConfig({
   base,
   test: {
     globals: true,
+    exclude: ["e2e/**", "node_modules/**"],
   },
   server: {
     open: false, // use ctrl-click on the URL to open in browser

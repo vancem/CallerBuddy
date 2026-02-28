@@ -11,7 +11,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "lit": "^3.3.1",
@@ -19,6 +21,7 @@
     "web-audio-beat-detector": "^8.2.35"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"
