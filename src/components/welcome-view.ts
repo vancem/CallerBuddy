@@ -48,13 +48,32 @@ export class WelcomeView extends LitElement {
           only need to pick it once; the app will remember your choice.
         </p>
 
-        <button
-          class="primary"
-          @click=${this.pickFolder}
-          ?disabled=${this.loading}
-        >
-          ${this.loading ? "Loading…" : "Choose CallerBuddy folder"}
-        </button>
+        ${this.folderName
+          ? html`
+              <button
+                class="primary"
+                @click=${this.reconnect}
+                ?disabled=${this.loading}
+              >
+                ${this.loading ? "Loading…" : "Reconnect to this folder"}
+              </button>
+              <button
+                class="secondary"
+                @click=${this.pickFolder}
+                ?disabled=${this.loading}
+              >
+                Choose a different folder
+              </button>
+            `
+          : html`
+              <button
+                class="primary"
+                @click=${this.pickFolder}
+                ?disabled=${this.loading}
+              >
+                ${this.loading ? "Loading…" : "Choose CallerBuddy folder"}
+              </button>
+            `}
 
         ${this.pickerError
           ? html`<p class="error" role="alert">${this.pickerError}</p>`
@@ -71,6 +90,24 @@ export class WelcomeView extends LitElement {
         <p class="version" aria-label="App version">v${APP_VERSION}</p>
       </div>
     `;
+  }
+
+  private async reconnect() {
+    const handle = callerBuddy.state.rootHandle;
+    if (!handle) return;
+    this.pickerError = "";
+    try {
+      this.loading = true;
+      log.info("reconnect: requesting permission on existing handle…");
+      await callerBuddy.setRoot(handle);
+      log.info("reconnect: setRoot completed successfully");
+    } catch (err) {
+      log.error("reconnect: error:", err);
+      this.pickerError =
+        err instanceof Error ? err.message : "Could not reconnect.";
+    } finally {
+      this.loading = false;
+    }
   }
 
   private async pickFolder() {
@@ -144,7 +181,20 @@ export class WelcomeView extends LitElement {
       background-color: var(--cb-accent-hover);
     }
 
-    .primary:disabled {
+    .secondary {
+      margin-top: 0.5rem;
+      border-radius: 8px;
+      padding: 0.6em 1.2em;
+      font-size: 1rem;
+      font-family: inherit;
+      background-color: transparent;
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border, #ccc);
+      cursor: pointer;
+    }
+
+    .primary:disabled,
+    .secondary:disabled {
       opacity: 0.6;
       cursor: wait;
     }

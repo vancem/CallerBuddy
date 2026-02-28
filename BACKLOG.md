@@ -163,6 +163,8 @@ rationale.
   browser sessions.
   - Rationale: The File System Access API supports storing handles in IndexedDB.
     This lets the app remember the user's chosen folder without re-prompting.
+  - Android: Permission often reverts to "prompt" after reload. The welcome
+    view offers "Reconnect to this folder" so the user can re-grant with one tap.
 - PWA manifest and service worker configuration (manifest structure, caching
   strategy, offline fallback, install prompt).
   - Manifest: display mode standalone; icons at 192px and 512px; theme colors
