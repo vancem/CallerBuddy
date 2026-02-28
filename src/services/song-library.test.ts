@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Song } from "../models/song.js";
-import { createSongFromFile } from "../models/song.js";
 
 // ---------------------------------------------------------------------------
 // Mock file-system-service for integration tests (Tier 3)

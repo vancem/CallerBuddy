@@ -32,8 +32,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      - name: Build and test
+        run: npm run ci
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

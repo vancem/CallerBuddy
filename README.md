@@ -67,7 +67,8 @@ The `predev` hook automatically injects the version from `package.json` into
 npm run build
 ```
 
-This runs `tsc` (type-checking) then `vite build`. Output goes to `dist/`.
+This runs `tsc` (type-checking production code via `tsconfig.build.json`, which
+excludes test files) then `vite build`. Output goes to `dist/`.
 
 To preview the production build locally:
 
@@ -87,6 +88,20 @@ npm run preview
 BASE_PATH=CallerBuddy npm run build
 npm run preview
 ```
+
+---
+
+## Pre-Push Check
+
+Before pushing to `main`, run the same build + test pipeline that CI runs:
+
+```bash
+npm run ci
+```
+
+This executes `npm run build` (TypeScript type-check + Vite bundle) followed by
+`npm test` (all unit tests). If it passes locally, the GitHub Actions build will
+pass too.
 
 ---
 
