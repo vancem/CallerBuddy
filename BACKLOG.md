@@ -200,7 +200,7 @@ rationale.
     use. The architecture supports this but the caching layer is not yet built.
     Songs added to the playlist should be cached aggressively. Cache eviction
     (10+ days unused) is also needed.
-- [] MEDIUM: Drag-and-drop support in the playlist editor.
+- [q] MEDIUM: Drag-and-drop support in the playlist editor.
   - The spec calls for drag-and-drop of songs into the playlist and reordering
     within the playlist. Currently using buttons and context menus.
     Drag-and-drop should be added for a more natural UX.
@@ -211,8 +211,8 @@ rationale.
 - [x] MEDIUM: Subfolder navigation in the playlist editor.
   - The spec describes navigating into sub-folders of CallerBuddyRoot and
     opening additional editors in new tabs. Currently the editor only shows the
-    root folder contents. Need to add folder entry rendering 
-    and "open in new tab" for sub-folders.
+    root folder contents. Need to add folder entry rendering and "open in new
+    tab" for sub-folders.
   - DONE: Implemented click-to-navigate folders with breadcrumb navigation, and
     open-in-new-tab via folder context menu. Side-by-side split pane deferred.
     See AI_Logs/Summary.26-02-26.01.subfolderNavigation.md.

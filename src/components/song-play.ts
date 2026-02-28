@@ -1204,6 +1204,47 @@ export class SongPlay extends LitElement {
       text-align: center;
       padding: 3rem;
     }
+
+    /* -- Narrow / phone layout --------------------------------------------- */
+
+    @media (max-width: 700px) {
+      .song-play {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+      }
+
+      .right-panel {
+        grid-column: 1;
+        grid-row: 1;
+        padding: 10px;
+        gap: 12px;
+        overflow-y: visible;
+      }
+
+      .left-panel {
+        grid-column: 1;
+        grid-row: 2;
+        border-right: none;
+        border-top: 1px solid var(--cb-border);
+      }
+
+      .slider-panel {
+        grid-column: 1;
+        grid-row: 3;
+      }
+
+      .transport {
+        flex-wrap: wrap;
+      }
+
+      .patter-controls {
+        max-width: none;
+      }
+
+      .loop-box {
+        flex-wrap: wrap;
+      }
+    }
   `;
 }
 

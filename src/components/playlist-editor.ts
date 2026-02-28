@@ -1109,6 +1109,35 @@ export class PlaylistEditor extends LitElement {
       color: var(--cb-fg-tertiary);
       font-size: 0.85rem;
     }
+
+    /* -- Narrow / phone layout --------------------------------------------- */
+
+    @media (max-width: 700px) {
+      .editor {
+        flex-direction: column;
+      }
+
+      .playlist-panel {
+        width: auto !important;
+        min-width: 0;
+        max-height: 35vh;
+        border-right: none;
+        border-bottom: 1px solid var(--cb-border);
+      }
+
+      .resizer {
+        display: none;
+      }
+
+      .browser-toolbar {
+        flex-wrap: wrap;
+      }
+
+      .song-table th,
+      .song-table td {
+        padding: 6px 6px;
+      }
+    }
   `;
 }
 
