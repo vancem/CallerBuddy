@@ -325,10 +325,10 @@ export class PlaylistPlay extends LitElement {
 
   private playBreakAlarm() {
     callerBuddy.audio.playBeep();
-    // Replay every 20 seconds per spec
+    // Replay every 15 seconds
     this.breakAlarmInterval = window.setInterval(() => {
       callerBuddy.audio.playBeep();
-    }, 20_000);
+    }, 15_000);
   }
 
   // -- Clock ----------------------------------------------------------------

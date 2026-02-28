@@ -46,6 +46,7 @@ export class SongPlay extends LitElement {
   @state() private patterCountdown = 0;
   @state() private patterTimerRunning = false;
   private patterInterval: number | null = null;
+  private patterAlarmInterval: number | null = null;
   @state() private patterAlarmFired = false;
 
   private clockInterval: number | null = null;
@@ -682,6 +683,10 @@ export class SongPlay extends LitElement {
       clearInterval(this.patterInterval);
       this.patterInterval = null;
     }
+    if (this.patterAlarmInterval !== null) {
+      clearInterval(this.patterAlarmInterval);
+      this.patterAlarmInterval = null;
+    }
   }
 
   private startPatterTimer() {
@@ -699,8 +704,8 @@ export class SongPlay extends LitElement {
     this.patterInterval = window.setInterval(() => {
       this.patterCountdown--;
       if (this.patterCountdown === 0 && !this.patterAlarmFired) {
-        callerBuddy.audio.playBeep();
-        this.patterAlarmFired = true; // only beep once per spec
+        this.patterAlarmFired = true;
+        this.playPatterAlarm();
       }
     }, 1000);
   }
@@ -711,6 +716,18 @@ export class SongPlay extends LitElement {
       clearInterval(this.patterInterval);
       this.patterInterval = null;
     }
+    if (this.patterAlarmInterval !== null) {
+      clearInterval(this.patterAlarmInterval);
+      this.patterAlarmInterval = null;
+    }
+  }
+
+  private playPatterAlarm() {
+    callerBuddy.audio.playBeep();
+    // Replay every 15 seconds (matches break timer)
+    this.patterAlarmInterval = window.setInterval(() => {
+      callerBuddy.audio.playBeep();
+    }, 15_000);
   }
 
   /** Resume countdown when music resumes. */
@@ -725,6 +742,10 @@ export class SongPlay extends LitElement {
     if (this.patterInterval !== null) {
       clearInterval(this.patterInterval);
       this.patterInterval = null;
+    }
+    if (this.patterAlarmInterval !== null) {
+      clearInterval(this.patterAlarmInterval);
+      this.patterAlarmInterval = null;
     }
   }
 
