@@ -22,7 +22,11 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
+import { DEFAULT_PLAYLIST_PANEL_WIDTH } from "../models/settings.js";
 import { StateEvents } from "../services/app-state.js";
+
+const MIN_PLAYLIST_WIDTH = 180;
+const MAX_PLAYLIST_WIDTH = 500;
 import { isSingingCall } from "../models/song.js";
 import type { Song } from "../models/song.js";
 import { loadAndMergeSongs } from "../services/song-library.js";
@@ -77,9 +81,15 @@ export class PlaylistEditor extends LitElement {
   /** True while the initial (or navigated) folder is being scanned. */
   @state() private loading = false;
 
+  /** Playlist panel width (from settings, updated on resize). */
+  @state() private playlistWidth = DEFAULT_PLAYLIST_PANEL_WIDTH;
+
   connectedCallback() {
     super.connectedCallback();
+    this.playlistWidth =
+      callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
+    callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     document.addEventListener("keydown", this._boundKeydown);
   }
 
@@ -87,7 +97,15 @@ export class PlaylistEditor extends LitElement {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this._boundKeydown);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
+    callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
+    this.stopResize();
   }
+
+  private onSettingsChanged = () => {
+    this.playlistWidth =
+      callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
+    this.requestUpdate();
+  };
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
 
@@ -180,7 +198,7 @@ export class PlaylistEditor extends LitElement {
     return html`
       <div class="editor" @click=${this.closeContextMenu}>
         <!-- Left: Playlist -->
-        <aside class="playlist-panel">
+        <aside class="playlist-panel" style="width: ${this.playlistWidth}px">
           <h2>Playlist</h2>
           ${playlist.length === 0
             ? html`<div
@@ -244,6 +262,11 @@ export class PlaylistEditor extends LitElement {
               : nothing}
           </div>
         </aside>
+        <div
+          class="resizer"
+          title="Drag to resize playlist"
+          @mousedown=${this.onResizerMouseDown}
+        ></div>
 
         <!-- Right: Song browser -->
         <section class="browser-panel">
@@ -621,6 +644,43 @@ export class PlaylistEditor extends LitElement {
     this.filterText = (e.target as HTMLInputElement).value;
   }
 
+  // -- Resizer --------------------------------------------------------------
+
+  private resizeStartX = 0;
+  private resizeStartWidth = 0;
+  private resizeBoundMousemove = (e: MouseEvent) => this.onResizeMouseMove(e);
+  private resizeBoundMouseup = () => this.onResizeMouseUp();
+
+  private onResizerMouseDown(e: MouseEvent) {
+    e.preventDefault();
+    this.resizeStartX = e.clientX;
+    this.resizeStartWidth = this.playlistWidth;
+    document.addEventListener("mousemove", this.resizeBoundMousemove);
+    document.addEventListener("mouseup", this.resizeBoundMouseup);
+    (document.body.style as { cursor?: string }).cursor = "col-resize";
+    (document.body.style as { userSelect?: string }).userSelect = "none";
+  }
+
+  private onResizeMouseMove(e: MouseEvent) {
+    const delta = e.clientX - this.resizeStartX;
+    const w = Math.round(
+      Math.max(MIN_PLAYLIST_WIDTH, Math.min(MAX_PLAYLIST_WIDTH, this.resizeStartWidth + delta)),
+    );
+    this.playlistWidth = w;
+  }
+
+  private onResizeMouseUp() {
+    this.stopResize();
+    void callerBuddy.updateSetting("playlistPanelWidth", this.playlistWidth);
+  }
+
+  private stopResize() {
+    document.removeEventListener("mousemove", this.resizeBoundMousemove);
+    document.removeEventListener("mouseup", this.resizeBoundMouseup);
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  }
+
   // -- Playlist operations --------------------------------------------------
 
   private addToPlaylist(song: Song) {
@@ -664,13 +724,25 @@ export class PlaylistEditor extends LitElement {
     /* -- Playlist panel ---------------------------------------------------- */
 
     .playlist-panel {
-      width: 260px;
-      min-width: 200px;
-      border-right: 1px solid var(--cb-border);
+      min-width: 180px;
+      flex-shrink: 0;
+      border-right: none;
       display: flex;
       flex-direction: column;
       padding: 12px;
       background: var(--cb-panel-bg);
+    }
+
+    .resizer {
+      width: 6px;
+      flex-shrink: 0;
+      cursor: col-resize;
+      background: transparent;
+      border-left: 1px solid var(--cb-border);
+    }
+
+    .resizer:hover {
+      background: color-mix(in srgb, var(--cb-accent) 15%, transparent);
     }
 
     .playlist-panel h2 {

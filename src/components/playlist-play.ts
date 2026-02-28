@@ -12,7 +12,13 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
-import { DEFAULT_BREAK_TIMER_MINUTES } from "../models/settings.js";
+import {
+  DEFAULT_BREAK_TIMER_MINUTES,
+  DEFAULT_PLAYLIST_PANEL_WIDTH,
+} from "../models/settings.js";
+
+const MIN_PLAYLIST_WIDTH = 180;
+const MAX_PLAYLIST_WIDTH = 500;
 import { StateEvents } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import { formatCountdown, formatClock } from "../utils/format.js";
@@ -36,6 +42,9 @@ export class PlaylistPlay extends LitElement {
   // Clock
   @state() private clockTime = "";
 
+  /** Playlist panel width (from settings, updated on resize). */
+  @state() private playlistWidth = DEFAULT_PLAYLIST_PANEL_WIDTH;
+
   private clockInterval: number | null = null;
   private breakInterval: number | null = null;
   private breakAlarmInterval: number | null = null;
@@ -43,7 +52,10 @@ export class PlaylistPlay extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.breakMinutes = callerBuddy.state.settings.breakTimerMinutes;
+    this.playlistWidth =
+      callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
+    callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.addEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
     document.addEventListener("keydown", this._boundKeydown);
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
@@ -54,7 +66,9 @@ export class PlaylistPlay extends LitElement {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this._boundKeydown);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
+    callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.removeEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
+    this.stopResize();
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     this.stopBreakTimer();
   }
@@ -89,6 +103,13 @@ export class PlaylistPlay extends LitElement {
     this.requestUpdate();
   };
 
+  private onSettingsChanged = () => {
+    this.playlistWidth =
+      callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
+    this.breakMinutes = callerBuddy.state.settings.breakTimerMinutes;
+    this.requestUpdate();
+  };
+
   /** The effective selected index: user override or first unplayed. */
   private getSelectedIndex(): number {
     if (this.selectedIndex !== null) return this.selectedIndex;
@@ -106,7 +127,7 @@ export class PlaylistPlay extends LitElement {
 
     return html`
       <div class="play-view ${isPlayingSong ? "inactive" : ""}">
-        <aside class="playlist-panel">
+        <aside class="playlist-panel" style="width: ${this.playlistWidth}px">
           <h2>Playlist</h2>
           ${playlist.length === 0
             ? html`<p class="muted">Playlist is empty.</p>`
@@ -156,6 +177,11 @@ export class PlaylistPlay extends LitElement {
             </button>
           </div>
         </aside>
+        <div
+          class="resizer"
+          title="Drag to resize playlist"
+          @mousedown=${this.onResizerMouseDown}
+        ></div>
 
         <!-- Right: Break timer and clock -->
         <section class="info-panel">
@@ -297,6 +323,7 @@ export class PlaylistPlay extends LitElement {
     if (this.breakTimerRunning) {
       this.stopBreakTimer();
     }
+    void callerBuddy.updateSetting("breakTimerMinutes", this.breakMinutes);
   }
 
   private startBreakTimer() {
@@ -325,10 +352,47 @@ export class PlaylistPlay extends LitElement {
 
   private playBreakAlarm() {
     callerBuddy.audio.playBeep();
-    // Replay every 15 seconds
+      // Replay every 15 seconds
     this.breakAlarmInterval = window.setInterval(() => {
       callerBuddy.audio.playBeep();
     }, 15_000);
+  }
+
+  // -- Resizer --------------------------------------------------------------
+
+  private resizeStartX = 0;
+  private resizeStartWidth = 0;
+  private resizeBoundMousemove = (e: MouseEvent) => this.onResizeMouseMove(e);
+  private resizeBoundMouseup = () => this.onResizeMouseUp();
+
+  private onResizerMouseDown(e: MouseEvent) {
+    e.preventDefault();
+    this.resizeStartX = e.clientX;
+    this.resizeStartWidth = this.playlistWidth;
+    document.addEventListener("mousemove", this.resizeBoundMousemove);
+    document.addEventListener("mouseup", this.resizeBoundMouseup);
+    (document.body.style as { cursor?: string }).cursor = "col-resize";
+    (document.body.style as { userSelect?: string }).userSelect = "none";
+  }
+
+  private onResizeMouseMove(e: MouseEvent) {
+    const delta = e.clientX - this.resizeStartX;
+    const w = Math.round(
+      Math.max(MIN_PLAYLIST_WIDTH, Math.min(MAX_PLAYLIST_WIDTH, this.resizeStartWidth + delta)),
+    );
+    this.playlistWidth = w;
+  }
+
+  private onResizeMouseUp() {
+    this.stopResize();
+    void callerBuddy.updateSetting("playlistPanelWidth", this.playlistWidth);
+  }
+
+  private stopResize() {
+    document.removeEventListener("mousemove", this.resizeBoundMousemove);
+    document.removeEventListener("mouseup", this.resizeBoundMouseup);
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
   }
 
   // -- Clock ----------------------------------------------------------------
@@ -356,13 +420,25 @@ export class PlaylistPlay extends LitElement {
     /* -- Playlist panel ---------------------------------------------------- */
 
     .playlist-panel {
-      width: 280px;
-      min-width: 220px;
-      border-right: 1px solid var(--cb-border);
+      min-width: 180px;
+      flex-shrink: 0;
+      border-right: none;
       display: flex;
       flex-direction: column;
       padding: 12px;
       background: var(--cb-panel-bg);
+    }
+
+    .resizer {
+      width: 6px;
+      flex-shrink: 0;
+      cursor: col-resize;
+      background: transparent;
+      border-left: 1px solid var(--cb-border);
+    }
+
+    .resizer:hover {
+      background: color-mix(in srgb, var(--cb-accent) 15%, transparent);
     }
 
     .playlist-panel h2 {

@@ -58,7 +58,7 @@ rationale.
     lifecycle hooks. Building equivalent functionality in vanilla TypeScript
     would require significant custom code. Lit aligns with the design philosophy
     of minimalism while providing necessary structure.
-- We will be Prettier for formatting. Code should confirm its defaults.
+- We will be using Prettier for formatting. Code should confirm its defaults.
 - We will be using Vite for building.
 - We will be using Vitest for Unit testing.
 - We will be using Playwright for UI testing.

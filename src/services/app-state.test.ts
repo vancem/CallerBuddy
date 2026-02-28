@@ -64,7 +64,11 @@ describe("AppState", () => {
   describe("setSettings", () => {
     it("updates settings and fires SETTINGS_CHANGED", () => {
       const handler = spyOn(state, StateEvents.SETTINGS_CHANGED);
-      state.setSettings({ breakTimerMinutes: 10, patterTimerMinutes: 7 });
+      state.setSettings({
+        breakTimerMinutes: 10,
+        patterTimerMinutes: 7,
+        playlistPanelWidth: 300,
+      });
       expect(state.settings.breakTimerMinutes).toBe(10);
       expect(handler).toHaveBeenCalledOnce();
     });

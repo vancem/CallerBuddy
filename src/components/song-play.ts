@@ -659,6 +659,7 @@ export class SongPlay extends LitElement {
     if (this.patterTimerEnabled && this.playing && this.song && isPatter(this.song)) {
       this.startPatterTimer();
     }
+    void callerBuddy.updateSetting("patterTimerMinutes", this.patterMinutes);
   }
 
   private onPatterTimerEnabledChange(e: Event) {

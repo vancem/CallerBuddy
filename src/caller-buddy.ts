@@ -148,6 +148,12 @@ export class CallerBuddy {
     }
   }
 
+  /** Update a single setting and persist to settings.json. */
+  async updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
+    this.state.setSettings({ ...this.state.settings, [key]: value });
+    await this.saveSettings();
+  }
+
   // -----------------------------------------------------------------------
   // Song operations
   // -----------------------------------------------------------------------
