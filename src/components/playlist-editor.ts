@@ -834,8 +834,16 @@ export class PlaylistEditor extends LitElement {
 
     .playlist-actions {
       display: flex;
-      gap: 8px;
-      margin-top: 8px;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .playlist-actions .primary,
+    .playlist-actions .secondary {
+      padding: 4px 10px;
+      font-size: 0.9rem;
+      min-width: 4.5em;
+      box-sizing: border-box;
     }
 
     /* -- Breadcrumb -------------------------------------------------------- */
@@ -1110,9 +1118,9 @@ export class PlaylistEditor extends LitElement {
       font-size: 0.85rem;
     }
 
-    /* -- Narrow / phone layout --------------------------------------------- */
+    /* -- Narrow layout: playlist on top when width <= 1.2× height ---------- */
 
-    @media (max-width: 700px) {
+    @media (max-aspect-ratio: 6/5) {
       .editor {
         flex-direction: column;
       }
@@ -1122,34 +1130,6 @@ export class PlaylistEditor extends LitElement {
         min-width: 0;
         max-height: 35vh;
         max-height: 35dvh;
-        border-right: none;
-        border-bottom: 1px solid var(--cb-border);
-      }
-
-      .resizer {
-        display: none;
-      }
-
-      .browser-toolbar {
-        flex-wrap: wrap;
-      }
-
-      .song-table th,
-      .song-table td {
-        padding: 6px 6px;
-      }
-    }
-
-    @media (max-height: 500px) {
-      .editor {
-        flex-direction: column;
-      }
-
-      .playlist-panel {
-        width: auto !important;
-        min-width: 0;
-        max-height: 40vh;
-        max-height: 40dvh;
         border-right: none;
         border-bottom: 1px solid var(--cb-border);
       }

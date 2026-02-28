@@ -514,17 +514,22 @@ export class PlaylistPlay extends LitElement {
     }
 
     .play-actions {
-      margin-top: 12px;
+      margin-top: 6px;
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
+    }
+
+    .play-actions button {
+      padding: 4px 10px;
+      font-size: 0.9rem;
+      min-width: 4.5em;
+      box-sizing: border-box;
     }
 
     .play-actions button:not(.primary) {
       border-radius: 6px;
       border: 1px solid var(--cb-border);
-      padding: 8px 16px;
-      font-size: 0.9rem;
       background: var(--cb-input-bg);
       color: var(--cb-fg);
       cursor: pointer;
@@ -668,8 +673,8 @@ export class PlaylistPlay extends LitElement {
     .primary {
       border-radius: 6px;
       border: 1px solid transparent;
-      padding: 8px 20px;
-      font-size: 1rem;
+      padding: 4px 10px;
+      font-size: 0.9rem;
       font-weight: 500;
       background: var(--cb-accent);
       color: var(--cb-fg-on-accent);
@@ -690,33 +695,9 @@ export class PlaylistPlay extends LitElement {
       font-size: 0.85rem;
     }
 
-    /* -- Narrow / phone layout --------------------------------------------- */
+    /* -- Narrow layout: playlist on top when width <= 1.2× height ---------- */
 
-    @media (max-width: 700px) {
-      .play-view {
-        flex-direction: column;
-      }
-
-      .playlist-panel {
-        width: auto !important;
-        min-width: 0;
-        max-height: 50vh;
-        max-height: 50dvh;
-        border-right: none;
-        border-bottom: 1px solid var(--cb-border);
-      }
-
-      .resizer {
-        display: none;
-      }
-
-      .info-panel {
-        padding: 12px;
-        gap: 16px;
-      }
-    }
-
-    @media (max-height: 500px) {
+    @media (max-aspect-ratio: 6/5) {
       .play-view {
         flex-direction: column;
       }
