@@ -81,18 +81,23 @@ export class CallerBuddy {
    * Persists the handle, loads songs, opens the playlist editor.
    */
   async setRoot(handle: FileSystemDirectoryHandle): Promise<void> {
-    log.info(`setRoot: ensuring readwrite permission on "${handle.name}"…`);
-    const granted = await ensurePermission(handle);
-    if (!granted) {
-      log.warn("setRoot: user denied readwrite permission on root folder.");
-      return;
-    }
-    log.info("setRoot: permission granted, storing handle in IndexedDB…");
+    // Persist immediately so we survive back-button / quick navigation.
+    // IndexedDB transactions are aborted on page unload; if we defer this
+    // until after ensurePermission/activateRoot, the user can leave before
+    // the write completes (especially on Android where activateRoot is slow).
+    log.info("setRoot: persisting handle to IndexedDB first…");
     try {
       await storeRootHandle(handle);
       log.info("setRoot: handle stored");
     } catch (err) {
       log.warn("setRoot: could not persist handle to IndexedDB:", err);
+    }
+
+    log.info(`setRoot: ensuring readwrite permission on "${handle.name}"…`);
+    const granted = await ensurePermission(handle);
+    if (!granted) {
+      log.warn("setRoot: user denied readwrite permission on root folder.");
+      return;
     }
     log.info("setRoot: activating root…");
     await this.activateRoot(handle);
