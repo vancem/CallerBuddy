@@ -1,9 +1,9 @@
-const CACHE_NAME = "callerbuddy-v0.1.0-pre.8";
-const CACHE_URLS = ["/","/index.html"];
+const CACHE_NAME = "callerbuddy-v0.1.0-pre.9";
 
 self.addEventListener("install", (event) => {
+  const base = new URL("./", self.location).href;
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CACHE_URLS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll([base, base + "index.html"]))
   );
   self.skipWaiting();
 });

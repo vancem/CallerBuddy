@@ -14,6 +14,6 @@ callerBuddy.init();
 // Register service worker only in production (avoids caching issues in dev)
 if (!import.meta.env.DEV && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register(import.meta.env.BASE_URL + "sw.js").catch(() => {});
   });
 }

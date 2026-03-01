@@ -11,8 +11,6 @@ const version = pkg.version;
 
 // Base path for deployed app (e.g. '' or '/CallerBuddy'). No trailing slash.
 const basePath = (process.env.BASE_PATH || "").replace(/\/?$/, "") || "";
-const rootUrl = basePath ? basePath + "/" : "/";
-const cacheUrls = [rootUrl, rootUrl + "index.html"];
 
 // 1) src/version.ts
 fs.writeFileSync(
@@ -26,14 +24,14 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 manifest.version = version;
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
-// 3) public/sw.js with versioned cache name and correct cache URLs
+// 3) public/sw.js with versioned cache name (dynamic base path for GitHub Pages)
 const cacheName = `callerbuddy-v${version.replace(/[^a-z0-9.-]/gi, "-")}`;
 const swContent = `const CACHE_NAME = "${cacheName}";
-const CACHE_URLS = ${JSON.stringify(cacheUrls)};
 
 self.addEventListener("install", (event) => {
+  const base = new URL("./", self.location).href;
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CACHE_URLS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll([base, base + "index.html"]))
   );
   self.skipWaiting();
 });
