@@ -31,68 +31,40 @@ export class AppShell extends LitElement {
   @state() private showMenu = false;
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
-  private _boundClick = (e: MouseEvent) => this.onClickFullscreen(e);
-  private _fullscreenDone = false;
+  private _boundFsChange = () => this.requestUpdate();
 
   connectedCallback() {
     super.connectedCallback();
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.addEventListener("keydown", this._boundKeydown);
-    this.addEventListener("click", this._boundClick);
-  }
-
-  /**
-   * On small screens, request fullscreen at most once, and only on the very
-   * first user click.  The decision is made at startup time: first click wins.
-   * If the first click is on an interactive element (button, link, etc.), we
-   * never try — we must not consume that activation.  If it is non-interactive
-   * and the screen is small, we try once.  After the first click, _fullscreenDone
-   * is always set; no later click can ever trigger fullscreen.
-   */
-  private onClickFullscreen(e: MouseEvent) {
-    if (this._fullscreenDone) return;
-    this._fullscreenDone = true;
-
-    if (!this.isSmallScreen() || this.isStandalonePWA()) return;
-    if (this.clickedInteractiveElement(e)) return;
-
-    const el = document.documentElement;
-    const requestFS: (() => Promise<void>) | undefined =
-      el.requestFullscreen?.bind(el) ??
-      (el as any).webkitRequestFullscreen?.bind(el);
-    requestFS?.()?.catch?.(() => {});
-  }
-
-  private clickedInteractiveElement(e: MouseEvent): boolean {
-    const INTERACTIVE = /^(A|BUTTON|INPUT|SELECT|TEXTAREA)$/;
-    return e.composedPath().some(
-      (n) => n instanceof HTMLElement && INTERACTIVE.test(n.tagName),
-    );
-  }
-
-  /** ~50 characters of default text ≈ 800 CSS px (50 × 16 px base font). */
-  private static readonly SMALL_SCREEN_PX = 800;
-
-  private isSmallScreen(): boolean {
-    return (
-      window.innerWidth < AppShell.SMALL_SCREEN_PX ||
-      window.innerHeight < AppShell.SMALL_SCREEN_PX
-    );
-  }
-
-  /** True when running as an installed PWA (browser chrome is already hidden). */
-  private isStandalonePWA(): boolean {
-    return (
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true
-    );
+    document.addEventListener("fullscreenchange", this._boundFsChange);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.removeEventListener("keydown", this._boundKeydown);
-    this.removeEventListener("click", this._boundClick);
+    document.removeEventListener("fullscreenchange", this._boundFsChange);
+  }
+
+  private isFullscreen(): boolean {
+    return !!(document.fullscreenElement ?? (document as any).webkitFullscreenElement);
+  }
+
+  private toggleFullscreen() {
+    this.showMenu = false;
+    if (this.isFullscreen()) {
+      const exitFS: (() => Promise<void>) | undefined =
+        document.exitFullscreen?.bind(document) ??
+        (document as any).webkitExitFullscreen?.bind(document);
+      exitFS?.()?.catch?.(() => {});
+    } else {
+      const el = document.documentElement;
+      const requestFS: (() => Promise<void>) | undefined =
+        el.requestFullscreen?.bind(el) ??
+        (el as any).webkitRequestFullscreen?.bind(el);
+      requestFS?.()?.catch?.(() => {});
+    }
   }
 
   /** Global keyboard shortcuts for tab navigation and close.
@@ -239,6 +211,9 @@ export class AppShell extends LitElement {
         <button class="menu-item" role="menuitem" @click=${this.onWelcome}>
           Set CallerBuddy folder…
         </button>
+        <button class="menu-item" role="menuitem" @click=${this.toggleFullscreen}>
+          ${this.isFullscreen() ? "Show Browser" : "Full Screen"}
+        </button>
         <hr />
         <button class="menu-item" role="menuitem" @click=${this.onClose}>
           Close
@@ -288,9 +263,7 @@ export class AppShell extends LitElement {
 
   private async onClose() {
     this.showMenu = false;
-    const fsEl =
-      document.fullscreenElement ?? (document as any).webkitFullscreenElement;
-    if (fsEl) {
+    if (this.isFullscreen()) {
       const exitFS: (() => Promise<void>) | undefined =
         document.exitFullscreen?.bind(document) ??
         (document as any).webkitExitFullscreen?.bind(document);

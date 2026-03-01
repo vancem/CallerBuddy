@@ -1,73 +1,43 @@
-# Summary – Fix mobile fullscreen & folder-connect activation conflict
+# Summary – Replace auto-fullscreen with explicit menu toggle
 
 **Date:** 2026-02-28
 
 ## What was done
 
-1. Fixed the mobile fullscreen logic in `app-shell.ts` that was supposed to hide
-   the browser's URL bar on small screens but was silently failing.
-2. Fixed the "User activation is required to request permissions" error when
-   connecting to a folder — caused by `requestFullscreen()` consuming the
-   transient user-activation token before `requestPermission()` could use it.
-3. Changed fullscreen to fire-once: it attempts on the first eligible click and
-   then removes the listener, so it never re-triggers on tab switches or other
-   interactions.
+Replaced all automatic fullscreen logic with an explicit "Full Screen" /
+"Show Browser" toggle in the hamburger menu.
 
-## Root cause (original fullscreen code)
+## Why
 
-The original implementation registered both `click` and `touchstart` listeners and
-removed **both** on the very first event.  On mobile, `touchstart` fires before
-`click`; if the browser rejected the fullscreen request from `touchstart`, the
-`click` listener was already gone.  `.catch(() => {})` swallowed the error.
-
-## Root cause (folder-connect error)
-
-`requestFullscreen()` **consumes** the browser's transient user-activation token.
-When both fullscreen and folder-reconnect ran on the same click, the activation was
-already gone by the time `FileSystemHandle.requestPermission()` was called.
-Additionally, `setRoot()` awaited `storeRootHandle()` (IndexedDB) *before* calling
-`ensurePermission()`, adding unnecessary delay before using the activation.
-
-## Root cause (tab-switch fullscreen re-trigger)
-
-The persistent click handler was calling `requestFullscreen()` on every
-non-interactive click.  Switching tabs involves clicking non-interactive areas,
-which repeatedly re-entered fullscreen even after the user had exited it.
+The Fullscreen API requires a user-activation token (from a click), and that
+token is single-use — it's consumed by whichever API uses it first.  Automatic
+fullscreen on click conflicted with file-picker / permission APIs that need the
+same token, and various heuristics (time windows, interactive-element detection)
+proved fragile.  An explicit menu item is simple, robust, and under user control.
 
 ## Changes
 
 ### `src/components/app-shell.ts`
 
-- **Screen-size detection, not device detection** — replaced `isPhone()` (media
-  query for `hover: none` / `pointer: coarse`) with `isSmallScreen()`: a pure
-  viewport-dimension check (either dimension < 800 CSS px ≈ 50 chars of default
-  text).
+- **Removed** all automatic fullscreen logic: `_fullscreenDone`, `_fullscreenDeadline`,
+  `FULLSCREEN_WINDOW_MS`, `onClickFullscreen()`, `clickedInteractiveElement()`,
+  `isSmallScreen()`, `isStandalonePWA()`, `SMALL_SCREEN_PX`, and the click listener.
 
-- **Fire-once fullscreen via boolean guard** — `onClickFullscreen()` is guarded
-  by `_fullscreenDone`.  On the first eligible (non-interactive, small-screen)
-  click the flag is set and fullscreen is requested; every subsequent click
-  returns immediately.  The listener itself follows the normal lifecycle
-  (registered in `connectedCallback`, removed in `disconnectedCallback`) — no
-  transient add/remove.
+- **Added** `toggleFullscreen()` — enters or exits fullscreen with vendor-prefix
+  support (`webkitRequestFullscreen` / `webkitExitFullscreen`).
 
-- **Scoped to the component** — handler on `this` (the host element) instead
-  of `document`.
+- **Added** `isFullscreen()` helper using `fullscreenElement` with webkit fallback.
 
-- **Skips interactive elements** — `clickedInteractiveElement()` walks
-  `composedPath()` looking for `<button>`, `<a>`, `<input>`, `<select>`,
-  `<textarea>`.  When the user clicks one of these, the listener stays but
-  does not fire, preserving activation for APIs those elements may trigger.
+- **Added** `fullscreenchange` event listener so the menu label updates when
+  fullscreen state changes (e.g. user swipes status bar to exit).
 
-- **PWA standalone skip** — `isStandalonePWA()` check at setup time; if running
-  as an installed PWA, no listener is registered at all.
+- **Added** menu item in `renderMenu()` that shows "Full Screen" or "Show Browser"
+  depending on current state.
 
-- **Vendor-prefix support** — `webkitRequestFullscreen` / `webkitFullscreenElement`
-  / `webkitExitFullscreen` fallbacks (also applied to `onClose()`).
+- **Simplified** `onClose()` to use `isFullscreen()` helper.
 
 ### `src/caller-buddy.ts`
 
-- **Reordered `setRoot()`** — `ensurePermission()` now runs *before* awaiting
-  the IndexedDB persist.  The persist is started immediately (fire-and-forget
-  style) so it still begins as early as possible, but `ensurePermission` gets the
-  user-activation token while it is freshest.  We `await stored` before
-  `activateRoot()` so the handle is guaranteed persisted before proceeding.
+- **Reordered `setRoot()`** (from earlier in this session) — `ensurePermission()`
+  runs before awaiting the IndexedDB persist so the permission request gets the
+  user-activation token while it is freshest.
