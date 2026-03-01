@@ -9,6 +9,9 @@
 2. Fixed the "User activation is required to request permissions" error when
    connecting to a folder — caused by `requestFullscreen()` consuming the
    transient user-activation token before `requestPermission()` could use it.
+3. Changed fullscreen to fire-once: it attempts on the first eligible click and
+   then removes the listener, so it never re-triggers on tab switches or other
+   interactions.
 
 ## Root cause (original fullscreen code)
 
@@ -25,6 +28,12 @@ already gone by the time `FileSystemHandle.requestPermission()` was called.
 Additionally, `setRoot()` awaited `storeRootHandle()` (IndexedDB) *before* calling
 `ensurePermission()`, adding unnecessary delay before using the activation.
 
+## Root cause (tab-switch fullscreen re-trigger)
+
+The persistent click handler was calling `requestFullscreen()` on every
+non-interactive click.  Switching tabs involves clicking non-interactive areas,
+which repeatedly re-entered fullscreen even after the user had exited it.
+
 ## Changes
 
 ### `src/components/app-shell.ts`
@@ -34,21 +43,22 @@ Additionally, `setRoot()` awaited `storeRootHandle()` (IndexedDB) *before* calli
   viewport-dimension check (either dimension < 800 CSS px ≈ 50 chars of default
   text).
 
-- **Standard lifecycle click handler** — `_boundClick` follows the same
-  `connectedCallback` / `disconnectedCallback` pattern as `_boundKeydown`.
-  No transient add/remove.
+- **Fire-once fullscreen** — `setupFullscreenOnFirstClick()` registers a click
+  listener that removes itself after the first eligible (non-interactive, small
+  screen) click.  If the screen is large at the time of first click, the listener
+  also removes itself without requesting fullscreen.  The app never re-requests
+  fullscreen after that.
 
 - **Scoped to the component** — handler on `this` (the host element) instead
   of `document`.
 
-- **Skips interactive elements** — added `clickedInteractiveElement()` which
-  walks `composedPath()` looking for `<button>`, `<a>`, `<input>`, `<select>`,
-  `<textarea>`.  When the user clicks one of these, fullscreen is *not* requested,
-  preserving the activation token for APIs those elements may trigger (e.g.
-  `showDirectoryPicker`, `requestPermission`).
+- **Skips interactive elements** — `clickedInteractiveElement()` walks
+  `composedPath()` looking for `<button>`, `<a>`, `<input>`, `<select>`,
+  `<textarea>`.  When the user clicks one of these, the listener stays but
+  does not fire, preserving activation for APIs those elements may trigger.
 
-- **PWA standalone skip** — `isStandalonePWA()` avoids requesting fullscreen when
-  browser chrome is already absent.
+- **PWA standalone skip** — `isStandalonePWA()` check at setup time; if running
+  as an installed PWA, no listener is registered at all.
 
 - **Vendor-prefix support** — `webkitRequestFullscreen` / `webkitFullscreenElement`
   / `webkitExitFullscreen` fallbacks (also applied to `onClose()`).

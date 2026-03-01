@@ -31,42 +31,53 @@ export class AppShell extends LitElement {
   @state() private showMenu = false;
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
-  private _boundClick = (e: MouseEvent) => this.requestFullscreenIfSmall(e);
+  private _boundFullscreenClick: ((e: MouseEvent) => void) | null = null;
 
   connectedCallback() {
     super.connectedCallback();
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.addEventListener("keydown", this._boundKeydown);
-    this.addEventListener("click", this._boundClick);
+    this.setupFullscreenOnFirstClick();
   }
 
   /**
-   * If the viewport is small (either dimension under ~50 characters of
-   * default-sized text), request fullscreen to reclaim browser-chrome space.
-   * Re-checked per click so orientation changes are handled naturally.
-   * The Fullscreen API requires a user-activation context, so this must run
-   * inside a click handler — same lifecycle pattern as _boundKeydown.
+   * On small screens, enter fullscreen once on the first non-interactive click
+   * to reclaim browser-chrome space, then stop listening.  The Fullscreen API
+   * requires user-activation, so this must run inside a click handler.
    *
    * Skips clicks on interactive elements (buttons, links, inputs) because
    * requestFullscreen() consumes the transient user-activation token, which
-   * those elements may need for their own activation-gated APIs (e.g.
-   * showDirectoryPicker, FileSystemHandle.requestPermission).
+   * those elements may need for file pickers, permission requests, etc.
+   * The listener stays until a non-interactive click succeeds or the screen
+   * turns out to be large enough that fullscreen isn't needed.
    */
-  private requestFullscreenIfSmall(e: MouseEvent) {
-    if (!this.isSmallScreen()) return;
+  private setupFullscreenOnFirstClick() {
     if (this.isStandalonePWA()) return;
 
-    const fsEl =
-      document.fullscreenElement ?? (document as any).webkitFullscreenElement;
-    if (fsEl) return;
+    this._boundFullscreenClick = (e: MouseEvent) => {
+      if (!this.isSmallScreen()) {
+        this.removeFullscreenListener();
+        return;
+      }
 
-    if (this.clickedInteractiveElement(e)) return;
+      if (this.clickedInteractiveElement(e)) return;
 
-    const el = document.documentElement;
-    const requestFS: (() => Promise<void>) | undefined =
-      el.requestFullscreen?.bind(el) ??
-      (el as any).webkitRequestFullscreen?.bind(el);
-    requestFS?.()?.catch?.(() => {});
+      this.removeFullscreenListener();
+      const el = document.documentElement;
+      const requestFS: (() => Promise<void>) | undefined =
+        el.requestFullscreen?.bind(el) ??
+        (el as any).webkitRequestFullscreen?.bind(el);
+      requestFS?.()?.catch?.(() => {});
+    };
+
+    this.addEventListener("click", this._boundFullscreenClick);
+  }
+
+  private removeFullscreenListener() {
+    if (this._boundFullscreenClick) {
+      this.removeEventListener("click", this._boundFullscreenClick);
+      this._boundFullscreenClick = null;
+    }
   }
 
   private clickedInteractiveElement(e: MouseEvent): boolean {
@@ -98,7 +109,7 @@ export class AppShell extends LitElement {
     super.disconnectedCallback();
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.removeEventListener("keydown", this._boundKeydown);
-    this.removeEventListener("click", this._boundClick);
+    this.removeFullscreenListener();
   }
 
   /** Global keyboard shortcuts for tab navigation and close.
