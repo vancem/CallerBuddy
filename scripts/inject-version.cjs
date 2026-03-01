@@ -7,7 +7,11 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
-const version = pkg.version;
+const baseVersion = pkg.version;
+// Append build timestamp so each dev/build run shows a unique version in the UI
+const now = new Date();
+const stamp = `${now.getMonth() + 1}/${now.getDate()}-${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
+const version = `${baseVersion}-${stamp}`;
 
 // Base path for deployed app (e.g. '' or '/CallerBuddy'). No trailing slash.
 const basePath = (process.env.BASE_PATH || "").replace(/\/?$/, "") || "";
