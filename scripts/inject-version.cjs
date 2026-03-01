@@ -11,7 +11,7 @@ const baseVersion = pkg.version;
 // Append build timestamp so each dev/build run shows a unique version in the UI
 const now = new Date();
 const stamp = `${now.getMonth() + 1}/${now.getDate()}-${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
-const version = `${baseVersion}-${stamp}`;
+const version = `${baseVersion} ${stamp}`;
 
 // Base path for deployed app (e.g. '' or '/CallerBuddy'). No trailing slash.
 const basePath = (process.env.BASE_PATH || "").replace(/\/?$/, "") || "";
