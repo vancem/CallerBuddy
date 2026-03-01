@@ -616,6 +616,12 @@ export class PlaylistEditor extends LitElement {
     source: { kind: "song"; song: Song } | { kind: "playlist"; index: number },
   ) {
     if (e.touches.length !== 1) return;
+
+    // Prevent the browser from starting a native drag (the element has
+    // draggable="true" for desktop mouse DnD). Without this, Android Chrome
+    // long-press triggers a native drag → touchcancel, killing our handler.
+    e.preventDefault();
+
     const touch = e.touches[0];
     this.touchId = touch.identifier;
     this.touchStartPos = { x: touch.clientX, y: touch.clientY };
