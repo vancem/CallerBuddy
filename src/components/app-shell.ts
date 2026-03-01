@@ -212,7 +212,7 @@ export class AppShell extends LitElement {
           Set CallerBuddy folder…
         </button>
         <button class="menu-item" role="menuitem" @click=${this.toggleFullscreen}>
-          ${this.isFullscreen() ? "Show Browser" : "Full Screen"}
+          ${this.isFullscreen() ? "In Window" : "Full Screen"}
         </button>
         <hr />
         <button class="menu-item" role="menuitem" @click=${this.onClose}>
