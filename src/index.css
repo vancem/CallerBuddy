@@ -1,3 +1,6 @@
+/* mobile-drag-drop polyfill: drag image and snapback animation */
+@import "mobile-drag-drop/default.css";
+
 /**
  * Global styles for CallerBuddy.
  * Component-specific styles live inside each Lit component's static `styles`.

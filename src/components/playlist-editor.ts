@@ -203,6 +203,7 @@ export class PlaylistEditor extends LitElement {
           ${playlist.length === 0
             ? html`<div
                 class="empty-playlist-drop"
+                @dragenter=${this.onPlaylistDragEnter}
                 @dragover=${this.onPlaylistContainerDragOver}
                 @drop=${this.onEmptyPlaylistDrop}
               ><p class="muted">No songs in playlist. Drag songs here, right-click,
@@ -210,6 +211,7 @@ export class PlaylistEditor extends LitElement {
             : html`
                 <ol
                   class="playlist-list"
+                  @dragenter=${this.onPlaylistDragEnter}
                   @dragover=${this.onPlaylistContainerDragOver}
                   @dragleave=${this.onPlaylistDragLeave}
                   @drop=${this.onPlaylistDrop}
@@ -224,6 +226,7 @@ export class PlaylistEditor extends LitElement {
                         draggable="true"
                         @dragstart=${(e: DragEvent) => this.onPlaylistItemDragStart(e, i)}
                         @dragend=${this.onDragEnd}
+                        @dragenter=${this.onPlaylistDragEnter}
                         @dragover=${(e: DragEvent) => this.onPlaylistDragOver(e, i)}
                       >
                         <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
@@ -536,6 +539,16 @@ export class PlaylistEditor extends LitElement {
     const midY = rect.top + rect.height / 2;
     this.dropPosition = e.clientY < midY ? "above" : "below";
     this.dragOverIndex = index;
+  }
+
+  /** Required by mobile-drag-drop polyfill: must call preventDefault on drop zones. */
+  private onPlaylistDragEnter(e: DragEvent) {
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const hasSong = dt.types.includes("application/x-callerbuddy-song");
+    const hasItem = dt.types.includes("application/x-callerbuddy-playlist-item");
+    if (!hasSong && !hasItem) return;
+    e.preventDefault();
   }
 
   private onPlaylistContainerDragOver(e: DragEvent) {

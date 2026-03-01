@@ -5,6 +5,15 @@
  * component. The app-shell manages the tab-based UI.
  */
 
+import { polyfill as mobileDragDropPolyfill } from "mobile-drag-drop";
+
+// Enable HTML5 drag-and-drop on touch devices (Android, iOS). Without this,
+// drop events often don't fire on Android when dragging songs to the playlist.
+mobileDragDropPolyfill({
+  // Slight delay before drag starts — helps distinguish scroll from drag on touch
+  holdToDrag: 300,
+});
+
 import { callerBuddy } from "./caller-buddy.js";
 import "./components/app-shell.js";
 
