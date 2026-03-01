@@ -31,36 +31,74 @@ export class AppShell extends LitElement {
   @state() private showMenu = false;
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
+  private _boundClick = (e: MouseEvent) => this.requestFullscreenIfSmall(e);
 
   connectedCallback() {
     super.connectedCallback();
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.addEventListener("keydown", this._boundKeydown);
-    this.setupMobileFullscreen();
+    this.addEventListener("click", this._boundClick);
   }
 
-  /** On phones, request fullscreen on first user interaction (required by browsers). */
-  private setupMobileFullscreen() {
-    const tryFullscreen = () => {
-      document.removeEventListener("click", tryFullscreen, { capture: true });
-      document.removeEventListener("touchstart", tryFullscreen, { capture: true });
-      if (!this.isPhone()) return;
-      if (document.fullscreenElement) return;
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    };
-    document.addEventListener("click", tryFullscreen, { capture: true });
-    document.addEventListener("touchstart", tryFullscreen, { capture: true });
+  /**
+   * If the viewport is small (either dimension under ~50 characters of
+   * default-sized text), request fullscreen to reclaim browser-chrome space.
+   * Re-checked per click so orientation changes are handled naturally.
+   * The Fullscreen API requires a user-activation context, so this must run
+   * inside a click handler — same lifecycle pattern as _boundKeydown.
+   *
+   * Skips clicks on interactive elements (buttons, links, inputs) because
+   * requestFullscreen() consumes the transient user-activation token, which
+   * those elements may need for their own activation-gated APIs (e.g.
+   * showDirectoryPicker, FileSystemHandle.requestPermission).
+   */
+  private requestFullscreenIfSmall(e: MouseEvent) {
+    if (!this.isSmallScreen()) return;
+    if (this.isStandalonePWA()) return;
+
+    const fsEl =
+      document.fullscreenElement ?? (document as any).webkitFullscreenElement;
+    if (fsEl) return;
+
+    if (this.clickedInteractiveElement(e)) return;
+
+    const el = document.documentElement;
+    const requestFS: (() => Promise<void>) | undefined =
+      el.requestFullscreen?.bind(el) ??
+      (el as any).webkitRequestFullscreen?.bind(el);
+    requestFS?.()?.catch?.(() => {});
   }
 
-  /** True only on touch-primary devices without hover (phones/tablets, not desktops). */
-  private isPhone(): boolean {
-    return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+  private clickedInteractiveElement(e: MouseEvent): boolean {
+    const INTERACTIVE = /^(A|BUTTON|INPUT|SELECT|TEXTAREA)$/;
+    return e.composedPath().some(
+      (n) => n instanceof HTMLElement && INTERACTIVE.test(n.tagName),
+    );
+  }
+
+  /** ~50 characters of default text ≈ 800 CSS px (50 × 16 px base font). */
+  private static readonly SMALL_SCREEN_PX = 800;
+
+  private isSmallScreen(): boolean {
+    return (
+      window.innerWidth < AppShell.SMALL_SCREEN_PX ||
+      window.innerHeight < AppShell.SMALL_SCREEN_PX
+    );
+  }
+
+  /** True when running as an installed PWA (browser chrome is already hidden). */
+  private isStandalonePWA(): boolean {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as any).standalone === true
+    );
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.removeEventListener("keydown", this._boundKeydown);
+    this.removeEventListener("click", this._boundClick);
   }
 
   /** Global keyboard shortcuts for tab navigation and close.
@@ -256,8 +294,13 @@ export class AppShell extends LitElement {
 
   private async onClose() {
     this.showMenu = false;
-    if (document.fullscreenElement) {
-      await document.exitFullscreen().catch(() => {});
+    const fsEl =
+      document.fullscreenElement ?? (document as any).webkitFullscreenElement;
+    if (fsEl) {
+      const exitFS: (() => Promise<void>) | undefined =
+        document.exitFullscreen?.bind(document) ??
+        (document as any).webkitExitFullscreen?.bind(document);
+      await exitFS?.()?.catch?.(() => {});
     }
     window.close();
   }
