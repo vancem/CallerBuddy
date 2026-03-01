@@ -43,11 +43,12 @@ which repeatedly re-entered fullscreen even after the user had exited it.
   viewport-dimension check (either dimension < 800 CSS px ≈ 50 chars of default
   text).
 
-- **Fire-once fullscreen** — `setupFullscreenOnFirstClick()` registers a click
-  listener that removes itself after the first eligible (non-interactive, small
-  screen) click.  If the screen is large at the time of first click, the listener
-  also removes itself without requesting fullscreen.  The app never re-requests
-  fullscreen after that.
+- **Fire-once fullscreen via boolean guard** — `onClickFullscreen()` is guarded
+  by `_fullscreenDone`.  On the first eligible (non-interactive, small-screen)
+  click the flag is set and fullscreen is requested; every subsequent click
+  returns immediately.  The listener itself follows the normal lifecycle
+  (registered in `connectedCallback`, removed in `disconnectedCallback`) — no
+  transient add/remove.
 
 - **Scoped to the component** — handler on `this` (the host element) instead
   of `document`.
