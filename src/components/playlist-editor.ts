@@ -550,15 +550,15 @@ export class PlaylistEditor extends LitElement {
   private onPlaylistDrop(e: DragEvent) {
     e.preventDefault();
     const dt = e.dataTransfer;
-    if (!dt) return;
 
     const dropIndex = this.dropPosition === "below"
       ? this.dragOverIndex + 1
       : this.dragOverIndex;
 
-    const itemData = dt.getData("application/x-callerbuddy-playlist-item");
-    if (itemData) {
-      const fromIndex = Number(itemData);
+    // Reorder within playlist: use draggingPlaylistIndex (dataTransfer.getData
+    // can return empty on Android Chrome for same-document drags).
+    if (this.draggingPlaylistIndex >= 0) {
+      const fromIndex = this.draggingPlaylistIndex;
       const adjustedTo = dropIndex > fromIndex ? dropIndex - 1 : dropIndex;
       if (fromIndex !== adjustedTo) {
         callerBuddy.state.moveInPlaylist(fromIndex, adjustedTo);
