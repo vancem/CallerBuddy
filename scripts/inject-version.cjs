@@ -10,7 +10,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))
 const baseVersion = pkg.version;
 // Append build timestamp so each dev/build run shows a unique version in the UI
 const now = new Date();
-const stamp = `${now.getMonth() + 1}/${now.getDate()}-${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
+const stamp = `${now.getUTCMonth() + 1}/${now.getUTCDate()}-${now.getUTCHours()}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
 const version = `${baseVersion} ${stamp}`;
 
 // Base path for deployed app (e.g. '' or '/CallerBuddy'). No trailing slash.
