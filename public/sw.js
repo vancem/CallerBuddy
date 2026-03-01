@@ -1,3 +1,4 @@
+/* built: 2026-03-01T15:51:42.780Z */
 const CACHE_NAME = "callerbuddy-v0.1.0-pre.9";
 
 self.addEventListener("install", (event) => {
@@ -20,11 +21,27 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.url.startsWith(self.location.origin)) {
+  if (!event.request.url.startsWith(self.location.origin)) return;
+
+  // Navigation requests (HTML pages): always try network first so the browser
+  // never gets stuck on a stale cached index.html referencing old asset hashes.
+  if (event.request.mode === "navigate") {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        return cached ?? fetch(event.request);
-      })
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
+    return;
   }
+
+  // Sub-resources (JS, CSS, images): cache-first for speed.
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      return cached ?? fetch(event.request);
+    })
+  );
 });

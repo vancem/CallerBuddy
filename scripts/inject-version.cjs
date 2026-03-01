@@ -25,8 +25,12 @@ manifest.version = version;
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
 // 3) public/sw.js with versioned cache name (dynamic base path for GitHub Pages)
+// Include a build timestamp so the browser always detects a change and reinstalls
+// the service worker on every deploy, even when the version string hasn't changed.
 const cacheName = `callerbuddy-v${version.replace(/[^a-z0-9.-]/gi, "-")}`;
-const swContent = `const CACHE_NAME = "${cacheName}";
+const buildTime = new Date().toISOString();
+const swContent = `/* built: ${buildTime} */
+const CACHE_NAME = "${cacheName}";
 
 self.addEventListener("install", (event) => {
   const base = new URL("./", self.location).href;
@@ -48,13 +52,29 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.url.startsWith(self.location.origin)) {
+  if (!event.request.url.startsWith(self.location.origin)) return;
+
+  // Navigation requests (HTML pages): always try network first so the browser
+  // never gets stuck on a stale cached index.html referencing old asset hashes.
+  if (event.request.mode === "navigate") {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        return cached ?? fetch(event.request);
-      })
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
+    return;
   }
+
+  // Sub-resources (JS, CSS, images): cache-first for speed.
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      return cached ?? fetch(event.request);
+    })
+  );
 });
 `;
 fs.writeFileSync(path.join(root, "public", "sw.js"), swContent);
