@@ -628,29 +628,32 @@ export class PlaylistEditor extends LitElement {
       this.draggingPlaylistIndex = source.index;
     }
 
+    // Attach listeners immediately so we can cancel on premature movement
+    document.addEventListener("touchmove", this.boundTouchMove, { passive: false });
+    document.addEventListener("touchend", this.boundTouchEnd);
+    document.addEventListener("touchcancel", this.boundTouchEnd);
+
     this.touchHoldTimer = setTimeout(() => {
       this.touchHoldTimer = null;
       this.touchDragging = true;
-      // Attach move/end listeners on the document so they fire even when
-      // the finger moves outside the originating element.
-      document.addEventListener("touchmove", this.boundTouchMove, { passive: false });
-      document.addEventListener("touchend", this.boundTouchEnd);
-      document.addEventListener("touchcancel", this.boundTouchEnd);
     }, PlaylistEditor.TOUCH_HOLD_MS);
-
-    // Don't prevent default here — allows the browser to handle scroll
-    // if the user releases or moves before the hold timer fires.
   }
 
   private boundTouchMove = (e: TouchEvent) => this.onTouchMove(e);
   private boundTouchEnd = (e: TouchEvent) => this.onTouchEnd(e);
 
   private onTouchMove(e: TouchEvent) {
-    const touch = this.findTrackedTouch(e.changedTouches);
+    // CRITICAL: always prevent default so the browser doesn't claim the
+    // touch for scrolling (which would fire touchcancel and kill the drag).
+    e.preventDefault();
+
+    // Use e.touches (all active touches) for move — more reliable than
+    // changedTouches on some mobile browsers.
+    const touch = this.findTrackedTouch(e.touches);
     if (!touch) return;
 
+    // Still in hold phase — cancel if finger moved too far
     if (!this.touchDragging) {
-      // Still in hold phase — check movement threshold
       const dx = touch.clientX - this.touchStartPos.x;
       const dy = touch.clientY - this.touchStartPos.y;
       if (Math.abs(dx) > PlaylistEditor.TOUCH_MOVE_THRESHOLD ||
@@ -660,27 +663,23 @@ export class PlaylistEditor extends LitElement {
       return;
     }
 
-    // Prevent scrolling while dragging
-    e.preventDefault();
-
-    // Find the playlist item under the finger
-    const el = this.findPlaylistItemAt(touch.clientX, touch.clientY);
-    if (el) {
-      const rect = el.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      this.dropPosition = touch.clientY < midY ? "above" : "below";
-      const idx = this.getPlaylistItemIndex(el);
-      this.dragOverIndex = idx;
-    } else {
-      // Check if we're over the empty playlist drop area or the playlist panel
-      const overPlaylist = this.isOverPlaylistPanel(touch.clientX, touch.clientY);
-      if (overPlaylist) {
-        // Hovering the playlist panel but not on a specific item — drop at end
-        this.dragOverIndex = callerBuddy.state.playlist.length - 1;
+    // Use bounding-rect hit-testing (more reliable than elementFromPoint in
+    // Shadow DOM on mobile browsers).
+    const hit = this.hitTestPlaylistItems(touch.clientX, touch.clientY);
+    if (hit) {
+      this.dragOverIndex = hit.index;
+      this.dropPosition = hit.position;
+    } else if (this.isOverPlaylistPanel(touch.clientX, touch.clientY)) {
+      // Over the panel but not a specific item — target end of list
+      const len = callerBuddy.state.playlist.length;
+      if (len > 0) {
+        this.dragOverIndex = len - 1;
         this.dropPosition = "below";
       } else {
-        this.dragOverIndex = -1;
+        this.dragOverIndex = -1; // empty playlist, drop will use addToPlaylist
       }
+    } else {
+      this.dragOverIndex = -1;
     }
   }
 
@@ -751,32 +750,28 @@ export class PlaylistEditor extends LitElement {
   }
 
   /**
-   * Finds the .playlist-item <li> under the given coordinates by querying
-   * elementFromPoint on the shadow root (works inside Shadow DOM).
+   * Hit-tests all visible .playlist-item elements against viewport coordinates.
+   * Uses getBoundingClientRect instead of elementFromPoint for reliability
+   * inside Shadow DOM on mobile browsers.
    */
-  private findPlaylistItemAt(x: number, y: number): HTMLElement | null {
+  private hitTestPlaylistItems(
+    x: number,
+    y: number,
+  ): { index: number; position: "above" | "below" } | null {
     const root = this.shadowRoot;
     if (!root) return null;
-    let el = root.elementFromPoint(x, y) as HTMLElement | null;
-    while (el && el !== this) {
-      if (el.classList?.contains("playlist-item")) return el;
-      el = el.parentElement;
+    const items = root.querySelectorAll(".playlist-item");
+    for (let i = 0; i < items.length; i++) {
+      const rect = items[i].getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        const midY = rect.top + rect.height / 2;
+        return { index: i, position: y < midY ? "above" : "below" };
+      }
     }
     return null;
   }
 
-  /** Returns the playlist index of a .playlist-item element. */
-  private getPlaylistItemIndex(el: HTMLElement): number {
-    const root = this.shadowRoot;
-    if (!root) return -1;
-    const items = root.querySelectorAll(".playlist-item");
-    for (let i = 0; i < items.length; i++) {
-      if (items[i] === el) return i;
-    }
-    return -1;
-  }
-
-  /** Checks whether the given screen coordinates are over the playlist panel. */
+  /** Checks whether the given viewport coordinates are over the playlist panel. */
   private isOverPlaylistPanel(x: number, y: number): boolean {
     const root = this.shadowRoot;
     if (!root) return false;
