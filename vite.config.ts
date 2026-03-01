@@ -1,11 +1,16 @@
 /// <reference types="vitest/config" />
+import { createRequire } from "module";
 import { defineConfig } from "vite";
+
+const require = createRequire(import.meta.url);
+const { injectVersionPlugin } = require("./scripts/vite-inject-version.cjs");
 
 // For GitHub Pages: set BASE_PATH to your repo name, e.g. BASE_PATH=/CallerBuddy
 const basePath = (process.env.BASE_PATH || "").replace(/\/?$/, "");
 const base = basePath ? `/${basePath}/` : "/";
 
 export default defineConfig({
+  plugins: [injectVersionPlugin()],
   base,
   test: {
     globals: true,

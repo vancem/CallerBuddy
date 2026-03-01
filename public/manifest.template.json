@@ -1,0 +1,1 @@
+{"name":"CallerBuddy","short_name":"CallerBuddy","description":"Square dance caller music and lyrics manager","version":"__VERSION__","start_url":".","scope":".","display":"standalone","theme_color":"#dee1e6","background_color":"#ffffff","icons":[{"src":"callerBuddy.svg","type":"image/svg+xml","sizes":"any","purpose":"any"}]}

@@ -34,5 +34,9 @@ dist-ssr
 songs.json
 settings.json
 
+# PWA artifacts (generated from templates by Vite plugin)
+public/manifest.json
+public/sw.js
+
 # Backup directories
 bak/
