@@ -89,6 +89,22 @@ BASE_PATH=CallerBuddy npm run build
 npm run preview
 ```
 
+### Build version
+
+Each build embeds a version string (e.g. `0.1.0-pre.9 abc12345` or
+`0.1.0-pre.9 abc12345-dirty`) in the app. The second part is the Git
+commit hash (8 chars). A `-dirty` suffix means there were uncommitted changes
+when the build ran.
+
+To see exactly which source produced a build, use the hash with Git:
+
+```bash
+git show abc12345      # full commit details and diff
+git log -1 abc12345    # one-line summary
+```
+
+On GitHub: `https://github.com/vancem/CallerBuddy/commit/<hash>`.
+
 ---
 
 ## Pre-Push Check

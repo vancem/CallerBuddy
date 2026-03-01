@@ -8,10 +8,21 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const baseVersion = pkg.version;
-// Append build timestamp so each dev/build run shows a unique version in the UI
-const now = new Date();
-const stamp = `${now.getUTCMonth() + 1}/${now.getUTCDate()}-${now.getUTCHours()}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
-const version = `${baseVersion} ${stamp}`;
+
+// Use Git commit hash (with -dirty for uncommitted changes) for deterministic versioning.
+// Fall back to timestamp when not in a Git repo (e.g. tarball install).
+let rev = "";
+try {
+  rev = require("child_process")
+    .execSync("git describe --always --dirty --abbrev=8", {
+      encoding: "utf8",
+    })
+    .trim();
+} catch {
+  const now = new Date();
+  rev = `${now.getUTCMonth() + 1}/${now.getUTCDate()}-${now.getUTCHours()}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
+}
+const version = `${baseVersion} ${rev}`;
 
 // Base path for deployed app (e.g. '' or '/CallerBuddy'). No trailing slash.
 const basePath = (process.env.BASE_PATH || "").replace(/\/?$/, "") || "";
