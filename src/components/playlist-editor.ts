@@ -549,7 +549,6 @@ export class PlaylistEditor extends LitElement {
 
   private onPlaylistDrop(e: DragEvent) {
     e.preventDefault();
-    const dt = e.dataTransfer;
 
     const dropIndex = this.dropPosition === "below"
       ? this.dragOverIndex + 1
