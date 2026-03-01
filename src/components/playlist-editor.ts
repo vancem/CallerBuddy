@@ -617,6 +617,11 @@ export class PlaylistEditor extends LitElement {
   ) {
     if (e.touches.length !== 1) return;
 
+    // If the touch landed on a button or link, let the browser handle the
+    // normal tap → click synthesis so +, ▶, × etc. keep working.
+    const target = e.composedPath()[0] as Element | undefined;
+    if (target?.closest?.("button, a, input, select")) return;
+
     // Prevent the browser from starting a native drag (the element has
     // draggable="true" for desktop mouse DnD). Without this, Android Chrome
     // long-press triggers a native drag → touchcancel, killing our handler.
