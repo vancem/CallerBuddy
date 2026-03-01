@@ -65,6 +65,17 @@ export class PlaylistEditor extends LitElement {
   /** Song object being dragged from the song table (kept as reference to preserve dirHandle). */
   private draggedSong: Song | null = null;
 
+  // -- Touch drag-and-drop state (for mobile) --------------------------------
+
+  /** True while a touch-initiated drag is active. */
+  @state() private touchDragging = false;
+  /** Timer ID for the hold-to-drag delay. */
+  private touchHoldTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Touch identifier we're tracking (multitouch guard). */
+  private touchId: number | null = null;
+  /** Starting touch coordinates (for movement threshold). */
+  private touchStartPos = { x: 0, y: 0 };
+
   /** Songs loaded from the current folder's songs.json + disk scan. */
   @state() private localSongs: Song[] = [];
 
@@ -198,12 +209,11 @@ export class PlaylistEditor extends LitElement {
     return html`
       <div class="editor" @click=${this.closeContextMenu}>
         <!-- Left: Playlist -->
-        <aside class="playlist-panel" style="width: ${this.playlistWidth}px">
+        <aside class="playlist-panel ${this.touchDragging ? "touch-drag-active" : ""}" style="width: ${this.playlistWidth}px">
           <h2>Playlist</h2>
           ${playlist.length === 0
             ? html`<div
                 class="empty-playlist-drop"
-                @dragenter=${this.onPlaylistDragEnter}
                 @dragover=${this.onPlaylistContainerDragOver}
                 @drop=${this.onEmptyPlaylistDrop}
               ><p class="muted">No songs in playlist. Drag songs here, right-click,
@@ -211,7 +221,6 @@ export class PlaylistEditor extends LitElement {
             : html`
                 <ol
                   class="playlist-list"
-                  @dragenter=${this.onPlaylistDragEnter}
                   @dragover=${this.onPlaylistContainerDragOver}
                   @dragleave=${this.onPlaylistDragLeave}
                   @drop=${this.onPlaylistDrop}
@@ -226,8 +235,8 @@ export class PlaylistEditor extends LitElement {
                         draggable="true"
                         @dragstart=${(e: DragEvent) => this.onPlaylistItemDragStart(e, i)}
                         @dragend=${this.onDragEnd}
-                        @dragenter=${this.onPlaylistDragEnter}
                         @dragover=${(e: DragEvent) => this.onPlaylistDragOver(e, i)}
+                        @touchstart=${(e: TouchEvent) => this.onTouchStart(e, { kind: "playlist" as const, index: i })}
                       >
                         <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
                           title="${isSingingCall(song) ? "Singing call" : "Patter"}"
@@ -325,6 +334,7 @@ export class PlaylistEditor extends LitElement {
                           @dragend=${this.onDragEnd}
                           @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "song", song })}
                           @dblclick=${() => this.addToPlaylist(song)}
+                          @touchstart=${(e: TouchEvent) => this.onTouchStart(e, { kind: "song" as const, song })}
                           title="Drag to playlist, double-click, or right-click to add"
                         >
                           <td class="play-cell">
@@ -541,16 +551,6 @@ export class PlaylistEditor extends LitElement {
     this.dragOverIndex = index;
   }
 
-  /** Required by mobile-drag-drop polyfill: must call preventDefault on drop zones. */
-  private onPlaylistDragEnter(e: DragEvent) {
-    const dt = e.dataTransfer;
-    if (!dt) return;
-    const hasSong = dt.types.includes("application/x-callerbuddy-song");
-    const hasItem = dt.types.includes("application/x-callerbuddy-playlist-item");
-    if (!hasSong && !hasItem) return;
-    e.preventDefault();
-  }
-
   private onPlaylistContainerDragOver(e: DragEvent) {
     const dt = e.dataTransfer;
     if (!dt) return;
@@ -600,6 +600,190 @@ export class PlaylistEditor extends LitElement {
     const container = e.currentTarget as HTMLElement;
     if (related && container.contains(related)) return;
     this.dragOverIndex = -1;
+  }
+
+  // -- Touch drag-and-drop (mobile) -----------------------------------------
+  //
+  // HTML5 DnD events don't fire reliably on Android/iOS touch screens.
+  // These handlers use touchstart/touchmove/touchend directly so that
+  // dragging songs into the playlist (and reordering) works on mobile.
+
+  private static readonly TOUCH_HOLD_MS = 300;
+  private static readonly TOUCH_MOVE_THRESHOLD = 10; // px before cancelling hold
+
+  private onTouchStart(
+    e: TouchEvent,
+    source: { kind: "song"; song: Song } | { kind: "playlist"; index: number },
+  ) {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    this.touchId = touch.identifier;
+    this.touchStartPos = { x: touch.clientX, y: touch.clientY };
+
+    if (source.kind === "song") {
+      this.draggedSong = source.song;
+      this.draggingPlaylistIndex = -1;
+    } else {
+      this.draggedSong = null;
+      this.draggingPlaylistIndex = source.index;
+    }
+
+    this.touchHoldTimer = setTimeout(() => {
+      this.touchHoldTimer = null;
+      this.touchDragging = true;
+      // Attach move/end listeners on the document so they fire even when
+      // the finger moves outside the originating element.
+      document.addEventListener("touchmove", this.boundTouchMove, { passive: false });
+      document.addEventListener("touchend", this.boundTouchEnd);
+      document.addEventListener("touchcancel", this.boundTouchEnd);
+    }, PlaylistEditor.TOUCH_HOLD_MS);
+
+    // Don't prevent default here — allows the browser to handle scroll
+    // if the user releases or moves before the hold timer fires.
+  }
+
+  private boundTouchMove = (e: TouchEvent) => this.onTouchMove(e);
+  private boundTouchEnd = (e: TouchEvent) => this.onTouchEnd(e);
+
+  private onTouchMove(e: TouchEvent) {
+    const touch = this.findTrackedTouch(e.changedTouches);
+    if (!touch) return;
+
+    if (!this.touchDragging) {
+      // Still in hold phase — check movement threshold
+      const dx = touch.clientX - this.touchStartPos.x;
+      const dy = touch.clientY - this.touchStartPos.y;
+      if (Math.abs(dx) > PlaylistEditor.TOUCH_MOVE_THRESHOLD ||
+          Math.abs(dy) > PlaylistEditor.TOUCH_MOVE_THRESHOLD) {
+        this.cancelTouchDrag();
+      }
+      return;
+    }
+
+    // Prevent scrolling while dragging
+    e.preventDefault();
+
+    // Find the playlist item under the finger
+    const el = this.findPlaylistItemAt(touch.clientX, touch.clientY);
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      this.dropPosition = touch.clientY < midY ? "above" : "below";
+      const idx = this.getPlaylistItemIndex(el);
+      this.dragOverIndex = idx;
+    } else {
+      // Check if we're over the empty playlist drop area or the playlist panel
+      const overPlaylist = this.isOverPlaylistPanel(touch.clientX, touch.clientY);
+      if (overPlaylist) {
+        // Hovering the playlist panel but not on a specific item — drop at end
+        this.dragOverIndex = callerBuddy.state.playlist.length - 1;
+        this.dropPosition = "below";
+      } else {
+        this.dragOverIndex = -1;
+      }
+    }
+  }
+
+  private onTouchEnd(e: TouchEvent) {
+    const touch = this.findTrackedTouch(e.changedTouches);
+    if (!touch) return;
+
+    if (this.touchDragging) {
+      this.performTouchDrop(touch.clientX, touch.clientY);
+    }
+    this.cancelTouchDrag();
+  }
+
+  private performTouchDrop(x: number, y: number) {
+    const playlist = callerBuddy.state.playlist;
+    const overPlaylist = this.isOverPlaylistPanel(x, y);
+
+    if (!overPlaylist) return; // Dropped outside the playlist — no action
+
+    if (this.draggingPlaylistIndex >= 0) {
+      // Reorder within playlist
+      if (this.dragOverIndex >= 0) {
+        const dropIndex = this.dropPosition === "below"
+          ? this.dragOverIndex + 1
+          : this.dragOverIndex;
+        const fromIndex = this.draggingPlaylistIndex;
+        const adjustedTo = dropIndex > fromIndex ? dropIndex - 1 : dropIndex;
+        if (fromIndex !== adjustedTo) {
+          callerBuddy.state.moveInPlaylist(fromIndex, adjustedTo);
+        }
+      }
+    } else if (this.draggedSong) {
+      // Add song to playlist
+      if (playlist.length === 0) {
+        callerBuddy.state.addToPlaylist(this.draggedSong);
+      } else if (this.dragOverIndex >= 0) {
+        const dropIndex = this.dropPosition === "below"
+          ? this.dragOverIndex + 1
+          : this.dragOverIndex;
+        callerBuddy.state.insertInPlaylist(this.draggedSong, dropIndex);
+      } else {
+        callerBuddy.state.addToPlaylist(this.draggedSong);
+      }
+    }
+  }
+
+  private cancelTouchDrag() {
+    if (this.touchHoldTimer != null) {
+      clearTimeout(this.touchHoldTimer);
+      this.touchHoldTimer = null;
+    }
+    document.removeEventListener("touchmove", this.boundTouchMove);
+    document.removeEventListener("touchend", this.boundTouchEnd);
+    document.removeEventListener("touchcancel", this.boundTouchEnd);
+    this.touchDragging = false;
+    this.touchId = null;
+    this.dragOverIndex = -1;
+    this.draggingPlaylistIndex = -1;
+    this.draggedSong = null;
+  }
+
+  private findTrackedTouch(touches: TouchList): Touch | null {
+    if (this.touchId == null) return null;
+    for (let i = 0; i < touches.length; i++) {
+      if (touches[i].identifier === this.touchId) return touches[i];
+    }
+    return null;
+  }
+
+  /**
+   * Finds the .playlist-item <li> under the given coordinates by querying
+   * elementFromPoint on the shadow root (works inside Shadow DOM).
+   */
+  private findPlaylistItemAt(x: number, y: number): HTMLElement | null {
+    const root = this.shadowRoot;
+    if (!root) return null;
+    let el = root.elementFromPoint(x, y) as HTMLElement | null;
+    while (el && el !== this) {
+      if (el.classList?.contains("playlist-item")) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  /** Returns the playlist index of a .playlist-item element. */
+  private getPlaylistItemIndex(el: HTMLElement): number {
+    const root = this.shadowRoot;
+    if (!root) return -1;
+    const items = root.querySelectorAll(".playlist-item");
+    for (let i = 0; i < items.length; i++) {
+      if (items[i] === el) return i;
+    }
+    return -1;
+  }
+
+  /** Checks whether the given screen coordinates are over the playlist panel. */
+  private isOverPlaylistPanel(x: number, y: number): boolean {
+    const root = this.shadowRoot;
+    if (!root) return false;
+    const panel = root.querySelector(".playlist-panel");
+    if (!panel) return false;
+    const rect = panel.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
   }
 
   // -- Filtering and sorting ------------------------------------------------
@@ -815,6 +999,17 @@ export class PlaylistEditor extends LitElement {
 
     .empty-playlist-drop:hover,
     .empty-playlist-drop.drag-hover {
+      border-color: var(--cb-accent);
+      background: color-mix(in srgb, var(--cb-accent) 8%, transparent);
+    }
+
+    .playlist-panel.touch-drag-active {
+      outline: 2px solid var(--cb-accent);
+      outline-offset: -2px;
+      background: color-mix(in srgb, var(--cb-accent) 5%, var(--cb-panel-bg));
+    }
+
+    .touch-drag-active .empty-playlist-drop {
       border-color: var(--cb-accent);
       background: color-mix(in srgb, var(--cb-accent) 8%, transparent);
     }
