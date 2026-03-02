@@ -12,6 +12,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
+import { PlaylistReorderController } from "../controllers/playlist-reorder-controller.js";
 import {
   DEFAULT_BREAK_TIMER_MINUTES,
   DEFAULT_PLAYLIST_PANEL_WIDTH,
@@ -48,6 +49,12 @@ export class PlaylistPlay extends LitElement {
 
   /** Playlist panel width (from settings, updated on resize). */
   @state() private playlistWidth = DEFAULT_PLAYLIST_PANEL_WIDTH;
+
+  private reorder = new PlaylistReorderController(this, {
+    onReorderComplete: () => {
+      this.selectedIndex = null;
+    },
+  });
 
   private clockInterval: number | null = null;
   private breakInterval: number | null = null;
@@ -137,14 +144,29 @@ export class PlaylistPlay extends LitElement {
           ${playlist.length === 0
             ? html`<p class="muted">Playlist is empty.</p>`
             : html`
-                <ol class="playlist-list">
+                <ol
+                  class="playlist-list"
+                  @dragenter=${this.reorder.onDragEnter}
+                  @dragover=${this.reorder.onPlaylistContainerDragOver}
+                  @dragleave=${this.reorder.onPlaylistDragLeave}
+                  @drop=${this.reorder.onPlaylistDrop}
+                >
                   ${playlist.map((song, i) => {
                     const played = playedPaths.has(song.musicFile);
+                    const r = this.reorder;
                     return html`
                       <li
-                        class="pl-item ${i === sel ? "selected" : ""}"
+                        class="pl-item ${i === sel ? "selected" : ""}
+                          ${r.draggingPlaylistIndex === i ? "dragging" : ""}
+                          ${r.dragOverIndex === i && r.dropPosition === "above" ? "drop-indicator-above" : ""}
+                          ${r.dragOverIndex === i && r.dropPosition === "below" ? "drop-indicator-below" : ""}"
+                        draggable="true"
                         @click=${() => (this.selectedIndex = i)}
                         @dblclick=${() => this.playAt(i)}
+                        @dragstart=${(e: DragEvent) => r.onPlaylistItemDragStart(e, i)}
+                        @dragend=${r.onDragEnd}
+                        @dragenter=${r.onDragEnter}
+                        @dragover=${(e: DragEvent) => r.onPlaylistDragOver(e, i)}
                       >
                         <label class="pl-check" @click=${(e: Event) => e.stopPropagation()}>
                           <input
@@ -424,6 +446,10 @@ export class PlaylistPlay extends LitElement {
       pointer-events: none;
     }
 
+    .play-view.inactive .playlist-panel {
+      pointer-events: auto;
+    }
+
     /* -- Playlist panel ---------------------------------------------------- */
 
     .playlist-panel {
@@ -478,6 +504,22 @@ export class PlaylistPlay extends LitElement {
 
     .pl-item.selected {
       background: var(--cb-accent-subtle);
+    }
+
+    .pl-item[draggable="true"] {
+      cursor: grab;
+    }
+
+    .pl-item.dragging {
+      opacity: 0.4;
+    }
+
+    .pl-item.drop-indicator-above {
+      box-shadow: inset 0 2px 0 0 var(--cb-accent);
+    }
+
+    .pl-item.drop-indicator-below {
+      box-shadow: inset 0 -2px 0 0 var(--cb-accent);
     }
 
     .pl-check {

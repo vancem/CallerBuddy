@@ -22,6 +22,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
+import { PlaylistReorderController } from "../controllers/playlist-reorder-controller.js";
 import { DEFAULT_PLAYLIST_PANEL_WIDTH } from "../models/settings.js";
 import { StateEvents } from "../services/app-state.js";
 
@@ -56,14 +57,19 @@ export class PlaylistEditor extends LitElement {
   @state() private contextTarget: ContextTarget | null = null;
   @state() private contextMenuPos = { x: 0, y: 0 };
 
-  /** Index of the playlist item the drag is currently hovering over (-1 = none). */
-  @state() private dragOverIndex = -1;
-  /** Whether the drop indicator should appear above or below the hovered item. */
-  @state() private dropPosition: "above" | "below" = "above";
-  /** The playlist index of the item currently being dragged (for reorder). */
-  @state() private draggingPlaylistIndex = -1;
   /** Song object being dragged from the song table (kept as reference to preserve dirHandle). */
   private draggedSong: Song | null = null;
+
+  private reorder = new PlaylistReorderController(this, {
+    getExternalDragData: () => this.draggedSong,
+    onExternalDrop: (idx) => {
+      const song = this.draggedSong;
+      if (song) {
+        callerBuddy.state.insertInPlaylist(song, idx);
+        this.draggedSong = null;
+      }
+    },
+  });
 
   /** Songs loaded from the current folder's songs.json + disk scan. */
   @state() private localSongs: Song[] = [];
@@ -203,31 +209,31 @@ export class PlaylistEditor extends LitElement {
           ${playlist.length === 0
             ? html`<div
                 class="empty-playlist-drop"
-                @dragenter=${this.onDragEnter}
-                @dragover=${this.onPlaylistContainerDragOver}
+                @dragenter=${this.reorder.onDragEnter}
+                @dragover=${this.reorder.onPlaylistContainerDragOver}
                 @drop=${this.onEmptyPlaylistDrop}
               ><p class="muted">No songs in playlist. Drag songs here, right-click,
                 or use the + button to add songs.</p></div>`
             : html`
                 <ol
                   class="playlist-list"
-                  @dragenter=${this.onDragEnter}
-                  @dragover=${this.onPlaylistContainerDragOver}
-                  @dragleave=${this.onPlaylistDragLeave}
-                  @drop=${this.onPlaylistDrop}
+                  @dragenter=${this.reorder.onDragEnter}
+                  @dragover=${this.reorder.onPlaylistContainerDragOver}
+                  @dragleave=${this.reorder.onPlaylistDragLeave}
+                  @drop=${this.reorder.onPlaylistDrop}
                 >
                   ${playlist.map(
                     (song, i) => html`
                       <li
                         class="playlist-item
-                          ${this.draggingPlaylistIndex === i ? "dragging" : ""}
-                          ${this.dragOverIndex === i && this.dropPosition === "above" ? "drop-indicator-above" : ""}
-                          ${this.dragOverIndex === i && this.dropPosition === "below" ? "drop-indicator-below" : ""}"
+                          ${this.reorder.draggingPlaylistIndex === i ? "dragging" : ""}
+                          ${this.reorder.dragOverIndex === i && this.reorder.dropPosition === "above" ? "drop-indicator-above" : ""}
+                          ${this.reorder.dragOverIndex === i && this.reorder.dropPosition === "below" ? "drop-indicator-below" : ""}"
                         draggable="true"
-                        @dragstart=${(e: DragEvent) => this.onPlaylistItemDragStart(e, i)}
-                        @dragend=${this.onDragEnd}
-                        @dragenter=${this.onDragEnter}
-                        @dragover=${(e: DragEvent) => this.onPlaylistDragOver(e, i)}
+                        @dragstart=${(e: DragEvent) => this.reorder.onPlaylistItemDragStart(e, i)}
+                        @dragend=${this.onEditorDragEnd}
+                        @dragenter=${this.reorder.onDragEnter}
+                        @dragover=${(e: DragEvent) => this.reorder.onPlaylistDragOver(e, i)}
                       >
                         <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
                           title="${isSingingCall(song) ? "Singing call" : "Patter"}"
@@ -322,7 +328,7 @@ export class PlaylistEditor extends LitElement {
                         <tr
                           draggable="true"
                           @dragstart=${(e: DragEvent) => this.onSongDragStart(e, song)}
-                          @dragend=${this.onDragEnd}
+                          @dragend=${this.onEditorDragEnd}
                           @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "song", song })}
                           @dblclick=${() => this.addToPlaylist(song)}
                           title="Drag to playlist, double-click, or right-click to add"
@@ -511,80 +517,20 @@ export class PlaylistEditor extends LitElement {
     this.draggedSong = song;
   }
 
-  private onPlaylistItemDragStart(e: DragEvent, index: number) {
-    if (!e.dataTransfer) return;
-    e.dataTransfer.setData("application/x-callerbuddy-playlist-item", String(index));
-    e.dataTransfer.effectAllowed = "move";
-    this.draggingPlaylistIndex = index;
-  }
-
-  private onDragEnd() {
-    this.dragOverIndex = -1;
-    this.draggingPlaylistIndex = -1;
+  private onEditorDragEnd = () => {
+    this.reorder.onDragEnd();
     this.draggedSong = null;
-  }
-
-  private onPlaylistDragOver(e: DragEvent, index: number) {
-    e.preventDefault();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = this.draggingPlaylistIndex >= 0 ? "move" : "copy";
-    }
-    const target = (e.currentTarget as HTMLElement);
-    const rect = target.getBoundingClientRect();
-    const midY = rect.top + rect.height / 2;
-    this.dropPosition = e.clientY < midY ? "above" : "below";
-    this.dragOverIndex = index;
-  }
-
-  private onDragEnter(e: DragEvent) {
-    e.preventDefault();
-  }
-
-  private onPlaylistContainerDragOver(e: DragEvent) {
-    e.preventDefault();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = this.draggingPlaylistIndex >= 0 ? "move" : "copy";
-    }
-  }
-
-  private onPlaylistDrop(e: DragEvent) {
-    e.preventDefault();
-
-    const dropIndex = this.dropPosition === "below"
-      ? this.dragOverIndex + 1
-      : this.dragOverIndex;
-
-    // Reorder within playlist: use draggingPlaylistIndex (dataTransfer.getData
-    // can return empty on Android Chrome for same-document drags).
-    if (this.draggingPlaylistIndex >= 0) {
-      const fromIndex = this.draggingPlaylistIndex;
-      const adjustedTo = dropIndex > fromIndex ? dropIndex - 1 : dropIndex;
-      if (fromIndex !== adjustedTo) {
-        callerBuddy.state.moveInPlaylist(fromIndex, adjustedTo);
-      }
-    } else if (this.draggedSong) {
-      callerBuddy.state.insertInPlaylist(this.draggedSong, dropIndex);
-    }
-
-    this.dragOverIndex = -1;
-    this.draggingPlaylistIndex = -1;
-  }
+  };
 
   private onEmptyPlaylistDrop(e: DragEvent) {
     e.preventDefault();
 
     if (this.draggedSong) {
       callerBuddy.state.addToPlaylist(this.draggedSong);
+      this.draggedSong = null;
     }
 
-    this.dragOverIndex = -1;
-  }
-
-  private onPlaylistDragLeave(e: DragEvent) {
-    const related = e.relatedTarget as Node | null;
-    const container = e.currentTarget as HTMLElement;
-    if (related && container.contains(related)) return;
-    this.dragOverIndex = -1;
+    this.reorder.onDragEnd();
   }
 
   // -- Filtering and sorting ------------------------------------------------
