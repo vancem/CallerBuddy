@@ -1,5 +1,5 @@
-/* built: 2026-03-02T16:52:23.994Z */
-const CACHE_NAME = "callerbuddy-v0.1.0-pre.10-1ed7e80f-dirty";
+/* built: 2026-03-02T18:19:48.270Z */
+const CACHE_NAME = "callerbuddy-v0.1.0-pre.10-d21780de-dirty";
 
 self.addEventListener("install", (event) => {
   const base = new URL("./", self.location).href;
@@ -23,17 +23,23 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (!event.request.url.startsWith(self.location.origin)) return;
 
-  // Navigation requests (HTML pages): always try network first so the browser
-  // never gets stuck on a stale cached index.html referencing old asset hashes.
+  // Navigation requests (HTML pages): network first with 1s timeout so we get
+  // fresh content when online but don't hang long when offline.
   if (event.request.mode === "navigate") {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1000);
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { signal: controller.signal })
         .then((response) => {
+          clearTimeout(timeoutId);
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => {
+          clearTimeout(timeoutId);
+          return caches.match(event.request);
+        })
     );
     return;
   }

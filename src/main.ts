@@ -17,9 +17,12 @@ if (!import.meta.env.DEV && "serviceWorker" in navigator) {
     navigator.serviceWorker
       .register(import.meta.env.BASE_URL + "sw.js", { updateViaCache: "none" })
       .then((registration) => {
-        // When user returns to the tab, check for updates (helps mobile pick up new versions)
+        // When user returns to the tab, check for updates (helps mobile pick up new versions).
+        // Skip when offline to avoid hanging on registration.update().
         document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") registration.update();
+          if (document.visibilityState === "visible" && navigator.onLine) {
+            registration.update();
+          }
         });
       })
       .catch(() => {});
