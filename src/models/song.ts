@@ -56,7 +56,7 @@ export function songForPersistence(song: Song): Omit<Song, "dirHandle"> {
 }
 
 /** Supported music file extensions (lower-case, with dot). */
-const MUSIC_EXTENSIONS = [".mp3", ".wav"];
+const MUSIC_EXTENSIONS = [".mp3", ".m4a", ".wav"];
 
 /** Supported lyrics file extensions (lower-case, with dot). */
 const LYRICS_EXTENSIONS = [".html", ".htm", ".md", ".txt"];

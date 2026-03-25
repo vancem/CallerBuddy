@@ -62,9 +62,14 @@ describe("isMusicFile", () => {
     expect(isMusicFile("song.wav")).toBe(true);
   });
 
+  it("recognizes .m4a", () => {
+    expect(isMusicFile("song.m4a")).toBe(true);
+  });
+
   it("is case-insensitive", () => {
     expect(isMusicFile("SONG.MP3")).toBe(true);
     expect(isMusicFile("Song.WAV")).toBe(true);
+    expect(isMusicFile("Track.M4A")).toBe(true);
   });
 
   it("rejects non-music extensions", () => {

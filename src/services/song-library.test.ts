@@ -127,6 +127,16 @@ describe("scanDirectory", () => {
     expect(another.lyricsFile).toBe("");
   });
 
+  it("includes .m4a files", async () => {
+    vi.mocked(listDirectory).mockResolvedValue([
+      { name: "RR 275 - Boogie Shoes.m4a", kind: "file" },
+    ]);
+
+    const songs = await scanDirectory(fakeDirHandle);
+    expect(songs).toHaveLength(1);
+    expect(songs[0].musicFile).toBe("RR 275 - Boogie Shoes.m4a");
+  });
+
   it("ignores directories", async () => {
     vi.mocked(listDirectory).mockResolvedValue([
       { name: "subfolder", kind: "directory" },

@@ -37,8 +37,8 @@ export class WelcomeView extends LitElement {
 
         <p class="explanation">
           CallerBuddy is a tool for square dance callers to manage music
-          and lyrics. It uses a single folder as your root. All songs (MP3
-          files), lyrics (HTML or MD), and app data live in this folder.
+          and lyrics. It uses a single folder as your root. All songs (MP3,
+          M4A, or WAV files), lyrics (HTML or MD), and app data live in this folder.
           You can use a local folder or one inside a cloud drive (OneDrive,
           Google Drive) so your collection is available on other devices.
         </p>
