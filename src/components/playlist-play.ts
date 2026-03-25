@@ -20,7 +20,7 @@ import {
 
 const MIN_PLAYLIST_WIDTH = 180;
 const MAX_PLAYLIST_WIDTH = 500;
-import { StateEvents } from "../services/app-state.js";
+import { StateEvents, TabType } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import { formatCountdown, formatClock } from "../utils/format.js";
 
@@ -255,11 +255,19 @@ export class PlaylistPlay extends LitElement {
               <div class="countdown time-row ${this.breakTimerRunning && this.breakTimerEnabled ? "" : "countdown-idle"}">
                 <span class="time-label">Time left</span>
                 <span class="time-value ${this.breakTimerRunning && this.breakCountdown <= 0 ? "alarm" : ""}">
-                  ${this.breakTimerRunning && this.breakTimerEnabled
+                 ${this.breakTimerRunning && this.breakTimerEnabled
                     ? formatCountdown(this.breakCountdown)
                     : formatCountdown(Math.round(this.breakMinutes * 60))}
                 </span>
               </div>
+              <button
+                type="button"
+                class="close-tab-btn"
+                title="Close this tab (same as the tab × control)"
+                @click=${this.onCloseNowPlayingTab}
+              >
+                Close
+              </button>
             </div>
           </div>
 
@@ -316,6 +324,12 @@ export class PlaylistPlay extends LitElement {
     callerBuddy.state.resetPlayedSongs();
     this.selectedIndex = null; // revert to default (first unplayed)
     this.refresh();
+  }
+
+  /** Same as closing the "Now Playing" tab via the tab bar ✕. */
+  private onCloseNowPlayingTab() {
+    const tab = callerBuddy.state.tabs.find((t) => t.type === TabType.PlaylistPlay);
+    if (tab) callerBuddy.state.closeTab(tab.id);
   }
 
   // -- Break timer ----------------------------------------------------------
@@ -444,7 +458,8 @@ export class PlaylistPlay extends LitElement {
       pointer-events: none;
     }
 
-    .play-view.inactive .playlist-panel {
+    .play-view.inactive .playlist-panel,
+    .play-view.inactive .close-tab-btn {
       pointer-events: auto;
     }
 
@@ -701,6 +716,22 @@ export class PlaylistPlay extends LitElement {
 
     .break-section .time-value.alarm {
       color: var(--cb-error);
+    }
+
+    .close-tab-btn {
+      align-self: flex-start;
+      margin-top: 4px;
+      padding: 6px 14px;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      border: 1px solid var(--cb-border);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
+      cursor: pointer;
+    }
+
+    .close-tab-btn:hover {
+      background: var(--cb-hover);
     }
 
     .playing-info {
