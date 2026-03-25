@@ -19,7 +19,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { callerBuddy } from "../caller-buddy.js";
-import { isSingingCall, isPatter } from "../models/song.js";
+import { isSingingCall, isPatter, lyricsFilenameFor } from "../models/song.js";
 import { formatTime, formatCountdown, formatClock } from "../utils/format.js";
 import type { Song } from "../models/song.js";
 
@@ -46,12 +46,74 @@ function prepareLyricsHtml(raw: string): string {
   return (css ? `<style>${css}</style>` : "") + body;
 }
 
+// ---------------------------------------------------------------------------
+// Lyrics HTML helpers for the editor
+// ---------------------------------------------------------------------------
+
+const DEFAULT_LYRICS_STYLE = [
+  "  body { background: lightyellow; font-family: \"Comic Sans MS\", cursive;",
+  "         font-size: 18pt; line-height: 140%; color: black; margin: 1em; }",
+  "  h1 { font-size: 20pt; display: inline; }",
+  "  .info { color: blue; font-size: 14pt; }",
+  "  h2 { color: red; font-size: 18pt; font-weight: normal; margin: 0.6em 0 0; }",
+  "  p { margin: 0 0 0.4em; }",
+].join("\n");
+
+function extractStyleBlock(raw: string): string {
+  const m = raw.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  return m?.[1] ?? DEFAULT_LYRICS_STYLE;
+}
+
+function extractBodyContent(raw: string): string {
+  const m = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  return m?.[1] ?? raw;
+}
+
+function wrapLyricsHtml(
+  bodyContent: string,
+  cssText: string,
+  title: string,
+): string {
+  return [
+    "<!DOCTYPE html>",
+    "<html>",
+    "<head>",
+    '<meta charset="utf-8">',
+    `<title>${title}</title>`,
+    "<style>",
+    cssText,
+    "</style>",
+    "</head>",
+    "<body>",
+    bodyContent,
+    "</body>",
+    "</html>",
+  ].join("\n");
+}
+
+function generateLyricsTemplate(song: Song): string {
+  const title = song.title || "Untitled";
+  const label = song.label || "";
+  const labelHtml = label
+    ? `&nbsp;<span class="info">(${label})</span>`
+    : "";
+  const body =
+    `<p><h1>${title}</h1>${labelHtml}</p>\n\n` +
+    "<h2>Figure</h2>\n<p>\nEnter lyrics here\n</p>";
+  return wrapLyricsHtml(
+    body,
+    DEFAULT_LYRICS_STYLE,
+    `${title}${label ? " " + label : ""}`,
+  );
+}
+
 @customElement("song-play")
 export class SongPlay extends LitElement {
   @state() private currentTime = 0;
   @state() private duration = 0;
   @state() private playing = false;
   @state() private lyrics = "";
+  @state() private editing = false;
   @state() private clockTime = "";
 
   // Total elapsed time while song has been playing (paused time not counted)
@@ -149,6 +211,19 @@ export class SongPlay extends LitElement {
     this.focusControlsPanel();
   }
 
+  protected updated(changed: Map<PropertyKey, unknown>) {
+    if (changed.has("editing") && this.editing) {
+      const editorEl = this.shadowRoot?.querySelector(
+        ".lyrics-editor",
+      ) as HTMLElement | null;
+      if (editorEl) {
+        const bodyHtml = this.lyrics ? extractBodyContent(this.lyrics) : "";
+        editorEl.innerHTML = bodyHtml;
+        editorEl.focus();
+      }
+    }
+  }
+
   private focusControlsPanel() {
     const panel = this.shadowRoot?.querySelector(".right-panel") as HTMLElement | undefined;
     panel?.focus();
@@ -158,6 +233,7 @@ export class SongPlay extends LitElement {
   private _boundWindowBlur = () => callerBuddy.closeSongPlay();
 
   private onKeydown(e: KeyboardEvent) {
+    if (this.editing) return;
     const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
 
     switch (e.key) {
@@ -241,7 +317,7 @@ export class SongPlay extends LitElement {
       <div class="song-play">
         <!-- Left panel: lyrics or loop controls -->
         <div class="left-panel">
-          ${isSingingCall(song)
+          ${this.editing || isSingingCall(song)
             ? this.renderLyrics()
             : this.renderPatterControls()}
         </div>
@@ -251,6 +327,7 @@ export class SongPlay extends LitElement {
           ${this.renderTransport()}
           ${this.renderAdjustments(song)}
           ${this.renderTimeInfo()}
+          ${this.renderEditLyricsButton()}
         </div>
 
         <!-- Bottom: progress slider -->
@@ -264,6 +341,9 @@ export class SongPlay extends LitElement {
   // -- Lyrics ---------------------------------------------------------------
 
   private renderLyrics() {
+    if (this.editing) {
+      return this.renderLyricsEditor();
+    }
     if (!this.lyrics) {
       return html`<p class="muted centered">No lyrics available.</p>`;
     }
@@ -274,6 +354,166 @@ export class SongPlay extends LitElement {
       return html`<div class="lyrics-content lyrics-plain">${this.lyrics}</div>`;
     }
     return html`<div class="lyrics-content">${unsafeHTML(prepareLyricsHtml(this.lyrics))}</div>`;
+  }
+
+  // -- Lyrics editor --------------------------------------------------------
+
+  private renderLyricsEditor() {
+    const cssText = this.lyrics
+      ? extractStyleBlock(this.lyrics)
+      : DEFAULT_LYRICS_STYLE;
+    const rewrittenCss = cssText.replace(/\bbody\b/g, ".lyrics-editor");
+
+    return html`
+      <div class="editor-container">
+        <style>${rewrittenCss}</style>
+        <div class="editor-toolbar">
+          <button class="toolbar-btn" title="Bold (Ctrl+B)"
+            @mousedown=${this.preventFocusLoss}
+            @click=${this.execBold}><b>B</b></button>
+          <button class="toolbar-btn section-btn" title="Section heading (Ctrl+H)"
+            @mousedown=${this.preventFocusLoss}
+            @click=${this.execSection}>Heading</button>
+          <button class="toolbar-btn info-btn" title="Info block \u2014 blue text (Ctrl+I)"
+            @mousedown=${this.preventFocusLoss}
+            @click=${this.execInfo}>Info</button>
+          <button class="toolbar-btn" title="Paragraph (Ctrl+P)"
+            @mousedown=${this.preventFocusLoss}
+            @click=${this.execParagraph}>P</button>
+          <span class="toolbar-spacer"></span>
+          <button class="toolbar-btn save-btn" title="Save lyrics (Ctrl+S)"
+            @click=${this.onSaveLyrics}>Save</button>
+          <button class="toolbar-btn cancel-btn" title="Cancel editing (Esc)"
+            @click=${this.onCancelEdit}>Cancel</button>
+        </div>
+        <div class="lyrics-editor" contenteditable="true"
+          @keydown=${this.onEditorKeydown}></div>
+      </div>
+    `;
+  }
+
+  private renderEditLyricsButton() {
+    if (this.editing) return nothing;
+    const song = this.song;
+    if (!song) return nothing;
+    const hasLyrics = isSingingCall(song);
+    return html`
+      <button class="secondary edit-lyrics-btn"
+        @click=${hasLyrics ? this.onEditLyrics : this.onCreateLyrics}>
+        ${hasLyrics ? "Edit Lyrics" : "Create Lyrics"}
+      </button>
+    `;
+  }
+
+  private preventFocusLoss(e: Event) {
+    e.preventDefault();
+  }
+
+  private onEditorKeydown(e: KeyboardEvent) {
+    e.stopPropagation();
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.onCancelEdit();
+      return;
+    }
+    if (!e.ctrlKey && !e.metaKey) return;
+    switch (e.key.toLowerCase()) {
+      case "b":
+        e.preventDefault();
+        this.execBold();
+        break;
+      case "h":
+        e.preventDefault();
+        this.execSection();
+        break;
+      case "i":
+        e.preventDefault();
+        this.execInfo();
+        break;
+      case "p":
+        e.preventDefault();
+        this.execParagraph();
+        break;
+      case "s":
+        e.preventDefault();
+        this.onSaveLyrics();
+        break;
+    }
+  }
+
+  private onEditLyrics() {
+    this.editing = true;
+  }
+
+  private onCreateLyrics() {
+    const song = this.song;
+    if (!song) return;
+    this.lyrics = generateLyricsTemplate(song);
+    this.editing = true;
+  }
+
+  private async onSaveLyrics() {
+    const song = this.song;
+    if (!song) return;
+
+    const editorEl = this.shadowRoot?.querySelector(
+      ".lyrics-editor",
+    ) as HTMLElement | null;
+    if (!editorEl) return;
+
+    const editedBody = editorEl.innerHTML;
+    const cssText = this.lyrics
+      ? extractStyleBlock(this.lyrics)
+      : DEFAULT_LYRICS_STYLE;
+    const title = `${song.title}${song.label ? " " + song.label : ""}`;
+    const fullHtml = wrapLyricsHtml(editedBody, cssText, title);
+
+    const lyricsFile = song.lyricsFile || lyricsFilenameFor(song.musicFile);
+    await callerBuddy.saveLyrics(song, lyricsFile, fullHtml);
+
+    this.lyrics = fullHtml;
+    this.editing = false;
+  }
+
+  private onCancelEdit() {
+    if (!this.song?.lyricsFile) {
+      this.lyrics = "";
+    }
+    this.editing = false;
+  }
+
+  private execBold() {
+    document.execCommand("bold");
+  }
+
+  private execSection() {
+    document.execCommand("formatBlock", false, "h2");
+  }
+
+  private execParagraph() {
+    document.execCommand("formatBlock", false, "p");
+  }
+
+  private execInfo() {
+    const sel =
+      ((this.shadowRoot as unknown as { getSelection?: () => Selection })
+        ?.getSelection?.() as Selection | undefined) ??
+      window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    const span = document.createElement("span");
+    span.className = "info";
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+    sel.removeAllRanges();
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+    sel.addRange(newRange);
   }
 
   // -- Patter controls (loop + timer) ---------------------------------------
@@ -1224,6 +1464,85 @@ export class SongPlay extends LitElement {
     .centered {
       text-align: center;
       padding: 3rem;
+    }
+
+    /* -- Lyrics editor ----------------------------------------------------- */
+
+    .editor-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .editor-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--cb-border);
+      background: var(--cb-surface, var(--cb-bg));
+      flex-shrink: 0;
+    }
+
+    .toolbar-btn {
+      padding: 4px 10px;
+      border: 1px solid var(--cb-border);
+      border-radius: 4px;
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
+      cursor: pointer;
+      font-size: 0.85rem;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .toolbar-btn:hover {
+      background: var(--cb-hover);
+    }
+
+    .toolbar-btn.section-btn {
+      color: red;
+      font-weight: 500;
+    }
+
+    .toolbar-btn.info-btn {
+      color: blue;
+      font-weight: 500;
+    }
+
+    .toolbar-btn.save-btn {
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
+      border-color: transparent;
+      font-weight: 500;
+    }
+
+    .toolbar-btn.save-btn:hover {
+      background: var(--cb-accent-hover);
+    }
+
+    .toolbar-btn.cancel-btn {
+      color: var(--cb-fg-secondary);
+    }
+
+    .toolbar-spacer {
+      flex: 1;
+    }
+
+    .lyrics-editor {
+      flex: 1;
+      overflow-y: auto;
+      outline: none;
+      cursor: text;
+      padding: 16px;
+      box-sizing: border-box;
+      border: 2px solid var(--cb-accent);
+      border-top: none;
+      min-height: 200px;
+    }
+
+    .edit-lyrics-btn {
+      align-self: center;
     }
 
     /* -- Narrow / phone layout --------------------------------------------- */

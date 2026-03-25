@@ -208,6 +208,25 @@ export class CallerBuddy {
     }
   }
 
+  /**
+   * Save lyrics HTML to the song's lyrics file.
+   * If the song had no lyrics file (new creation), updates song.lyricsFile
+   * in-memory and persists the change to songs.json.
+   */
+  async saveLyrics(song: Song, lyricsFilename: string, htmlContent: string): Promise<void> {
+    const handle = song.dirHandle ?? this.state.rootHandle;
+    if (!handle || !lyricsFilename) return;
+
+    await writeTextFile(handle, lyricsFilename, htmlContent);
+    log.info(`Lyrics saved to "${lyricsFilename}"`);
+
+    if (song.lyricsFile !== lyricsFilename) {
+      song.lyricsFile = lyricsFilename;
+      await this.updateSong(song);
+      log.info(`Song "${song.title}" now references lyrics file "${lyricsFilename}"`);
+    }
+  }
+
   /** Load and decode the audio data for a song, prepare the audio engine. */
   async loadSongAudio(song: Song): Promise<void> {
     const handle = song.dirHandle ?? this.state.rootHandle;

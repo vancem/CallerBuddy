@@ -117,6 +117,13 @@ export function baseName(filename: string): string {
   return base.toLowerCase();
 }
 
+/** Derive a lyrics HTML filename from a music filename (same basename + ".html"). */
+export function lyricsFilenameFor(musicFile: string): string {
+  const dotIdx = musicFile.lastIndexOf(".");
+  const base = dotIdx >= 0 ? musicFile.substring(0, dotIdx) : musicFile;
+  return base + ".html";
+}
+
 /** Create a Song with sensible defaults from a music filename and optional lyrics path. */
 export function createSongFromFile(
   musicFile: string,
