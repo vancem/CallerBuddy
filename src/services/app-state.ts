@@ -262,6 +262,18 @@ export class AppState extends EventTarget {
     return true;
   }
 
+  /** Tab id goBack() would switch to, or null if the stack is empty. */
+  peekBackTarget(): string | null {
+    if (this.tabBackStack.length === 0) return null;
+    return this.tabBackStack[this.tabBackStack.length - 1] ?? null;
+  }
+
+  /** Tab id goForward() would switch to, or null if the stack is empty. */
+  peekForwardTarget(): string | null {
+    if (this.tabForwardStack.length === 0) return null;
+    return this.tabForwardStack[this.tabForwardStack.length - 1] ?? null;
+  }
+
   closeTab(id: string): void {
     const idx = this.tabs.findIndex((t) => t.id === id);
     if (idx < 0) return;

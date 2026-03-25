@@ -91,24 +91,22 @@ export class AppShell extends LitElement {
       (e.ctrlKey && e.shiftKey && e.code === "Period");
     if (isBack) {
       e.preventDefault();
-      if (callerBuddy.state.goBack()) return;
+      void this.handleGoBack();
+      return;
     }
     if (isForward) {
       e.preventDefault();
-      if (callerBuddy.state.goForward()) return;
+      void this.handleGoForward();
+      return;
     }
     if (e.ctrlKey && e.key === "]") {
       e.preventDefault();
-      const idx = tabs.findIndex((t) => t.id === activeTabId);
-      const nextIdx = idx < 0 ? 0 : (idx + 1) % tabs.length;
-      callerBuddy.state.activateTab(tabs[nextIdx].id);
+      void this.activateAdjacentTab(tabs, activeTabId, "next");
       return;
     }
     if (e.ctrlKey && e.key === "[") {
       e.preventDefault();
-      const idx = tabs.findIndex((t) => t.id === activeTabId);
-      const prevIdx = idx <= 0 ? tabs.length - 1 : idx - 1;
-      callerBuddy.state.activateTab(tabs[prevIdx].id);
+      void this.activateAdjacentTab(tabs, activeTabId, "prev");
       return;
     }
     if (e.ctrlKey && e.key === "w") {
@@ -116,6 +114,58 @@ export class AppShell extends LitElement {
       this.closeActiveTab();
       return;
     }
+  }
+
+  private async handleGoBack() {
+    const active = callerBuddy.state.getActiveTab();
+    const targetId = callerBuddy.state.peekBackTarget();
+    if (
+      active?.type === TabType.SongPlay &&
+      targetId &&
+      targetId !== callerBuddy.state.activeTabId
+    ) {
+      const ok = await callerBuddy.runSongPlayUnsavedGuard();
+      if (!ok) return;
+    }
+    callerBuddy.state.goBack();
+  }
+
+  private async handleGoForward() {
+    const active = callerBuddy.state.getActiveTab();
+    const targetId = callerBuddy.state.peekForwardTarget();
+    if (
+      active?.type === TabType.SongPlay &&
+      targetId &&
+      targetId !== callerBuddy.state.activeTabId
+    ) {
+      const ok = await callerBuddy.runSongPlayUnsavedGuard();
+      if (!ok) return;
+    }
+    callerBuddy.state.goForward();
+  }
+
+  /** Ctrl+] / Ctrl+[ : switch tab with unsaved-lyrics guard when leaving song play. */
+  private async activateAdjacentTab(
+    tabs: { id: string }[],
+    activeTabId: string,
+    dir: "next" | "prev",
+  ) {
+    const idx = tabs.findIndex((t) => t.id === activeTabId);
+    const nextIdx =
+      dir === "next"
+        ? idx < 0
+          ? 0
+          : (idx + 1) % tabs.length
+        : idx <= 0
+          ? tabs.length - 1
+          : idx - 1;
+    const nextId = tabs[nextIdx].id;
+    const active = callerBuddy.state.getActiveTab();
+    if (active?.type === TabType.SongPlay && nextId !== activeTabId) {
+      const ok = await callerBuddy.runSongPlayUnsavedGuard();
+      if (!ok) return;
+    }
+    callerBuddy.state.activateTab(nextId);
   }
 
   private async closeActiveTab() {
@@ -228,8 +278,14 @@ export class AppShell extends LitElement {
 
   // -- event handlers -------------------------------------------------------
 
-  private onTabActivate(e: CustomEvent<{ id: string }>) {
-    callerBuddy.state.activateTab(e.detail.id);
+  private async onTabActivate(e: CustomEvent<{ id: string }>) {
+    const id = e.detail.id;
+    const active = callerBuddy.state.getActiveTab();
+    if (active?.type === TabType.SongPlay && id !== active.id) {
+      const ok = await callerBuddy.runSongPlayUnsavedGuard();
+      if (!ok) return;
+    }
+    callerBuddy.state.activateTab(id);
   }
 
   private async onTabClose(e: CustomEvent<{ id: string }>) {

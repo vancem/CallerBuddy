@@ -36,6 +36,13 @@ export class CallerBuddy {
   readonly state = new AppState();
   readonly audio: AudioEngine = new WebAudioEngine();
 
+  /**
+   * When the song-play view is mounted, it registers an async guard invoked
+   * before closing the view or switching away while lyrics have unsaved edits.
+   * Returns true to proceed, false to abort (keep song play open).
+   */
+  private songPlayUnsavedGuard: (() => Promise<boolean>) | null = null;
+
   // -----------------------------------------------------------------------
   // Initialization
   // -----------------------------------------------------------------------
@@ -346,19 +353,47 @@ export class CallerBuddy {
     );
   }
 
-  /** Close the song play tab and clear the current song. */
-  async closeSongPlay(): Promise<void> {
-    this.audio.stop();
-    // Persist lastUsed before closing so we don't have concurrent write with tab teardown
-    if (this.state.currentSong) {
-      const song = { ...this.state.currentSong, lastUsed: new Date().toISOString() };
-      await this.updateSong(song);
-    }
+  /** song-play registers while mounted; cleared on disconnect. */
+  setSongPlayUnsavedGuard(fn: (() => Promise<boolean>) | null): void {
+    this.songPlayUnsavedGuard = fn;
+  }
+
+  /** Run the unsaved-lyrics prompt if needed. True = OK to leave / close. */
+  async runSongPlayUnsavedGuard(): Promise<boolean> {
+    if (!this.songPlayUnsavedGuard) return true;
+    return this.songPlayUnsavedGuard();
+  }
+
+  /**
+   * Tear down song play (stop audio, persist lastUsed, remove tab, clear current song).
+   * Idempotent: no-op if there is no song play tab and no current song.
+   */
+  async finalizeSongPlayClose(): Promise<void> {
     const tab = this.state.tabs.find((t) => t.type === TabType.SongPlay);
+    const song = this.state.currentSong;
+    if (!tab && !song) return;
+
+    this.audio.stop();
+    if (song) {
+      const updated = { ...song, lastUsed: new Date().toISOString() };
+      await this.updateSong(updated);
+    }
     if (tab) {
       this.state.closeTab(tab.id);
     }
     this.state.setCurrentSong(null);
+  }
+
+  /**
+   * Close the song play tab after an optional unsaved-lyrics prompt.
+   * @returns false if the user chose not to save and the close was aborted.
+   */
+  async closeSongPlay(): Promise<boolean> {
+    if (!(await this.runSongPlayUnsavedGuard())) {
+      return false;
+    }
+    await this.finalizeSongPlayClose();
+    return true;
   }
 }
 

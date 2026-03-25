@@ -114,7 +114,12 @@ export class SongPlay extends LitElement {
   @state() private playing = false;
   @state() private lyrics = "";
   @state() private editing = false;
+  /** True while lyrics editor DOM differs from last saved baseline (cleared on save). */
+  @state() private lyricsModified = false;
   @state() private clockTime = "";
+
+  /** Body HTML snapshot when the editor was opened or last saved (browser-normalized). */
+  private lyricsEditorBaselineHtml = "";
 
   // Total elapsed time while song has been playing (paused time not counted)
   @state() private totalElapsed = 0;
@@ -171,6 +176,7 @@ export class SongPlay extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    callerBuddy.setSongPlayUnsavedGuard(() => this.runSongPlayUnsavedGuard());
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
     this.updateClock();
 
@@ -202,8 +208,9 @@ export class SongPlay extends LitElement {
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     if (this.elapsedInterval !== null) clearInterval(this.elapsedInterval);
     this.stopPatterTimer();
-    // Close when unmounted (tab switch or tab close); blur handles leaving the app
-    callerBuddy.closeSongPlay();
+    callerBuddy.setSongPlayUnsavedGuard(null);
+    // Tab switch already ran runSongPlayUnsavedGuard; teardown without prompting again.
+    void callerBuddy.finalizeSongPlayClose();
   }
 
   /** Focus the controls panel after first render so keyboard shortcuts work. */
@@ -220,6 +227,7 @@ export class SongPlay extends LitElement {
         const bodyHtml = this.lyrics ? extractBodyContent(this.lyrics) : "";
         editorEl.innerHTML = bodyHtml;
         editorEl.focus();
+        requestAnimationFrame(() => this.syncLyricsEditorBaselineFromDom());
       }
     }
   }
@@ -230,7 +238,15 @@ export class SongPlay extends LitElement {
   }
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
-  private _boundWindowBlur = () => callerBuddy.closeSongPlay();
+  /**
+   * Leaving the browser window closes song play. Disabled while the lyric editor is
+   * open (`editing`): native confirm/alert steals focus and fires spurious blurs,
+   * and we avoid closing while the user may have unsaved edits in the DOM.
+   */
+  private _boundWindowBlur = () => {
+    if (this.editing) return;
+    void callerBuddy.closeSongPlay();
+  };
 
   private onKeydown(e: KeyboardEvent) {
     if (this.editing) return;
@@ -382,11 +398,12 @@ export class SongPlay extends LitElement {
             @click=${this.execParagraph}>P</button>
           <span class="toolbar-spacer"></span>
           <button class="toolbar-btn save-btn" title="Save lyrics (Ctrl+S)"
-            @click=${this.onSaveLyrics}>Save</button>
-          <button class="toolbar-btn cancel-btn" title="Cancel editing (Esc)"
-            @click=${this.onCancelEdit}>Cancel</button>
+            @click=${() => void this.onSaveLyrics()}>Save</button>
+          <button class="toolbar-btn cancel-btn" title="Exit editor (Esc)"
+            @click=${() => void this.onExitLyricsEditor()}>Exit</button>
         </div>
         <div class="lyrics-editor" contenteditable="true"
+          @input=${this.onLyricsEditorInput}
           @keydown=${this.onEditorKeydown}></div>
       </div>
     `;
@@ -418,7 +435,7 @@ export class SongPlay extends LitElement {
     }
     if (e.key === "Escape") {
       e.preventDefault();
-      this.onCancelEdit();
+      void this.onExitLyricsEditor();
       return;
     }
     if (!e.ctrlKey && !e.metaKey) return;
@@ -441,7 +458,7 @@ export class SongPlay extends LitElement {
         break;
       case "s":
         e.preventDefault();
-        this.onSaveLyrics();
+        void this.onSaveLyrics();
         break;
     }
   }
@@ -457,7 +474,45 @@ export class SongPlay extends LitElement {
     this.editing = true;
   }
 
-  private async onSaveLyrics() {
+  private syncLyricsEditorBaselineFromDom() {
+    if (!this.editing) return;
+    const editorEl = this.shadowRoot?.querySelector(
+      ".lyrics-editor",
+    ) as HTMLElement | null;
+    if (!editorEl) return;
+    this.lyricsEditorBaselineHtml = editorEl.innerHTML;
+    this.lyricsModified = false;
+  }
+
+  private onLyricsEditorInput() {
+    if (!this.editing) return;
+    const editorEl = this.shadowRoot?.querySelector(
+      ".lyrics-editor",
+    ) as HTMLElement | null;
+    if (!editorEl) return;
+    const dirty = editorEl.innerHTML !== this.lyricsEditorBaselineHtml;
+    if (dirty !== this.lyricsModified) {
+      this.lyricsModified = dirty;
+    }
+  }
+
+  /** Prompt when closing song play while the editor has unsaved edits. Cancel = stay. */
+  private async runSongPlayUnsavedGuard(): Promise<boolean> {
+    if (!this.editing || !this.lyricsModified) return true;
+    const save = window.confirm(
+      "You have unsaved lyric changes. Save before closing?",
+    );
+    if (!save) return false;
+    try {
+      await this.persistLyricsFromEditor();
+      return true;
+    } catch {
+      window.alert("Could not save lyrics.");
+      return false;
+    }
+  }
+
+  private async persistLyricsFromEditor(): Promise<void> {
     const song = this.song;
     if (!song) return;
 
@@ -477,14 +532,39 @@ export class SongPlay extends LitElement {
     await callerBuddy.saveLyrics(song, lyricsFile, fullHtml);
 
     this.lyrics = fullHtml;
-    this.editing = false;
+    this.lyricsEditorBaselineHtml = editedBody;
+    this.lyricsModified = false;
   }
 
-  private onCancelEdit() {
-    if (!this.song?.lyricsFile) {
+  private async onSaveLyrics() {
+    try {
+      await this.persistLyricsFromEditor();
+    } catch {
+      window.alert("Could not save lyrics.");
+    }
+  }
+
+  private async onExitLyricsEditor() {
+    if (this.lyricsModified) {
+      const save = window.confirm(
+        "Save lyric changes before exiting the editor?\n\n" +
+          "OK: Save and exit\nCancel: Discard changes and exit",
+      );
+      if (save) {
+        try {
+          await this.persistLyricsFromEditor();
+        } catch {
+          window.alert("Could not save lyrics.");
+          return;
+        }
+      } else if (!this.song?.lyricsFile) {
+        this.lyrics = "";
+      }
+    } else if (!this.song?.lyricsFile) {
       this.lyrics = "";
     }
     this.editing = false;
+    this.lyricsModified = false;
   }
 
   private execBold() {
