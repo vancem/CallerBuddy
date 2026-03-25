@@ -42,7 +42,10 @@ export interface AudioEngine {
   /** Decode and prepare an audio file for playback. */
   loadAudio(audioData: ArrayBuffer): Promise<void>;
 
-  play(): void;
+  /** Resume the AudioContext if needed (call `await` this before decode when opening a song from a click). */
+  ensureContextRunning(): Promise<void>;
+
+  play(): Promise<void>;
   pause(): void;
   stop(): void;
 
@@ -163,10 +166,20 @@ export class WebAudioEngine implements AudioEngine {
     );
   }
 
-  play(): void {
+  async ensureContextRunning(): Promise<void> {
+    if (this.context.state === "suspended") {
+      try {
+        await this.context.resume();
+      } catch (err) {
+        log.warn("AudioContext.resume() failed:", err);
+      }
+    }
+  }
+
+  async play(): Promise<void> {
     if (this.playing || !this.audioBuffer) return;
     if (this.context.state === "suspended") {
-      this.context.resume();
+      await this.context.resume();
     }
 
     // If we don't have a PitchShifter yet, create one

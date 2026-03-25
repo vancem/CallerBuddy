@@ -323,6 +323,36 @@ export class SongPlay extends LitElement {
     }
 
     this.duration = callerBuddy.audio.getDuration();
+    this.syncPlaybackStateIfAudioAlreadyPlaying();
+  }
+
+  /** After openSongPlay auto-starts audio, align patter/elapsed state with the transport. */
+  private syncPlaybackStateIfAudioAlreadyPlaying() {
+    if (!callerBuddy.audio.isPlaying()) return;
+    this.applyPlaybackStartedState();
+  }
+
+  /** Shared path for first transition from stopped → playing (play button or auto-start). */
+  private applyPlaybackStartedState() {
+    this.playing = true;
+    this.resumePatterTimer();
+    if (this.firstPlayTime === null) {
+      this.firstPlayTime = Date.now();
+      this.startElapsedTimer();
+      if (
+        this.song &&
+        isPatter(this.song) &&
+        this.patterTimerEnabled &&
+        !this.patterTimerRunning
+      ) {
+        this.startPatterTimer();
+      }
+    }
+  }
+
+  private beginPlayback() {
+    void callerBuddy.audio.play();
+    this.applyPlaybackStartedState();
   }
 
   render() {
@@ -824,17 +854,7 @@ export class SongPlay extends LitElement {
       this.playing = false;
       this.pausePatterTimer();
     } else {
-      callerBuddy.audio.play();
-      this.playing = true;
-      this.resumePatterTimer();
-      if (this.firstPlayTime === null) {
-        this.firstPlayTime = Date.now();
-        this.startElapsedTimer();
-        // Start patter timer automatically if this is patter
-        if (this.song && isPatter(this.song) && this.patterTimerEnabled && !this.patterTimerRunning) {
-          this.startPatterTimer();
-        }
-      }
+      this.beginPlayback();
     }
   }
 

@@ -289,11 +289,9 @@ export class PlaylistPlay extends LitElement {
       return;
     }
 
-    // Grey out playlist immediately (first thing) so user gets instant feedback
     this.isStartingPlayback = true;
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = "wait";
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
     try {
       this.stopBreakTimer();

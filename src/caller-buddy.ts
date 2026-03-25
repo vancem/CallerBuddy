@@ -336,8 +336,9 @@ export class CallerBuddy {
     this.state.openSingletonTab(TabType.PlaylistPlay, "Now Playing", true);
   }
 
-  /** Open the song play view for a specific song. */
+  /** Open the song play view for a specific song. Starts playback after load. */
   async openSongPlay(song: Song): Promise<void> {
+    await this.audio.ensureContextRunning();
     try {
       await this.loadSongAudio(song);
     } catch (err) {
@@ -345,6 +346,7 @@ export class CallerBuddy {
       return;
     }
     this.state.setCurrentSong(song);
+    await this.audio.play();
     this.state.openSingletonTab(
       TabType.SongPlay,
       song.title,
