@@ -373,7 +373,7 @@ export class SongPlay extends LitElement {
           ${this.renderTransport()}
           ${this.renderAdjustments(song)}
           ${this.renderTimeInfo()}
-          ${this.renderEditLyricsButton()}
+          ${this.renderPlayExtrasRow()}
         </div>
 
         <!-- Bottom: progress slider -->
@@ -435,6 +435,24 @@ export class SongPlay extends LitElement {
         <div class="lyrics-editor" contenteditable="true"
           @input=${this.onLyricsEditorInput}
           @keydown=${this.onEditorKeydown}></div>
+      </div>
+    `;
+  }
+
+  /** Edit/create lyrics (when not editing) plus Close — same exit path as End key or track end. */
+  private renderPlayExtrasRow() {
+    const song = this.song;
+    if (!song) return nothing;
+    return html`
+      <div class="play-extras-row">
+        ${this.renderEditLyricsButton()}
+        <button
+          class="secondary close-play-btn"
+          title="Close player and return to playlist (End)"
+          @click=${this.onGoToEnd}
+        >
+          Close
+        </button>
       </div>
     `;
   }
@@ -1641,8 +1659,12 @@ export class SongPlay extends LitElement {
       min-height: 200px;
     }
 
-    .edit-lyrics-btn {
-      align-self: center;
+    .play-extras-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
     }
 
     /* -- Narrow / phone layout --------------------------------------------- */
