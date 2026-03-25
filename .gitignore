@@ -39,4 +39,7 @@ public/manifest.json
 public/sw.js
 
 # Backup directories
+copyrighten stuff.
+music/
+# Backup directories
 bak/

@@ -23,6 +23,29 @@ import { isSingingCall, isPatter } from "../models/song.js";
 import { formatTime, formatCountdown, formatClock } from "../utils/format.js";
 import type { Song } from "../models/song.js";
 
+/**
+ * Prepare authored HTML lyrics for embedding inside a `.lyrics-content` div.
+ *
+ * Lyrics files are standalone HTML documents (`<html>`, `<head>`, `<body>`).
+ * When injected via `unsafeHTML`, structural tags are discarded by the browser,
+ * so `body { … }` CSS rules target the page body instead of the lyrics area.
+ * This function extracts the `<style>` and `<body>` content, rewrites `body`
+ * selectors to `.lyrics-content`, and returns a fragment ready for injection.
+ */
+function prepareLyricsHtml(raw: string): string {
+  const styleMatch = raw.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  let css = styleMatch?.[1] ?? "";
+
+  if (css) {
+    css = css.replace(/\bbody\b/g, ".lyrics-content");
+  }
+
+  const bodyMatch = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const body = bodyMatch?.[1] ?? raw;
+
+  return (css ? `<style>${css}</style>` : "") + body;
+}
+
 @customElement("song-play")
 export class SongPlay extends LitElement {
   @state() private currentTime = 0;
@@ -250,8 +273,7 @@ export class SongPlay extends LitElement {
     if (isPlainText) {
       return html`<div class="lyrics-content lyrics-plain">${this.lyrics}</div>`;
     }
-    // Render HTML/MD lyrics in a container
-    return html`<div class="lyrics-content">${unsafeHTML(this.lyrics)}</div>`;
+    return html`<div class="lyrics-content">${unsafeHTML(prepareLyricsHtml(this.lyrics))}</div>`;
   }
 
   // -- Patter controls (loop + timer) ---------------------------------------
@@ -789,23 +811,22 @@ export class SongPlay extends LitElement {
     }
 
     .lyrics-content {
-      font-size: 1rem;
-      line-height: 1.7;
       width: 100%;
       box-sizing: border-box;
+      padding: 16px;
+    }
+
+    /* :where() gives these defaults zero specificity so authored HTML styles
+       (e.g. background: lightyellow from a lyrics file) can override them. */
+    :where(.lyrics-content) {
+      font-size: 1rem;
+      line-height: 1.7;
       background: var(--cb-bg);
       color: var(--cb-fg);
-      padding: 16px;
     }
 
     .lyrics-content.lyrics-plain {
       white-space: pre-wrap;
-    }
-
-    .lyrics-content h1,
-    .lyrics-content h2,
-    .lyrics-content h3 {
-      color: var(--cb-fg);
     }
 
     .lyrics-content a {

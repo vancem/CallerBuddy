@@ -171,7 +171,7 @@ rationale.
     aligned with app UI; start_url / scope at app root.
   - Service worker caching: static assets cache-first; app shell cached for
     offline; cache versioning via version in cache name so updates invalidate
-    old caches.
+    old caches.()
   - Offline: serve cached app shell when offline; show clear offline indicator;
     queue writes (e.g. to CallerBuddyRoot) for sync when back online.
   - Install prompt: trigger manually from UI (e.g. after folder setup), not
