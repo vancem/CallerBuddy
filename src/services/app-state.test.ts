@@ -91,11 +91,27 @@ describe("AppState", () => {
       expect(handler).toHaveBeenCalledTimes(2);
     });
 
+    it("addToPlaylist ignores duplicate songs", () => {
+      state.addToPlaylist(a);
+      const handler = spyOn(state, StateEvents.PLAYLIST_CHANGED);
+      state.addToPlaylist(a);
+      expect(state.playlist).toEqual([a]);
+      expect(handler).not.toHaveBeenCalled();
+    });
+
     it("insertAtStartOfPlaylist prepends", () => {
       state.addToPlaylist(a);
       state.insertAtStartOfPlaylist(b);
       expect(state.playlist[0]).toBe(b);
       expect(state.playlist[1]).toBe(a);
+    });
+
+    it("insertAtStartOfPlaylist ignores duplicate songs", () => {
+      state.addToPlaylist(a);
+      const handler = spyOn(state, StateEvents.PLAYLIST_CHANGED);
+      state.insertAtStartOfPlaylist(a);
+      expect(state.playlist).toEqual([a]);
+      expect(handler).not.toHaveBeenCalled();
     });
 
     it("insertInPlaylist inserts at given index", () => {
@@ -112,6 +128,15 @@ describe("AppState", () => {
 
       state.insertInPlaylist(c, -5);
       expect(state.playlist[0]).toBe(c);
+    });
+
+    it("insertInPlaylist ignores duplicate songs", () => {
+      state.addToPlaylist(a);
+      state.addToPlaylist(b);
+      const handler = spyOn(state, StateEvents.PLAYLIST_CHANGED);
+      state.insertInPlaylist(a, 1);
+      expect(state.playlist).toEqual([a, b]);
+      expect(handler).not.toHaveBeenCalled();
     });
 
     it("removeFromPlaylist removes at index", () => {

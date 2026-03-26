@@ -133,17 +133,24 @@ export class AppState extends EventTarget {
 
   // -- Playlist manipulation ------------------------------------------------
 
+  private isInPlaylist(song: Song): boolean {
+    return this.playlist.some((s) => s.musicFile === song.musicFile);
+  }
+
   addToPlaylist(song: Song): void {
+    if (this.isInPlaylist(song)) return;
     this.playlist.push(song);
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
   insertAtStartOfPlaylist(song: Song): void {
+    if (this.isInPlaylist(song)) return;
     this.playlist.unshift(song);
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
   insertInPlaylist(song: Song, index: number): void {
+    if (this.isInPlaylist(song)) return;
     const clamped = Math.max(0, Math.min(index, this.playlist.length));
     this.playlist.splice(clamped, 0, song);
     this.emit(StateEvents.PLAYLIST_CHANGED);
