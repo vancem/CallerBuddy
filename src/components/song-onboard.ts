@@ -139,6 +139,22 @@ export class SongOnboard extends LitElement {
     this.showContents = !this.showContents;
   }
 
+  private async openHtmlPreview(path: string, e: Event) {
+    e.preventDefault();
+    const win = window.open("", "_blank");
+    if (!win) return;
+    try {
+      const rawHtml = await callerBuddy.readOnboardingEntry(path);
+      win.document.open();
+      win.document.write(rawHtml);
+      win.document.close();
+    } catch (err) {
+      win.document.open();
+      win.document.write(`<p>Failed to load: ${err}</p>`);
+      win.document.close();
+    }
+  }
+
   private onEditorInput(e: CustomEvent<{ html: string }>) {
     const bodyContent = e.detail.html;
     const styleMatch = this.normalizedHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
@@ -320,7 +336,11 @@ export class SongOnboard extends LitElement {
           ${this.showContents
             ? html`
               <div class="contents-list">
-                ${this.allEntries.map((e) => html`<div class="contents-entry">${e}</div>`)}
+                ${this.allEntries.map((e) =>
+                  /\.html?$/i.test(e)
+                    ? html`<div class="contents-entry"><a href="#" @click=${(ev: Event) => this.openHtmlPreview(e, ev)}>${e}</a></div>`
+                    : html`<div class="contents-entry">${e}</div>`,
+                )}
               </div>`
             : nothing}
         </div>
@@ -594,6 +614,16 @@ export class SongOnboard extends LitElement {
     .contents-entry {
       padding: 1px 0;
       white-space: nowrap;
+    }
+
+    .contents-entry a {
+      color: var(--cb-accent, #4a9eff);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .contents-entry a:hover {
+      text-decoration: underline;
     }
 
     /* -- Fields ------------------------------------------------------------ */
