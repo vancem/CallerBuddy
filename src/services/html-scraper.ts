@@ -8,6 +8,8 @@
  * Also provides TXT fallback parsing when no HTML is available.
  */
 
+import { DEFAULT_LYRICS_STYLE } from "../lyrics-default-style.js";
+
 const SECTION_KEYWORD_RE =
   /^(opener|figure|breaks?|middle\s*break|closer?|tag|verse|bridge)\b/i;
 
@@ -80,15 +82,6 @@ const CALL_NAMES: string[] = [
 
 const CALL_REGEX = buildCallRegex(CALL_NAMES);
 
-const DEFAULT_LYRICS_STYLE = [
-  '  body { background: lightyellow; font-family: "Comic Sans MS", cursive;',
-  "         font-size: 18pt; line-height: 140%; color: black; margin: 1em; }",
-  "  h1 { font-size: 20pt; display: inline; }",
-  '  .info { color: blue; font-size: 14pt; }',
-  "  h2 { color: red; font-size: 18pt; font-weight: normal; margin: 0.6em 0 0; }",
-  "  p { margin: 0 0 0.4em; }",
-].join("\n");
-
 interface TextBlock {
   type: "header" | "text";
   content: string;
@@ -96,8 +89,9 @@ interface TextBlock {
 
 /**
  * Scrape raw HTML lyrics and produce normalized CallerBuddy HTML.
- * The label and title are used to generate the `<h1>` title line;
- * the body content comes from parsing the source HTML.
+ * The label and title are used to generate the header line:
+ * `<p><h1>title</h1>&nbsp;<span class="info">label</span></p>` (`.info` is a sibling of `h1`, not inside it).
+ * The body content comes from parsing the source HTML.
  */
 export function scrapeAndNormalizeLyrics(
   rawHtml: string,
@@ -290,7 +284,7 @@ function isSectionHeader(el: Element, text: string): boolean {
 }
 
 function matchesSectionKeyword(text: string): boolean {
-  // Strip leading parens/punctuation — producers often wrap keywords: "(Opener):", "(Figure):"
+  // Strip leading parens/punctuation â€” producers often wrap keywords: "(Opener):", "(Figure):"
   const t = text.trim().replace(/^[(\s]+/, "");
   return SECTION_KEYWORD_RE.test(t) || COMBINED_SECTION_RE.test(t);
 }
@@ -298,7 +292,7 @@ function matchesSectionKeyword(text: string): boolean {
 /**
  * Split text that starts with a section keyword into header + body portions.
  * Uses `:` as the primary separator; if no colon, the whole text is header.
- * Example: "(Opener, Break): CIRCLE LEFT" → header "Opener, Break", body "CIRCLE LEFT"
+ * Example: "(Opener, Break): CIRCLE LEFT" â†’ header "Opener, Break", body "CIRCLE LEFT"
  */
 function splitHeaderFromBody(text: string): { header: string; body: string } {
   const trimmed = text.trim();
@@ -306,13 +300,13 @@ function splitHeaderFromBody(text: string): { header: string; body: string } {
   const colonIdx = trimmed.indexOf(":");
   if (colonIdx >= 0) {
     const before = trimmed.substring(0, colonIdx).replace(/[()]/g, "").trim();
-    const after = trimmed.substring(colonIdx + 1).replace(/^[–\-\s]+/, "").trim();
+    const after = trimmed.substring(colonIdx + 1).replace(/^[â€“\-\s]+/, "").trim();
     if (matchesSectionKeyword(before) && after.length > 0) {
       return { header: before, body: after };
     }
   }
 
-  // No colon — strip wrapping parens if the text is fully enclosed: "(Opener)" → "Opener"
+  // No colon â€” strip wrapping parens if the text is fully enclosed: "(Opener)" â†’ "Opener"
   let cleaned = trimmed;
   if (cleaned.startsWith("(") && cleaned.endsWith(")")) {
     cleaned = cleaned.slice(1, -1).trim();
@@ -512,9 +506,9 @@ function wrapDocument(title: string, label: string, bodyContent: string): string
   const safeTitle = escapeHtml(title);
   const safeLabel = escapeHtml(label);
   const infoSpan = safeLabel
-    ? ` <span class="info">${safeLabel}</span>`
+    ? `&nbsp;<span class="info">${safeLabel}</span>`
     : "";
-  const titleLine = `<h1>${safeTitle}${infoSpan}</h1>`;
+  const titleLine = `<p><h1>${safeTitle}</h1>${infoSpan}</p>`;
 
   return [
     "<!DOCTYPE html>",
@@ -541,7 +535,7 @@ function wrapDocument(title: string, label: string, bodyContent: string): string
 // ---------------------------------------------------------------------------
 
 /**
- * Replace mangled Windows-1252 bytes (C1 control range U+0080–U+009F),
+ * Replace mangled Windows-1252 bytes (C1 control range U+0080â€“U+009F),
  * Unicode replacement chars, and common "smart" punctuation with plain
  * ASCII equivalents, then strip any remaining non-printable characters.
  */

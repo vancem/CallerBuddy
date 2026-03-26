@@ -23,6 +23,7 @@ import { isSingingCall, isPatter, lyricsFilenameFor } from "../models/song.js";
 import { formatTime, formatCountdown, formatClock } from "../utils/format.js";
 import type { Song } from "../models/song.js";
 import type { LyricsEditor } from "./lyrics-editor.js";
+import { DEFAULT_LYRICS_STYLE } from "../lyrics-default-style.js";
 import "./lyrics-editor.js";
 
 /**
@@ -51,15 +52,6 @@ function prepareLyricsHtml(raw: string): string {
 // ---------------------------------------------------------------------------
 // Lyrics HTML helpers for the editor
 // ---------------------------------------------------------------------------
-
-const DEFAULT_LYRICS_STYLE = [
-  "  body { background: lightyellow; font-family: \"Comic Sans MS\", cursive;",
-  "         font-size: 18pt; line-height: 140%; color: black; margin: 1em; }",
-  "  h1 { font-size: 20pt; display: inline; }",
-  "  .info { color: blue; font-size: 14pt; }",
-  "  h2 { color: red; font-size: 18pt; font-weight: normal; margin: 0.6em 0 0; }",
-  "  p { margin: 0 0 0.4em; }",
-].join("\n");
 
 function extractStyleBlock(raw: string): string {
   const m = raw.match(/<style[^>]*>([\s\S]*?)<\/style>/i);

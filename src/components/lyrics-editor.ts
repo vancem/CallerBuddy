@@ -16,9 +16,16 @@
  *  - `lyrics-exit`   — fires when Exit is clicked or Esc pressed
  */
 
-import { LitElement, css, html, nothing } from "lit";
+import { LitElement, css, html, nothing, unsafeCSS } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import {
+  LYRICS_BODY_FONT_SIZE,
+  LYRICS_H1_SIZE,
+  LYRICS_H2_SIZE,
+  LYRICS_INFO_SIZE,
+  LYRICS_UI_FONT_STACK,
+} from "../lyrics-default-style.js";
 
 @customElement("lyrics-editor")
 export class LyricsEditor extends LitElement {
@@ -256,26 +263,27 @@ export class LyricsEditor extends LitElement {
     /* Default lyrics styling (can be overridden by injected editorCss) */
     .lyrics-content {
       background: lightyellow;
-      font-family: "Comic Sans MS", cursive;
-      font-size: 18pt;
+      font-family: ${unsafeCSS(LYRICS_UI_FONT_STACK)};
+      font-size: ${unsafeCSS(LYRICS_BODY_FONT_SIZE)};
       line-height: 140%;
       color: black;
       margin: 0;
     }
 
     .lyrics-content h1 {
-      font-size: 20pt;
+      font-size: ${unsafeCSS(LYRICS_H1_SIZE)};
       display: inline;
     }
 
     .lyrics-content .info {
       color: blue;
-      font-size: 14pt;
+      font-size: ${unsafeCSS(LYRICS_INFO_SIZE)};
+      font-weight: normal;
     }
 
     .lyrics-content h2 {
       color: red;
-      font-size: 18pt;
+      font-size: ${unsafeCSS(LYRICS_H2_SIZE)};
       font-weight: normal;
       margin: 0.6em 0 0;
     }

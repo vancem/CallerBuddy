@@ -19,7 +19,8 @@ describe("scrapeAndNormalizeLyrics", () => {
     const result = scrapeAndNormalizeLyrics(input, "RYL 145", "Love Grows");
 
     expect(result).toContain("<!DOCTYPE html>");
-    expect(result).toContain("<h1>Love Grows <span");
+    expect(result).toContain("<h1>Love Grows</h1>");
+    expect(result).toContain('&nbsp;<span class="info">');
     expect(result).toContain("RYL 145");
     expect(result).toContain("<h2>");
   });
@@ -102,7 +103,8 @@ describe("scrapeAndNormalizeLyrics", () => {
     expect(result).toContain('<meta charset="utf-8">');
     expect(result).toContain("<title>My Song</title>");
     expect(result).toContain("lightyellow");
-    expect(result).toContain("Comic Sans MS");
+    expect(result).toContain("system-ui");
+    expect(result).toContain("16pt");
   });
 });
 
@@ -118,7 +120,8 @@ Head couples promenade go 1/2 way`;
 
     const result = scrapeTxtLyrics(input, "RYL 145", "Love Grows");
 
-    expect(result).toContain("<h1>Love Grows");
+    expect(result).toContain("<h1>Love Grows</h1>");
+    expect(result).toContain("&nbsp;<span class=\"info\">");
     expect(result).toContain("<h2>Opener</h2>");
     expect(result).toContain("<h2>Figure</h2>");
     expect(result).toContain("Circle");
