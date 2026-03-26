@@ -352,8 +352,79 @@ it will not chime again). The countdown continues past zero into negative
 numbers (color changes to red) so that the user knows how much over budget they
 are.
 
-When the song finishes playing the tab will auto-close, and the playListPlay UI
-is activated again.
+### Song onboarding
+
+Songs for caller-buddy usually come as ZIP files that contain both MP3 sound
+files for the music and a HTML files that represent lyrics. However there are a
+WIDE number of conventions on exactly what is in the ZIP files and what the file
+names are called. While MP3 file format is standard, HTML files can vary widely,
+including images and other things that make things bloated and/or cause grief.
+
+The goal of the onboarding process is to end up with a MP3 file and a HTML file
+that follow the "<Label> - <Title>.\*" pattern for both the MP3 and HTML file
+and the HTML has been normalized to use the simple scheme of title, info,
+headers and paragraphs (with line breaks), as seen in "demoMusic\Maple Leaf
+Rag.html".
+
+The demoMusic\songArchiveExamples.txt shows a list of file names for many
+different ZIP archive that have been unpacked. Note that each distinct archive
+was unpacked into its own directory, however this directory name was NOT present
+in the archive itself, so it can't be used to infer things.
+
+Unfortunately normalizing this involves some guesswork, so you need to involve
+the user to at least validate our guesses. Thus we start with an archive name
+XXXX.zip. We then look at this name as well as all the names inside the ZIP and
+make our best guess for
+
+1.  The record label (e.g "BS 2469" for "BS 2469 - WITCH DOCTOR\" folder in
+    songArchiveExamples.txt
+2.  THe title ("Witch Doctor") for "BS 2469 - WITCH DOCTOR\" folder in
+    songArchiveExamples.txt
+3.  The file name of the MP3 file that will be used as the song.
+4.  The data in a simplified HTML for the lyrics.
+
+To produce (4) we should be scraping the original HTML file for visible text
+looking for formats that look like the 'title' 'info' 'header' 'paragraph'
+structure that we are expecting. We take this scrapped text and try to form the
+simplified result that would look like the example in "demoMusic\Maple Leaf
+Rag.html"
+
+Note that this scaping needs to be ROBUST (it works on anything, even large
+files) but probably ignores things outside the <body> element, and while it
+makes its best guess, it errs on the side of including more rather than less (it
+is easier to delete than fetch))
+
+Note that one possible way of doing this scraping is to simply render the HTML
+select everything (as text) and then look at the resulting scrape. The section
+headers might be lost this way, but it is likely to get all text.
+
+The songArchiveHtml folder contains the actual HTML from a number of real life
+examples corresponding to the names from demoMusic\songArchiveExamples.txt.  
+This can be used to test how well various scraping techniques work in the real
+world. As mentioned it does not need to be perfect, and should not be wired
+closely to this data, but patterns in these examples can be used to make good
+guesses.
+
+The goal is to present the three things to the user to show what will happen
+when the user signs off (we will copy out the selected MP3 file as well and make
+an MP3 and HTML file (using the body that was presented) using the standard
+Label - Title.\* format).
+
+One of the things that makes this harder, is that songs often come with
+variations (with harmony, with lean in or outs , with vocal and without,
+different keys ...). We want to default to the simplest one (although sometimes
+this is called instrumental, we don't want the one with vocals.) Note that
+titles should never include () so if we choose an MP3 file with say a filename
+with (instrumental) that part of the file name should not be used to guess the
+title of the song. Again, we can make a guess, present the user with all the MP3
+files in the ZIP, and let him choose (but we should make a good guess, the goal
+is that he can blindly click 'approve' and get a good result)
+
+Once we have all the 4 pieces of information we will have a tab that displays
+all this along with the complete listing of what was in the ZIP, as well as what
+names of the files which will act as destinations, along with a view of the body
+of the HTML (that the user can modify). WHen he clicks 'OK' we can then make the
+new entry (which is clean and uniform)
 
 ## Constraints
 

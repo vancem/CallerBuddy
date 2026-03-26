@@ -21,6 +21,7 @@ export const TabType = {
   PlaylistEditor: "playlist-editor",
   PlaylistPlay: "playlist-play",
   SongPlay: "song-play",
+  SongOnboard: "song-onboard",
 } as const;
 
 export type TabType = (typeof TabType)[keyof typeof TabType];

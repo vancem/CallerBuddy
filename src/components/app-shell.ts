@@ -25,6 +25,7 @@ import "./welcome-view.js";
 import "./playlist-editor.js";
 import "./playlist-play.js";
 import "./song-play.js";
+import "./song-onboard.js";
 
 @customElement("app-shell")
 export class AppShell extends LitElement {
@@ -241,6 +242,8 @@ export class AppShell extends LitElement {
       }
       case TabType.SongPlay:
         return html`<song-play></song-play>`;
+      case TabType.SongOnboard:
+        return html`<song-onboard></song-onboard>`;
       default:
         return html`<p>Unknown tab type</p>`;
     }
@@ -260,6 +263,12 @@ export class AppShell extends LitElement {
       <div class="menu" role="menu">
         <button class="menu-item" role="menuitem" @click=${this.onWelcome}>
           Set CallerBuddy folder…
+        </button>
+        <button class="menu-item" role="menuitem" @click=${this.onImportSongZip}>
+          Import Song from ZIP…
+        </button>
+        <button class="menu-item" role="menuitem" @click=${this.onImportSongFolder}>
+          Import Song from Folder…
         </button>
         <button class="menu-item" role="menuitem" @click=${this.toggleFullscreen}>
           ${this.isFullscreen() ? "In Window" : "Full Screen"}
@@ -314,6 +323,43 @@ export class AppShell extends LitElement {
       await callerBuddy.setRoot(handle);
     } catch {
       // user cancelled or picker unavailable — do nothing
+    }
+  }
+
+  private async onImportSongZip() {
+    this.showMenu = false;
+    if (!callerBuddy.state.rootHandle) {
+      alert("Please set a CallerBuddy folder first.");
+      return;
+    }
+    try {
+      const [fileHandle] = await window.showOpenFilePicker({
+        types: [
+          {
+            description: "ZIP archives",
+            accept: { "application/zip": [".zip"] },
+          },
+        ],
+        multiple: false,
+      });
+      const file = await fileHandle.getFile();
+      await callerBuddy.openSongOnboard(file);
+    } catch {
+      // user cancelled or picker unavailable
+    }
+  }
+
+  private async onImportSongFolder() {
+    this.showMenu = false;
+    if (!callerBuddy.state.rootHandle) {
+      alert("Please set a CallerBuddy folder first.");
+      return;
+    }
+    try {
+      const dirHandle = await window.showDirectoryPicker({ mode: "read" });
+      await callerBuddy.openSongOnboardFromFolder(dirHandle);
+    } catch {
+      // user cancelled or picker unavailable
     }
   }
 

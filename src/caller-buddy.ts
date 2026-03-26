@@ -20,7 +20,7 @@ import {
   writeTextFile,
   fileExists,
 } from "./services/file-system-service.js";
-import { loadSongsJson, saveSongsJson } from "./services/song-library.js";
+import { loadSongsJson, saveSongsJson, loadAndMergeSongs } from "./services/song-library.js";
 import {
   WebAudioEngine,
   type AudioEngine,
@@ -29,6 +29,12 @@ import { detectBPM } from "./services/bpm-detector.js";
 import { defaultSettings, type Settings } from "./models/settings.js";
 import type { Song } from "./models/song.js";
 import { log } from "./services/logger.js";
+import JSZip from "jszip";
+import {
+  analyzeZipForOnboarding,
+  type OnboardingProposal,
+} from "./services/song-onboarding.js";
+import type { EditorTabData } from "./services/app-state.js";
 
 const SETTINGS_JSON = "settings.json";
 
@@ -397,6 +403,214 @@ export class CallerBuddy {
     await this.finalizeSongPlayClose();
     return true;
   }
+  // -----------------------------------------------------------------------
+  // Song onboarding (ZIP or folder import)
+  // -----------------------------------------------------------------------
+
+  /** Abstraction over the import source (ZIP archive or unpacked folder). */
+  private onboardingSource: OnboardingSource | null = null;
+  /**
+   * Read a ZIP file, analyze its contents, and open the song-onboard review tab.
+   */
+  async openSongOnboard(file: File): Promise<void> {
+    log.info(`openSongOnboard: reading ZIP "${file.name}" (${file.size} bytes)…`);
+    const data = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(data);
+
+    const entryPaths: string[] = [];
+    zip.forEach((relativePath, entry) => {
+      if (!entry.dir) entryPaths.push(relativePath);
+    });
+    log.info(`openSongOnboard: ZIP contains ${entryPaths.length} files`);
+
+    this.onboardingSource = {
+      type: "zip",
+      readText: async (path) => {
+        const entry = zip.file(path);
+        if (!entry) throw new Error(`ZIP entry not found: ${path}`);
+        return entry.async("string");
+      },
+      readBinary: async (path) => {
+        const entry = zip.file(path);
+        if (!entry) throw new Error(`ZIP entry not found: ${path}`);
+        return entry.async("arraybuffer");
+      },
+    };
+
+    const proposal = await analyzeZipForOnboarding(
+      file.name, entryPaths, this.onboardingSource.readText,
+    );
+    log.info(`openSongOnboard: proposal — label="${proposal.label}", title="${proposal.title}"`);
+
+    this.state.openSingletonTab(
+      TabType.SongOnboard,
+      `Import: ${proposal.title || file.name}`,
+      true,
+      { proposal, sourceName: file.name, sourceType: "zip" as const },
+    );
+  }
+
+  /**
+   * Enumerate an unpacked folder, analyze its contents, and open the
+   * song-onboard review tab — same flow as openSongOnboard but for a folder.
+   */
+  async openSongOnboardFromFolder(dirHandle: FileSystemDirectoryHandle): Promise<void> {
+    log.info(`openSongOnboardFromFolder: enumerating "${dirHandle.name}"…`);
+
+    const entryPaths = await listFilesRecursive(dirHandle);
+    log.info(`openSongOnboardFromFolder: folder contains ${entryPaths.length} files`);
+
+    this.onboardingSource = {
+      type: "folder",
+      readText: async (path) => {
+        const file = await getFileByPath(dirHandle, path);
+        return file.text();
+      },
+      readBinary: async (path) => {
+        const file = await getFileByPath(dirHandle, path);
+        return file.arrayBuffer();
+      },
+    };
+
+    const folderName = dirHandle.name;
+    const proposal = await analyzeZipForOnboarding(
+      folderName, entryPaths, this.onboardingSource.readText,
+    );
+    log.info(`openSongOnboardFromFolder: proposal — label="${proposal.label}", title="${proposal.title}"`);
+
+    this.state.openSingletonTab(
+      TabType.SongOnboard,
+      `Import: ${proposal.title || folderName}`,
+      true,
+      { proposal, sourceName: folderName, sourceType: "folder" as const },
+    );
+  }
+
+  /**
+   * Finalize the import: read the selected MP3 from the source, write the
+   * MP3 and normalized HTML to the target folder, and refresh the song list.
+   *
+   * @param proposal  The (possibly user-edited) onboarding proposal
+   * @returns true if the import succeeded
+   */
+  async importSong(proposal: OnboardingProposal): Promise<boolean> {
+    const source = this.onboardingSource;
+    if (!source) {
+      log.error("importSong: no onboarding source loaded");
+      return false;
+    }
+
+    const dirHandle = this.getImportTargetDir();
+    if (!dirHandle) {
+      log.error("importSong: no target directory");
+      return false;
+    }
+
+    // Read and write the MP3
+    if (proposal.selectedMp3) {
+      log.info(`importSong: reading MP3 "${proposal.selectedMp3}"…`);
+      const mp3Data = await source.readBinary(proposal.selectedMp3);
+      const mp3Handle = await dirHandle.getFileHandle(proposal.destMp3Name, { create: true });
+      const writable = await mp3Handle.createWritable();
+      await writable.write(mp3Data);
+      await writable.close();
+      log.info(`importSong: wrote "${proposal.destMp3Name}" (${mp3Data.byteLength} bytes)`);
+    }
+
+    // Write the normalized HTML lyrics
+    if (proposal.normalizedHtml && proposal.destHtmlName) {
+      await writeTextFile(dirHandle, proposal.destHtmlName, proposal.normalizedHtml);
+      log.info(`importSong: wrote "${proposal.destHtmlName}"`);
+    }
+
+    // Refresh the song list for the target folder
+    try {
+      await loadAndMergeSongs(dirHandle);
+      log.info("importSong: song list refreshed");
+    } catch (err) {
+      log.warn("importSong: could not refresh song list:", err);
+    }
+
+    // Clean up
+    this.onboardingSource = null;
+
+    // Close the onboard tab
+    const tab = this.state.tabs.find((t) => t.type === TabType.SongOnboard);
+    if (tab) this.state.closeTab(tab.id);
+
+    this.state.emit("songs-loaded");
+    log.info("importSong: complete");
+    return true;
+  }
+
+  /**
+   * Get the directory handle for the import target.
+   * Uses the currently active playlist editor folder, falling back to rootHandle.
+   */
+  private getImportTargetDir(): FileSystemDirectoryHandle | null {
+    const activeTab = this.state.getActiveTab();
+    if (activeTab?.type === TabType.PlaylistEditor) {
+      const data = activeTab.data as EditorTabData | undefined;
+      if (data?.dirHandle) return data.dirHandle;
+    }
+
+    for (const tab of this.state.tabs) {
+      if (tab.type === TabType.PlaylistEditor) {
+        const data = tab.data as EditorTabData | undefined;
+        if (data?.dirHandle) return data.dirHandle;
+      }
+    }
+
+    return this.state.rootHandle;
+  }
+
+  /** Read a text entry from the current onboarding source (ZIP or folder). */
+  async readOnboardingEntry(path: string): Promise<string> {
+    if (!this.onboardingSource) throw new Error("No onboarding source loaded");
+    return this.onboardingSource.readText(path);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Onboarding source abstraction
+// ---------------------------------------------------------------------------
+
+interface OnboardingSource {
+  type: "zip" | "folder";
+  readText: (path: string) => Promise<string>;
+  readBinary: (path: string) => Promise<ArrayBuffer>;
+}
+
+/** Recursively list all file paths in a directory, relative to the root. */
+async function listFilesRecursive(
+  dir: FileSystemDirectoryHandle,
+  prefix = "",
+): Promise<string[]> {
+  const paths: string[] = [];
+  for await (const entry of dir.values()) {
+    const entryPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.kind === "file") {
+      paths.push(entryPath);
+    } else if (entry.kind === "directory") {
+      const subDir = await dir.getDirectoryHandle(entry.name);
+      paths.push(...(await listFilesRecursive(subDir, entryPath)));
+    }
+  }
+  return paths;
+}
+
+/** Navigate a directory handle by a slash-separated path and return the File. */
+async function getFileByPath(
+  root: FileSystemDirectoryHandle,
+  path: string,
+): Promise<File> {
+  const parts = path.split("/");
+  let dir = root;
+  for (let i = 0; i < parts.length - 1; i++) {
+    dir = await dir.getDirectoryHandle(parts[i]);
+  }
+  const fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
+  return fileHandle.getFile();
 }
 
 /** The one and only CallerBuddy instance. Imported by all modules that need it. */

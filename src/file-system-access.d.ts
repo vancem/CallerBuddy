@@ -59,8 +59,20 @@ interface FileSystemDirectoryHandle extends FileSystemHandle {
   >;
 }
 
+interface OpenFilePickerOptions {
+  multiple?: boolean;
+  excludeAcceptAllOption?: boolean;
+  types?: Array<{
+    description?: string;
+    accept: Record<string, string[]>;
+  }>;
+}
+
 interface Window {
   showDirectoryPicker(
     options?: FileSystemPickerOptions,
   ): Promise<FileSystemDirectoryHandle>;
+  showOpenFilePicker(
+    options?: OpenFilePickerOptions,
+  ): Promise<FileSystemFileHandle[]>;
 }

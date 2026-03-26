@@ -41,5 +41,7 @@ public/sw.js
 # Backup directories
 copyrighten stuff.
 music/
+demoMusic/*.zip
+demoMusic/songArchiveHtml/
 # Backup directories
 bak/

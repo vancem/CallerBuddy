@@ -22,6 +22,8 @@ import { callerBuddy } from "../caller-buddy.js";
 import { isSingingCall, isPatter, lyricsFilenameFor } from "../models/song.js";
 import { formatTime, formatCountdown, formatClock } from "../utils/format.js";
 import type { Song } from "../models/song.js";
+import type { LyricsEditor } from "./lyrics-editor.js";
+import "./lyrics-editor.js";
 
 /**
  * Prepare authored HTML lyrics for embedding inside a `.lyrics-content` div.
@@ -220,15 +222,7 @@ export class SongPlay extends LitElement {
 
   protected updated(changed: Map<PropertyKey, unknown>) {
     if (changed.has("editing") && this.editing) {
-      const editorEl = this.shadowRoot?.querySelector(
-        ".lyrics-editor",
-      ) as HTMLElement | null;
-      if (editorEl) {
-        const bodyHtml = this.lyrics ? extractBodyContent(this.lyrics) : "";
-        editorEl.innerHTML = bodyHtml;
-        editorEl.focus();
-        requestAnimationFrame(() => this.syncLyricsEditorBaselineFromDom());
-      }
+      requestAnimationFrame(() => this.syncLyricsEditorBaselineFromDom());
     }
   }
 
@@ -408,34 +402,17 @@ export class SongPlay extends LitElement {
     const cssText = this.lyrics
       ? extractStyleBlock(this.lyrics)
       : DEFAULT_LYRICS_STYLE;
-    const rewrittenCss = cssText.replace(/\bbody\b/g, ".lyrics-editor");
+    const rewrittenCss = cssText.replace(/\bbody\b/g, ".lyrics-content");
 
     return html`
-      <div class="editor-container">
-        <style>${rewrittenCss}</style>
-        <div class="editor-toolbar">
-          <button class="toolbar-btn" title="Bold (Ctrl+B)"
-            @mousedown=${this.preventFocusLoss}
-            @click=${this.execBold}><b>B</b></button>
-          <button class="toolbar-btn section-btn" title="Section heading (Ctrl+H)"
-            @mousedown=${this.preventFocusLoss}
-            @click=${this.execSection}>Heading</button>
-          <button class="toolbar-btn info-btn" title="Info block \u2014 blue text (Ctrl+I)"
-            @mousedown=${this.preventFocusLoss}
-            @click=${this.execInfo}>Info</button>
-          <button class="toolbar-btn" title="Paragraph (Ctrl+P)"
-            @mousedown=${this.preventFocusLoss}
-            @click=${this.execParagraph}>P</button>
-          <span class="toolbar-spacer"></span>
-          <button class="toolbar-btn save-btn" title="Save lyrics (Ctrl+S)"
-            @click=${() => void this.onSaveLyrics()}>Save</button>
-          <button class="toolbar-btn cancel-btn" title="Exit editor (Esc)"
-            @click=${() => void this.onExitLyricsEditor()}>Exit</button>
-        </div>
-        <div class="lyrics-editor" contenteditable="true"
-          @input=${this.onLyricsEditorInput}
-          @keydown=${this.onEditorKeydown}></div>
-      </div>
+      <lyrics-editor
+        .bodyHtml=${this.lyrics ? extractBodyContent(this.lyrics) : ""}
+        .editorCss=${rewrittenCss}
+        .showSaveExit=${true}
+        @lyrics-input=${this.onLyricsEditorInput}
+        @lyrics-save=${() => void this.onSaveLyrics()}
+        @lyrics-exit=${() => void this.onExitLyricsEditor()}
+      ></lyrics-editor>
     `;
   }
 
@@ -470,47 +447,6 @@ export class SongPlay extends LitElement {
     `;
   }
 
-  private preventFocusLoss(e: Event) {
-    e.preventDefault();
-  }
-
-  private onEditorKeydown(e: KeyboardEvent) {
-    e.stopPropagation();
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      document.execCommand("insertLineBreak");
-      return;
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      void this.onExitLyricsEditor();
-      return;
-    }
-    if (!e.ctrlKey && !e.metaKey) return;
-    switch (e.key.toLowerCase()) {
-      case "b":
-        e.preventDefault();
-        this.execBold();
-        break;
-      case "h":
-        e.preventDefault();
-        this.execSection();
-        break;
-      case "i":
-        e.preventDefault();
-        this.execInfo();
-        break;
-      case "p":
-        e.preventDefault();
-        this.execParagraph();
-        break;
-      case "s":
-        e.preventDefault();
-        void this.onSaveLyrics();
-        break;
-    }
-  }
-
   private onEditLyrics() {
     this.editing = true;
   }
@@ -522,23 +458,23 @@ export class SongPlay extends LitElement {
     this.editing = true;
   }
 
+  private getLyricsEditorComponent(): LyricsEditor | null {
+    return this.shadowRoot?.querySelector("lyrics-editor") as LyricsEditor | null;
+  }
+
   private syncLyricsEditorBaselineFromDom() {
     if (!this.editing) return;
-    const editorEl = this.shadowRoot?.querySelector(
-      ".lyrics-editor",
-    ) as HTMLElement | null;
-    if (!editorEl) return;
-    this.lyricsEditorBaselineHtml = editorEl.innerHTML;
+    const editor = this.getLyricsEditorComponent();
+    if (!editor) return;
+    this.lyricsEditorBaselineHtml = editor.getEditorHtml();
     this.lyricsModified = false;
   }
 
   private onLyricsEditorInput() {
     if (!this.editing) return;
-    const editorEl = this.shadowRoot?.querySelector(
-      ".lyrics-editor",
-    ) as HTMLElement | null;
-    if (!editorEl) return;
-    const dirty = editorEl.innerHTML !== this.lyricsEditorBaselineHtml;
+    const editor = this.getLyricsEditorComponent();
+    if (!editor) return;
+    const dirty = editor.getEditorHtml() !== this.lyricsEditorBaselineHtml;
     if (dirty !== this.lyricsModified) {
       this.lyricsModified = dirty;
     }
@@ -564,12 +500,10 @@ export class SongPlay extends LitElement {
     const song = this.song;
     if (!song) return;
 
-    const editorEl = this.shadowRoot?.querySelector(
-      ".lyrics-editor",
-    ) as HTMLElement | null;
-    if (!editorEl) return;
+    const editor = this.getLyricsEditorComponent();
+    if (!editor) return;
 
-    const editedBody = editorEl.innerHTML;
+    const editedBody = editor.getEditorHtml();
     const cssText = this.lyrics
       ? extractStyleBlock(this.lyrics)
       : DEFAULT_LYRICS_STYLE;
@@ -613,35 +547,6 @@ export class SongPlay extends LitElement {
     }
     this.editing = false;
     this.lyricsModified = false;
-  }
-
-  private execBold() {
-    document.execCommand("bold");
-  }
-
-  private execSection() {
-    document.execCommand("formatBlock", false, "h2");
-  }
-
-  private execParagraph() {
-    document.execCommand("formatBlock", false, "p");
-  }
-
-  private execInfo() {
-    const sel =
-      ((this.shadowRoot as unknown as { getSelection?: () => Selection })
-        ?.getSelection?.() as Selection | undefined) ??
-      window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-    const range = sel.getRangeAt(0);
-    const span = document.createElement("span");
-    span.className = "info";
-    span.appendChild(range.extractContents());
-    range.insertNode(span);
-    sel.removeAllRanges();
-    const newRange = document.createRange();
-    newRange.selectNodeContents(span);
-    sel.addRange(newRange);
   }
 
   // -- Patter controls (loop + timer) ---------------------------------------
