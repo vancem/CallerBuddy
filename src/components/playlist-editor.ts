@@ -643,7 +643,7 @@ export class PlaylistEditor extends LitElement {
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = "wait";
     try {
-      await callerBuddy.openSongPlay(song);
+      await callerBuddy.openSongPlay(song, { closeNowPlayingWhenDone: true });
     } finally {
       document.body.style.cursor = prevCursor;
     }

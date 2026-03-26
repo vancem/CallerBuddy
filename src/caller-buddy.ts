@@ -49,6 +49,12 @@ export class CallerBuddy {
    */
   private songPlayUnsavedGuard: (() => Promise<boolean>) | null = null;
 
+  /**
+   * Set when song play was opened from the playlist editor "Play now" shortcut.
+   * When true, {@link finalizeSongPlayClose} also closes the Now Playing tab.
+   */
+  private closeNowPlayingWhenSongPlayCloses = false;
+
   // -----------------------------------------------------------------------
   // Initialization
   // -----------------------------------------------------------------------
@@ -343,12 +349,17 @@ export class CallerBuddy {
   }
 
   /** Open the song play view for a specific song. Starts playback after load. */
-  async openSongPlay(song: Song): Promise<void> {
+  async openSongPlay(
+    song: Song,
+    opts?: { closeNowPlayingWhenDone?: boolean },
+  ): Promise<void> {
+    this.closeNowPlayingWhenSongPlayCloses = opts?.closeNowPlayingWhenDone ?? false;
     await this.audio.ensureContextRunning();
     try {
       await this.loadSongAudio(song);
     } catch (err) {
       log.error(`Failed to load audio for "${song.title}":`, err);
+      this.closeNowPlayingWhenSongPlayCloses = false;
       return;
     }
     this.state.setCurrentSong(song);
@@ -381,6 +392,8 @@ export class CallerBuddy {
     const song = this.state.currentSong;
     if (!tab && !song) return;
 
+    const alsoCloseNowPlaying = this.closeNowPlayingWhenSongPlayCloses;
+
     this.audio.stop();
     if (song) {
       const updated = { ...song, lastUsed: new Date().toISOString() };
@@ -390,6 +403,12 @@ export class CallerBuddy {
       this.state.closeTab(tab.id);
     }
     this.state.setCurrentSong(null);
+
+    if (alsoCloseNowPlaying) {
+      this.closeNowPlayingWhenSongPlayCloses = false;
+      const nowPlayingTab = this.state.tabs.find((t) => t.type === TabType.PlaylistPlay);
+      if (nowPlayingTab) this.state.closeTab(nowPlayingTab.id);
+    }
   }
 
   /**

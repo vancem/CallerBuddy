@@ -121,6 +121,21 @@ export class PlaylistPlay extends LitElement {
     this.requestUpdate();
   };
 
+  /** Remove a song from the shared playlist; keep selection index consistent with the new list. */
+  private onRemovePlaylistItem(index: number): void {
+    const playlist = callerBuddy.state.playlist;
+    if (index < 0 || index >= playlist.length) return;
+    const sel = this.selectedIndex;
+    if (sel !== null) {
+      if (sel === index) {
+        this.selectedIndex = null;
+      } else if (sel > index) {
+        this.selectedIndex = sel - 1;
+      }
+    }
+    callerBuddy.state.removeFromPlaylist(index);
+  }
+
   /** The effective selected index: user override or first unplayed. */
   private getSelectedIndex(): number {
     if (this.selectedIndex !== null) return this.selectedIndex;
@@ -181,6 +196,17 @@ export class PlaylistPlay extends LitElement {
                           >${isSingingCall(song) ? "♪" : "♫"}</span
                         >
                         <span class="pl-title">${song.title}</span>
+                        <button
+                          type="button"
+                          class="icon-btn"
+                          title="Remove from playlist"
+                          @click=${(e: Event) => {
+                            e.stopPropagation();
+                            this.onRemovePlaylistItem(i);
+                          }}
+                        >
+                          ×
+                        </button>
                       </li>
                     `;
                   })}
@@ -563,9 +589,27 @@ export class PlaylistPlay extends LitElement {
 
     .pl-title {
       flex: 1;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .pl-item .icon-btn {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: var(--cb-fg-secondary);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+
+    .pl-item .icon-btn:hover {
+      color: var(--cb-fg);
+      background: var(--cb-hover);
     }
 
     .play-actions {
