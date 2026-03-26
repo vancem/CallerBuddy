@@ -12,7 +12,7 @@
 
 // ── Typography tokens ────────────────────────────────────────────────────────
 export const LYRICS_UI_FONT_STACK =
-  'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'Roboto, Arial, sans-serif';
 
 export const LYRICS_BODY_FONT_SIZE = "16pt"; // absolute root for the lyric surface
 
