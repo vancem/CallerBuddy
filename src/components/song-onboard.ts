@@ -22,6 +22,7 @@ import {
   type HtmlCandidate,
 } from "../services/song-onboarding.js";
 import "./lyrics-editor.js";
+import type { LyricsEditor } from "./lyrics-editor.js";
 
 interface OnboardTabData {
   proposal: OnboardingProposal;
@@ -155,11 +156,22 @@ export class SongOnboard extends LitElement {
     }
   }
 
-  private onEditorInput(e: CustomEvent<{ html: string }>) {
-    const bodyContent = e.detail.html;
+  /**
+   * Build the full HTML document from the editor's current body content,
+   * preserving the style block from the original normalizedHtml.
+   * Called at import time instead of on every keystroke — updating
+   * normalizedHtml on every input would trigger a Lit re-render that
+   * replaces the contenteditable content, destroying cursor position
+   * and the browser's native undo stack.
+   */
+  private buildNormalizedHtmlFromEditor(): string {
+    if (!this.normalizedHtml) return "";
+    const editor = this.shadowRoot?.querySelector("lyrics-editor") as LyricsEditor | null;
+    if (!editor) return this.normalizedHtml;
+    const bodyContent = editor.getEditorHtml();
     const styleMatch = this.normalizedHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
     const styleText = styleMatch?.[1] ?? "";
-    this.normalizedHtml = [
+    return [
       "<!DOCTYPE html>", "<html>", "<head>",
       '<meta charset="utf-8">',
       `<title>${escapeHtml(this.songTitle)}</title>`,
@@ -205,7 +217,7 @@ export class SongOnboard extends LitElement {
       selectedMp3: this.selectedMp3,
       htmlCandidates: this.htmlCandidates,
       selectedHtml: this.selectedHtml,
-      normalizedHtml: this.normalizedHtml,
+      normalizedHtml: this.buildNormalizedHtmlFromEditor(),
       allEntries: this.allEntries,
       destMp3Name: this.destMp3Name,
       destHtmlName: this.destHtmlName,
@@ -270,7 +282,6 @@ export class SongOnboard extends LitElement {
           .bodyHtml=${body}
           .editorCss=${rewrittenCss}
           .showSaveExit=${false}
-          @lyrics-input=${this.onEditorInput}
         ></lyrics-editor>
       </div>
     `;
@@ -324,7 +335,9 @@ export class SongOnboard extends LitElement {
 
         ${this.normalizedHtml
           ? html`<p class="explain">Source lyrics were extracted and placed
-              in the editor — please review and update as desired.</p>`
+              in the editor — please review and update as desired.
+              You can open the original HTML file by double clicking on it
+              in the file list below to compare or cut and paste.</p>`
           : nothing}
 
         <!-- Show source contents -->
