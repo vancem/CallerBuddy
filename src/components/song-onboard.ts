@@ -629,14 +629,16 @@ export class SongOnboard extends LitElement {
       white-space: nowrap;
     }
 
-    .contents-entry a {
-      color: var(--cb-accent, #4a9eff);
-      text-decoration: none;
+    /* Match browser default link rendering (readable on light/dark UI). */
+    .contents-entry a:any-link {
+      color: LinkText;
+      text-decoration: underline;
       cursor: pointer;
+      font-weight: normal;
     }
 
-    .contents-entry a:hover {
-      text-decoration: underline;
+    .contents-entry a:visited {
+      color: VisitedText;
     }
 
     /* -- Fields ------------------------------------------------------------ */
