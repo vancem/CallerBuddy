@@ -140,7 +140,7 @@ function extractBlocks(rawHtml: string): TextBlock[] {
   walkChildren(body, (node) => {
     if (node.nodeType === Node.ELEMENT_NODE) {
       const el = node as Element;
-      const text = collapseWhitespace(el.textContent ?? "");
+      const text = collapseWhitespace(sanitizeText(el.textContent ?? ""));
       if (!text) return;
 
       if (isSectionHeader(el, text)) {
@@ -153,7 +153,13 @@ function extractBlocks(rawHtml: string): TextBlock[] {
       } else if (foundFirstHeader) {
         const lines = extractLinesFromElement(el);
         if (lines.length > 0) {
-          blocks.push({ type: "text", content: lines.join("<br>\n") });
+          const content = lines.join("<br>\n");
+          const last = blocks[blocks.length - 1];
+          if (last && last.type === "text") {
+            last.content += "<br>\n" + content;
+          } else {
+            blocks.push({ type: "text", content });
+          }
         }
       }
     }
@@ -353,7 +359,7 @@ function extractLinesFromElement(el: Element): string[] {
 
   const walk = (node: Node) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent ?? "";
+      const text = sanitizeText(node.textContent ?? "");
       // Skip MSO empty-para markers
       if (text.trim() === "\u00a0" || text.trim() === "") return;
       current += text;
@@ -420,7 +426,7 @@ function extractBlocksFromText(rawText: string): TextBlock[] {
   };
 
   for (const line of lines) {
-    const trimmed = line.trim();
+    const trimmed = sanitizeText(line).trim();
     if (!trimmed) {
       flushText();
       continue;
@@ -533,6 +539,21 @@ function wrapDocument(title: string, label: string, bodyContent: string): string
 // ---------------------------------------------------------------------------
 // Text utilities
 // ---------------------------------------------------------------------------
+
+/**
+ * Replace mangled Windows-1252 bytes (C1 control range U+0080–U+009F),
+ * Unicode replacement chars, and common "smart" punctuation with plain
+ * ASCII equivalents, then strip any remaining non-printable characters.
+ */
+function sanitizeText(text: string): string {
+  return text
+    .replace(/[\u201C\u201D\u201E\u201F\u0093\u0094]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B\u0091\u0092]/g, "'")
+    .replace(/[\u2013\u2014\u0096\u0097]/g, "-")
+    .replace(/[\u2026\u0085]/g, "...")
+    .replace(/\uFFFD/g, "")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "");
+}
 
 function collapseWhitespace(text: string): string {
   return text.replace(/[\s\u00a0]+/g, " ").trim();
