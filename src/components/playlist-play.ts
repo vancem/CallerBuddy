@@ -4,7 +4,7 @@
  * Shows the playlist with selection highlighting, break timer, and clock.
  * Played songs show a checked checkbox. The selected song defaults to the first
  * unplayed song; clicking a song overrides the selection. Play/Enter/Space
- * plays the selected song. S starts/stops the break timer.
+ * plays the selected song. S starts/stops the break timer. Esc closes the tab.
  *
  * See CallerBuddySpec.md §"PlaylistPlay UI".
  */
@@ -93,6 +93,12 @@ export class PlaylistPlay extends LitElement {
 
     const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     if (inInput) return;
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.onCloseNowPlayingTab();
+      return;
+    }
 
     if (e.ctrlKey && e.key === "r") {
       e.preventDefault();
@@ -289,7 +295,7 @@ export class PlaylistPlay extends LitElement {
               <button
                 type="button"
                 class="close-tab-btn"
-                title="Close this tab (same as the tab × control)"
+                title="Close Now Playing (Esc)"
                 @click=${this.onCloseNowPlayingTab}
               >
                 Close
@@ -352,7 +358,7 @@ export class PlaylistPlay extends LitElement {
     this.refresh();
   }
 
-  /** Same as closing the "Now Playing" tab via the tab bar ✕. */
+  /** Same as closing the "Now Playing" tab from the tab bar or pressing Esc. */
   private onCloseNowPlayingTab() {
     const tab = callerBuddy.state.tabs.find((t) => t.type === TabType.PlaylistPlay);
     if (tab) callerBuddy.state.closeTab(tab.id);

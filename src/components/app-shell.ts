@@ -16,7 +16,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
-import { StateEvents, TabType, type EditorTabData } from "../services/app-state.js";
+import { StateEvents, TabType, type EditorTabData, type TabInfo } from "../services/app-state.js";
 import { APP_VERSION } from "../version.js";
 
 // Side-effect imports to register custom elements
@@ -232,13 +232,17 @@ export class AppShell extends LitElement {
 
   /** Render the content for a non-keep-alive tab.
    *  PlaylistPlay is excluded — it is rendered by the keep-alive block above. */
-  private renderTab(tab: { type: TabType; data?: unknown }) {
+  private renderTab(tab: TabInfo) {
     switch (tab.type) {
       case TabType.Welcome:
         return html`<welcome-view></welcome-view>`;
       case TabType.PlaylistEditor: {
         const data = tab.data as EditorTabData | undefined;
-        return html`<playlist-editor .dirHandle=${data?.dirHandle ?? null}></playlist-editor>`;
+        return html`<playlist-editor
+          .dirHandle=${data?.dirHandle ?? null}
+          .editorClosable=${tab.closable}
+          .tabId=${tab.id}
+        ></playlist-editor>`;
       }
       case TabType.SongPlay:
         return html`<song-play></song-play>`;

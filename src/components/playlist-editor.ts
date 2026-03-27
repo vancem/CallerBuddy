@@ -16,6 +16,8 @@
  *  │  [▶ Play]   │                                      │
  *  └─────────────┴──────────────────────────────────────┘
  *
+ * Closable folder tabs (not the root editor) show Close beside Play/Clear; Esc closes the tab.
+ *
  * See CallerBuddySpec.md §"Playlist Editor UI".
  */
 
@@ -53,6 +55,12 @@ export class PlaylistEditor extends LitElement {
    */
   @property({ attribute: false })
   dirHandle: FileSystemDirectoryHandle | null = null;
+
+  /** Mirrors TabInfo.closable: false for the CallerBuddy root folder editor. */
+  @property({ type: Boolean }) editorClosable = false;
+
+  /** This editor tab's id; used to close via the button or Esc. */
+  @property({ type: String }) tabId = "";
 
   @state() private filterText = "";
   /** When true, rank filter uses >= threshold; when false, uses < threshold. */
@@ -132,12 +140,32 @@ export class PlaylistEditor extends LitElement {
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
 
   private onKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape" && this.editorClosable && this.tabId) {
+      const inInput =
+        e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      if (!inInput) {
+        if (this.contextTarget) {
+          e.preventDefault();
+          this.closeContextMenu();
+          return;
+        }
+        e.preventDefault();
+        callerBuddy.state.closeTab(this.tabId);
+        return;
+      }
+    }
+
     if (e.key !== "Enter") return;
     const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     if (inInput) return;
     if (callerBuddy.state.playlist.length === 0) return;
     e.preventDefault();
     this.onPlayPlaylist();
+  }
+
+  private onCloseEditorTab() {
+    if (!this.editorClosable || !this.tabId) return;
+    callerBuddy.state.closeTab(this.tabId);
   }
 
   private refresh = () => {
@@ -302,6 +330,18 @@ export class PlaylistEditor extends LitElement {
                     @click=${() => callerBuddy.state.clearPlaylist()}
                   >
                     Clear
+                  </button>
+                `
+              : nothing}
+            ${this.editorClosable && this.tabId
+              ? html`
+                  <button
+                    type="button"
+                    class="secondary"
+                    title="Close folder tab (Esc)"
+                    @click=${this.onCloseEditorTab}
+                  >
+                    Close
                   </button>
                 `
               : nothing}

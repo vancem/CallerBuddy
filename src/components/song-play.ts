@@ -417,7 +417,7 @@ export class SongPlay extends LitElement {
     `;
   }
 
-  /** Edit/create lyrics (when not editing) plus Close — same exit path as End key or track end. */
+  /** Edit/create lyrics (when not editing) plus Close — same exit path as Esc / End or track end. */
   private renderPlayExtrasRow() {
     const song = this.song;
     if (!song) return nothing;
@@ -426,7 +426,7 @@ export class SongPlay extends LitElement {
         ${this.renderEditLyricsButton()}
         <button
           class="secondary close-play-btn"
-          title="Close player and return to playlist (End)"
+          title="Close player and return to playlist (Esc)"
           @click=${this.onGoToEnd}
         >
           Close
