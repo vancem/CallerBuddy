@@ -34,7 +34,7 @@ import { loadAndMergeSongs } from "../services/song-library.js";
 import { listDirectory, type DirEntry } from "../services/file-system-service.js";
 import { log } from "../services/logger.js";
 
-type SortField = "title" | "label" | "category" | "rank" | "dateAdded";
+type SortField = "title" | "label" | "categories" | "rank" | "dateAdded";
 type SortDir = "asc" | "desc";
 
 /** Discriminated union for the context menu target (song or folder). */
@@ -95,6 +95,7 @@ export class PlaylistEditor extends LitElement {
     this.playlistWidth =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
+    callerBuddy.state.addEventListener(StateEvents.SONG_UPDATED, this.refresh);
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     document.addEventListener("keydown", this._boundKeydown);
   }
@@ -103,6 +104,7 @@ export class PlaylistEditor extends LitElement {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this._boundKeydown);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
+    callerBuddy.state.removeEventListener(StateEvents.SONG_UPDATED, this.refresh);
     callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     this.stopResize();
   }
@@ -281,14 +283,27 @@ export class PlaylistEditor extends LitElement {
         <section class="browser-panel">
           ${this.renderBreadcrumb()}
           <div class="browser-toolbar">
-            <input
-              type="text"
-              class="filter-input"
-              placeholder="Filter songs by title, label, or category…"
-              .value=${this.filterText}
-              @input=${this.onFilterInput}
-              @keydown=${this.onFilterKeydown}
-            />
+            <div class="filter-wrap">
+              ${this.filterText
+                ? html`<button
+                    type="button"
+                    class="filter-clear"
+                    title="Clear filter"
+                    aria-label="Clear filter"
+                    @click=${this.onClearFilter}
+                  >
+                    ×
+                  </button>`
+                : nothing}
+              <input
+                type="text"
+                class="filter-input"
+                placeholder="Filter songs by title, label, or categories…"
+                .value=${this.filterText}
+                @input=${this.onFilterInput}
+                @keydown=${this.onFilterKeydown}
+              />
+            </div>
             <span class="song-count">
               ${this.subfolders.length > 0
                 ? `${this.subfolders.length} folders, `
@@ -303,21 +318,37 @@ export class PlaylistEditor extends LitElement {
                 <table class="song-table">
                   <thead>
                     <tr>
-                      <th></th>
-                      <th></th>
-                      <th class="sortable" @click=${() => this.toggleSort("title")}>
+                      <th title="Play this song now in the player"></th>
+                      <th title="Add this song to the playlist"></th>
+                      <th
+                        class="sortable"
+                        title="Song title, taken from the audio filename."
+                        @click=${() => this.toggleSort("title")}
+                      >
                         Title ${this.sortIndicator("title")}
                       </th>
-                      <th class="sortable" @click=${() => this.toggleSort("label")}>
+                      <th
+                        class="sortable"
+                        title="Publisher label and catalog number from the filename (e.g. RYL 607)."
+                        @click=${() => this.toggleSort("label")}
+                      >
                         Label ${this.sortIndicator("label")}
                       </th>
-                      <th class="sortable" @click=${() => this.toggleSort("category")}>
-                        Category ${this.sortIndicator("category")}
+                      <th
+                        class="sortable"
+                        title="Category tags for this song: words or phrases separated by semicolons (e.g. Christmas; Patriotic; Plus)."
+                        @click=${() => this.toggleSort("categories")}
+                      >
+                        Categories ${this.sortIndicator("categories")}
                       </th>
-                      <th class="sortable" @click=${() => this.toggleSort("rank")}>
+                      <th
+                        class="sortable"
+                        title="Your preference from 0 to 100: 100 is excellent, 50 is average, 0 means avoid using this song."
+                        @click=${() => this.toggleSort("rank")}
+                      >
                         Rank ${this.sortIndicator("rank")}
                       </th>
-                      <th>Type</th>
+                      <th title="Singing call (has lyrics) or patter (no lyrics file).">Type</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -348,7 +379,7 @@ export class PlaylistEditor extends LitElement {
                           </td>
                           <td>${song.title}</td>
                           <td class="label-cell">${song.label}</td>
-                          <td>${song.category}</td>
+                          <td>${song.categories}</td>
                           <td class="rank-cell">${song.rank}</td>
                           <td class="type-cell">
                             <span
@@ -494,7 +525,6 @@ export class PlaylistEditor extends LitElement {
       callerBuddy.state.addToPlaylist(song);
     }
     this.contextTarget = null;
-    this.filterText = "";
   }
 
   private async playSongFromCtx() {
@@ -540,7 +570,7 @@ export class PlaylistEditor extends LitElement {
         (s) =>
           s.title.toLowerCase().includes(lower) ||
           s.label.toLowerCase().includes(lower) ||
-          s.category.toLowerCase().includes(lower),
+          s.categories.toLowerCase().includes(lower),
       );
     }
 
@@ -584,6 +614,11 @@ export class PlaylistEditor extends LitElement {
     this.filterText = (e.target as HTMLInputElement).value;
   }
 
+  private onClearFilter(e: MouseEvent) {
+    e.stopPropagation();
+    this.filterText = "";
+  }
+
   // -- Resizer --------------------------------------------------------------
 
   private resizeStartX = 0;
@@ -625,7 +660,6 @@ export class PlaylistEditor extends LitElement {
 
   private addToPlaylist(song: Song) {
     callerBuddy.state.addToPlaylist(song);
-    this.filterText = "";
   }
 
   /**
@@ -634,7 +668,6 @@ export class PlaylistEditor extends LitElement {
    */
   private async playSongNow(song: Song) {
     callerBuddy.state.addToPlaylist(song);
-    this.filterText = "";
     callerBuddy.openPlaylistPlay();
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = "wait";
@@ -838,6 +871,36 @@ export class PlaylistEditor extends LitElement {
       gap: 12px;
       padding: 8px 12px;
       border-bottom: 1px solid var(--cb-border);
+    }
+
+    .filter-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .filter-clear {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid var(--cb-border);
+      border-radius: 6px;
+      background: var(--cb-input-bg);
+      color: var(--cb-fg-secondary);
+      font-size: 1.15rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .filter-clear:hover {
+      color: var(--cb-fg);
+      background: var(--cb-hover);
     }
 
     .filter-input {

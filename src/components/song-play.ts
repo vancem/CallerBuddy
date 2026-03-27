@@ -234,18 +234,27 @@ export class SongPlay extends LitElement {
     void callerBuddy.closeSongPlay();
   };
 
+  /** True when the event originated inside an input/textarea/select (including in shadow DOM). */
+  private isKeyEventFromFormField(e: KeyboardEvent): boolean {
+    return e.composedPath().some(
+      (n) =>
+        n instanceof HTMLInputElement ||
+        n instanceof HTMLTextAreaElement ||
+        n instanceof HTMLSelectElement,
+    );
+  }
+
   private onKeydown(e: KeyboardEvent) {
     if (this.editing) return;
-    const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
+    // document listener sees retargeted target; use composed path for fields inside this shadow root.
+    if (this.isKeyEventFromFormField(e)) return;
 
     switch (e.key) {
       case " ":
-        if (inInput) return;
         e.preventDefault();
         this.onPlayPause();
         break;
       case "Enter":
-        if (inInput) return;
         e.preventDefault();
         this.onPlayPause();
         break;
@@ -670,6 +679,38 @@ export class SongPlay extends LitElement {
           <button class="adj-btn" title="Increase tempo (T)" @click=${() => this.adjustTempo(1)}>►</button>
           <span class="adj-hint">${this.getEffectiveBPM() > 0 ? `${this.getEffectiveBPM()} BPM` : ""}</span>
         </div>
+        <div class="meta-block">
+          <div class="meta-row">
+            <label
+              class="meta-label"
+              title="Words or phrases that describe categories this song belongs to, separated by semicolons (for example: Christmas; Patriotic; Plus)."
+            >Categories:</label>
+            <input
+              type="text"
+              class="meta-input meta-input-categories"
+              title="Words or phrases that describe categories this song belongs to, separated by semicolons (for example: Christmas; Patriotic; Plus)."
+              spellcheck="false"
+              .value=${song.categories}
+              @change=${this.onSongCategoryChange}
+            />
+          </div>
+          <div class="meta-row">
+            <label
+              class="meta-label"
+              title="Preference from 0 to 100: 100 is excellent, 50 is average, and 0 means avoid using this song."
+            >Rank</label>
+            <input
+              type="number"
+              class="meta-input meta-input-rank"
+              min="0"
+              max="100"
+              step="1"
+              title="Preference from 0 to 100: 100 is excellent, 50 is average, and 0 means avoid using this song."
+              .value=${String(song.rank)}
+              @change=${this.onSongRankChange}
+            />
+          </div>
+        </div>
       </div>
     `;
   }
@@ -828,6 +869,30 @@ export class SongPlay extends LitElement {
     callerBuddy.audio.setTempo(this.song.deltaTempo, this.song.originalTempo);
     this.requestUpdate();
     callerBuddy.updateSong(this.song);
+  }
+
+  private onSongCategoryChange(e: Event) {
+    if (!this.song) return;
+    this.song.categories = (e.target as HTMLInputElement).value;
+    void callerBuddy.updateSong(this.song);
+    this.requestUpdate();
+  }
+
+  private onSongRankChange(e: Event) {
+    if (!this.song) return;
+    const raw = (e.target as HTMLInputElement).value.trim();
+    if (raw === "") {
+      this.requestUpdate();
+      return;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > 100) {
+      this.requestUpdate();
+      return;
+    }
+    this.song.rank = n;
+    void callerBuddy.updateSong(this.song);
+    this.requestUpdate();
   }
 
   // -- Loop controls --------------------------------------------------------
@@ -1331,6 +1396,46 @@ export class SongPlay extends LitElement {
       font-size: 0.75rem;
       color: var(--cb-fg-tertiary);
       margin-left: 4px;
+    }
+
+    .meta-block {
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px solid var(--cb-border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 7.5rem 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .meta-label {
+      font-size: 0.85rem;
+      color: var(--cb-fg-secondary);
+    }
+
+    .meta-input {
+      padding: 4px 8px;
+      border: 1px solid var(--cb-border);
+      border-radius: 4px;
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
+      font-size: 0.85rem;
+    }
+
+    .meta-input-categories {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .meta-input-rank {
+      width: 4.5rem;
+      font-variant-numeric: tabular-nums;
     }
 
     /* -- Time info --------------------------------------------------------- */

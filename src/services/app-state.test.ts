@@ -8,7 +8,7 @@ function makeSong(musicFile: string): Song {
     title: musicFile,
     musicFile,
     lyricsFile: "",
-    category: "",
+    categories: "",
     rank: 50,
     dateAdded: "",
     lastUsed: "",

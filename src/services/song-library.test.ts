@@ -25,7 +25,7 @@ function makeSong(overrides: Partial<Song> = {}): Song {
     title: "Test",
     musicFile: "test.mp3",
     lyricsFile: "",
-    category: "",
+    categories: "",
     rank: 50,
     dateAdded: "2025-01-01T00:00:00.000Z",
     lastUsed: "",
@@ -64,11 +64,11 @@ describe("mergeSongs", () => {
 
   it("preserves persisted metadata on overlap", () => {
     const scanned = [makeSong({ musicFile: "a.mp3", rank: 50 })];
-    const persisted = [makeSong({ musicFile: "a.mp3", rank: 10, category: "Classic" })];
+    const persisted = [makeSong({ musicFile: "a.mp3", rank: 10, categories: "Classic" })];
     const result = mergeSongs(scanned, persisted);
     expect(result).toHaveLength(1);
     expect(result[0].rank).toBe(10);
-    expect(result[0].category).toBe("Classic");
+    expect(result[0].categories).toBe("Classic");
   });
 
   it("refreshes lyricsFile from scan on overlap", () => {
@@ -182,6 +182,20 @@ describe("loadSongsJson", () => {
     expect(songs[0].musicFile).toBe("a.mp3");
   });
 
+  it("migrates legacy category field to categories", async () => {
+    vi.mocked(fileExists).mockResolvedValue(true);
+    vi.mocked(readTextFile).mockResolvedValue(
+      JSON.stringify([
+        { musicFile: "a.mp3", category: "X", rank: 7 },
+      ]),
+    );
+
+    const songs = await loadSongsJson(fakeDirHandle);
+    expect(songs).toHaveLength(1);
+    expect(songs[0].categories).toBe("X");
+    expect(songs[0].rank).toBe(7);
+  });
+
   it("returns [] on parse error", async () => {
     vi.mocked(fileExists).mockResolvedValue(true);
     vi.mocked(readTextFile).mockResolvedValue("not json");
@@ -208,5 +222,7 @@ describe("saveSongsJson", () => {
     const parsed = JSON.parse(content);
     expect(parsed[0]).not.toHaveProperty("dirHandle");
     expect(parsed[0].musicFile).toBe("a.mp3");
+    expect(parsed[0]).toHaveProperty("categories");
+    expect(parsed[0]).not.toHaveProperty("category");
   });
 });

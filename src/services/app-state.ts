@@ -54,6 +54,8 @@ export const StateEvents = {
   SONGS_LOADED: "songs-loaded",
   /** Fires when the playlist is modified. */
   PLAYLIST_CHANGED: "playlist-changed",
+  /** Fires when a song's stored metadata was updated (e.g. volume or categories). */
+  SONG_UPDATED: "song-updated",
   /** Fires when settings change. */
   SETTINGS_CHANGED: "settings-changed",
   /** Fires when a song starts playing. */

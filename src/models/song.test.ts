@@ -8,6 +8,7 @@ import {
   isPatter,
   songForPersistence,
   createSongFromFile,
+  normalizeSongFromJson,
   type Song,
 } from "./song.js";
 
@@ -118,7 +119,7 @@ describe("songForPersistence", () => {
       title: "Come Sail Away",
       musicFile: "RYL 607 - Come Sail Away.MP3",
       lyricsFile: "RYL 607 - Come Sail Away.html",
-      category: "Pop",
+      categories: "Pop",
       rank: 30,
       dateAdded: "2025-01-01T00:00:00.000Z",
       lastUsed: "",
@@ -135,8 +136,34 @@ describe("songForPersistence", () => {
     expect(result).not.toHaveProperty("dirHandle");
     expect(result.label).toBe("RYL 607");
     expect(result.title).toBe("Come Sail Away");
-    expect(result.category).toBe("Pop");
+    expect(result.categories).toBe("Pop");
     expect(result.rank).toBe(30);
+    expect(JSON.stringify(songForPersistence(song))).toContain('"categories"');
+    expect(JSON.stringify(songForPersistence(song))).not.toContain('"category"');
+  });
+});
+
+describe("normalizeSongFromJson", () => {
+  it("maps legacy category to categories", () => {
+    const song = normalizeSongFromJson({
+      musicFile: "a.mp3",
+      category: "Holiday",
+    });
+    expect(song).not.toBeNull();
+    expect(song!.categories).toBe("Holiday");
+  });
+
+  it("prefers categories over legacy category", () => {
+    const song = normalizeSongFromJson({
+      musicFile: "a.mp3",
+      categories: "New",
+      category: "Old",
+    });
+    expect(song!.categories).toBe("New");
+  });
+
+  it("returns null without musicFile", () => {
+    expect(normalizeSongFromJson({ title: "x" })).toBeNull();
   });
 });
 

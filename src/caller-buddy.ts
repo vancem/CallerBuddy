@@ -10,7 +10,7 @@
  * services and the UI layer.
  */
 
-import { AppState, TabType } from "./services/app-state.js";
+import { AppState, StateEvents, TabType } from "./services/app-state.js";
 import {
   storeRootHandle,
   loadRootHandle,
@@ -194,8 +194,9 @@ export class CallerBuddy {
     if (!handle) return;
 
     // Update in global songs array (backward compat for BPM detection callbacks)
+    const key = song.musicFile.toLowerCase();
     const idx = this.state.songs.findIndex(
-      (s) => s.musicFile === song.musicFile,
+      (s) => s.musicFile.toLowerCase() === key,
     );
     if (idx >= 0) {
       this.state.songs[idx] = song;
@@ -204,15 +205,19 @@ export class CallerBuddy {
     try {
       const folderSongs = await loadSongsJson(handle);
       const folderIdx = folderSongs.findIndex(
-        (s) => s.musicFile === song.musicFile,
+        (s) => s.musicFile.toLowerCase() === key,
       );
       if (folderIdx >= 0) {
         folderSongs[folderIdx] = song;
-        await saveSongsJson(handle, folderSongs);
+      } else {
+        folderSongs.push(song);
       }
+      await saveSongsJson(handle, folderSongs);
     } catch (err) {
       log.warn("Could not persist song update:", err);
     }
+
+    this.state.emit(StateEvents.SONG_UPDATED);
   }
 
   /** Read the lyrics file for a song. Returns the HTML/MD text or empty string. */

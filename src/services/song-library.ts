@@ -15,6 +15,7 @@ import {
   baseName,
   createSongFromFile,
   songForPersistence,
+  normalizeSongFromJson,
 } from "../models/song.js";
 import {
   listDirectory,
@@ -82,8 +83,18 @@ export async function loadSongsJson(
     const text = await readTextFile(dirHandle, SONGS_JSON);
     const data = JSON.parse(text) as unknown;
     assert(Array.isArray(data), "songs.json must contain an array");
-    log.info(`Loaded ${(data as Song[]).length} songs from songs.json`);
-    return data as Song[];
+    const songs: Song[] = [];
+    let skipped = 0;
+    for (const raw of data) {
+      const song = normalizeSongFromJson(raw);
+      if (song) songs.push(song);
+      else skipped++;
+    }
+    if (skipped > 0) {
+      log.warn(`loadSongsJson: skipped ${skipped} invalid entr${skipped === 1 ? "y" : "ies"}`);
+    }
+    log.info(`Loaded ${songs.length} songs from songs.json`);
+    return songs;
   } catch (err) {
     log.error("Failed to load songs.json:", err);
     return [];

@@ -17,8 +17,8 @@ export interface Song {
   musicFile: string;
   /** Relative path to lyrics file (HTML/MD/TXT) within CallerBuddyRoot, empty if none */
   lyricsFile: string;
-  /** User-defined category string (e.g., "Christmas", "Patriotic") */
-  category: string;
+  /** User-defined category tags (e.g. semicolon-separated: "Christmas; Patriotic") */
+  categories: string;
   /** User preference rank; lower is better. Default 50 */
   rank: number;
   /** ISO timestamp when first seen by CallerBuddy */
@@ -53,6 +53,54 @@ export interface Song {
 export function songForPersistence(song: Song): Omit<Song, "dirHandle"> {
   const { dirHandle: _, ...persistable } = song;
   return persistable;
+}
+
+function pickStr(o: Record<string, unknown>, key: string, fallback: string): string {
+  const v = o[key];
+  return typeof v === "string" ? v : fallback;
+}
+
+function pickNum(o: Record<string, unknown>, key: string, fallback: number): number {
+  const v = o[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+}
+
+/**
+ * Parse one songs.json entry. Accepts legacy `category`; maps to `categories`.
+ * Returns null if `musicFile` is missing or invalid.
+ */
+export function normalizeSongFromJson(raw: unknown): Song | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.musicFile !== "string" || !o.musicFile) return null;
+
+  const lyricsFile =
+    typeof o.lyricsFile === "string" ? o.lyricsFile : "";
+  const base = createSongFromFile(o.musicFile, lyricsFile);
+
+  const categories =
+    typeof o.categories === "string"
+      ? o.categories
+      : typeof o.category === "string"
+        ? o.category
+        : base.categories;
+
+  return {
+    ...base,
+    label: pickStr(o, "label", base.label),
+    title: pickStr(o, "title", base.title),
+    lyricsFile: pickStr(o, "lyricsFile", base.lyricsFile),
+    categories,
+    rank: pickNum(o, "rank", base.rank),
+    dateAdded: pickStr(o, "dateAdded", base.dateAdded),
+    lastUsed: pickStr(o, "lastUsed", base.lastUsed),
+    loopStartTime: pickNum(o, "loopStartTime", base.loopStartTime),
+    loopEndTime: pickNum(o, "loopEndTime", base.loopEndTime),
+    volume: pickNum(o, "volume", base.volume),
+    pitch: pickNum(o, "pitch", base.pitch),
+    originalTempo: pickNum(o, "originalTempo", base.originalTempo),
+    deltaTempo: pickNum(o, "deltaTempo", base.deltaTempo),
+  };
 }
 
 /** Supported music file extensions (lower-case, with dot). */
@@ -138,7 +186,7 @@ export function createSongFromFile(
     title: parsed.title,
     musicFile,
     lyricsFile,
-    category: "",
+    categories: "",
     rank: 50,
     dateAdded: new Date().toISOString(),
     lastUsed: "",

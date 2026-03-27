@@ -101,10 +101,10 @@ MD), but also includes
   and 607 is the number Royal Records assigned to this song. This can be useful
   because recording companies often have a style, so looking things up by
   recording company can be useful.
-- The _category_ of the song. This is a user defined string meant to represent a
-  useful group (like Christmas, or Patriotic)
-- The _rank_ of the song. This is a decimal number (lower is better), that
-  represents how much the user prefers this song.
+- The _categories_ of the song (JSON property `categories`). A user-defined string,
+  often semicolon-separated tags (e.g. Christmas; Patriotic), for grouping or filtering.
+- The _rank_ of the song. An integer from 0–100 (higher is better: 100 excellent,
+  ~50 average, 0 avoid) representing how much the caller prefers this song.
 - The _date_ of the song. This is timestamp for when the song was first seen by
   CallerBuddy (note the age of the file) It is useful for callers to find songs
   he recently added to his collection (so he can practice/use them)
