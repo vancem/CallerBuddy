@@ -37,6 +37,9 @@ import { log } from "../services/logger.js";
 type SortField = "title" | "label" | "categories" | "rank" | "dateAdded";
 type SortDir = "asc" | "desc";
 
+/** Inline spreadsheet-style edit for Categories / Rank table cells. */
+type EditingCell = { key: string; field: "categories" | "rank"; draft: string };
+
 /** Discriminated union for the context menu target (song or folder). */
 type ContextTarget =
   | { kind: "song"; song: Song }
@@ -60,6 +63,13 @@ export class PlaylistEditor extends LitElement {
   @state() private sortDir: SortDir = "asc";
   @state() private contextTarget: ContextTarget | null = null;
   @state() private contextMenuPos = { x: 0, y: 0 };
+
+  @state() private editingCell: EditingCell | null = null;
+  /** After Escape, skip one blur so we do not persist cancelled edits. */
+  private skipNextBlurCommit = false;
+
+  /** `${musicFile}|field` for the cell that last received autofocus (avoid refocus on each keystroke). */
+  private lastFocusedEditAnchor: string | null = null;
 
   /** Song object being dragged from the song table (kept as reference to preserve dirHandle). */
   private draggedSong: Song | null = null;
@@ -147,6 +157,23 @@ export class PlaylistEditor extends LitElement {
         this.initFolder(this.dirHandle);
       }
     }
+    if (changed.has("editingCell")) {
+      const anchor = this.editingCell
+        ? `${this.editingCell.key}|${this.editingCell.field}`
+        : null;
+      if (!this.editingCell) {
+        this.lastFocusedEditAnchor = null;
+      } else if (anchor !== this.lastFocusedEditAnchor) {
+        this.lastFocusedEditAnchor = anchor;
+        queueMicrotask(() => {
+          const inp = this.renderRoot.querySelector(
+            ".cell-input",
+          ) as HTMLInputElement | null;
+          inp?.focus();
+          inp?.select();
+        });
+      }
+    }
   }
 
   private async initFolder(handle: FileSystemDirectoryHandle): Promise<void> {
@@ -158,6 +185,7 @@ export class PlaylistEditor extends LitElement {
     const handle = this.currentHandle;
     if (!handle) return;
 
+    this.editingCell = null;
     this.loading = true;
     try {
       // Sequential: concurrent use of the same directory handle can hang
@@ -416,8 +444,8 @@ export class PlaylistEditor extends LitElement {
                           </td>
                           <td>${song.title}</td>
                           <td class="label-cell">${song.label}</td>
-                          <td>${song.categories}</td>
-                          <td class="rank-cell">${song.rank}</td>
+                          ${this.renderCategoriesCell(song)}
+                          ${this.renderRankCell(song)}
                           <td class="type-cell">
                             <span
                               class="${isSingingCall(song) ? "singing" : "patter"}"
@@ -571,9 +599,158 @@ export class PlaylistEditor extends LitElement {
     await this.playSongNow(song);
   }
 
+  // -- Inline cell editing (categories / rank) ------------------------------
+
+  private songKey(song: Song): string {
+    return song.musicFile.toLowerCase();
+  }
+
+  private isCellEditing(song: Song, field: "categories" | "rank"): boolean {
+    return (
+      this.editingCell !== null &&
+      this.editingCell.key === this.songKey(song) &&
+      this.editingCell.field === field
+    );
+  }
+
+  private commitCategoriesDraft(song: Song, draft: string) {
+    if (draft === song.categories) return;
+    song.categories = draft;
+    void callerBuddy.updateSong(song);
+  }
+
+  private commitRankDraft(song: Song, draft: string) {
+    const raw = draft.trim();
+    if (raw === "") return;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > 100) return;
+    if (n === song.rank) return;
+    song.rank = n;
+    void callerBuddy.updateSong(song);
+  }
+
+  private commitPendingCellEdit() {
+    if (!this.editingCell) return;
+    const { key, field, draft } = this.editingCell;
+    const song = this.localSongs.find((s) => this.songKey(s) === key);
+    this.editingCell = null;
+    if (!song) return;
+    if (field === "categories") this.commitCategoriesDraft(song, draft);
+    else this.commitRankDraft(song, draft);
+  }
+
+  private startCellEdit(song: Song, field: "categories" | "rank", e: Event) {
+    e.stopPropagation();
+    if (
+      this.editingCell &&
+      (this.editingCell.key !== this.songKey(song) || this.editingCell.field !== field)
+    ) {
+      this.commitPendingCellEdit();
+    }
+    if (this.isCellEditing(song, field)) return;
+    const draft = field === "categories" ? song.categories : String(song.rank);
+    this.editingCell = { key: this.songKey(song), field, draft };
+  }
+
+  private onCellDraftInput(e: Event) {
+    if (!this.editingCell) return;
+    this.editingCell = {
+      ...this.editingCell,
+      draft: (e.target as HTMLInputElement).value,
+    };
+  }
+
+  private onEditableCellBlur(song: Song) {
+    if (this.skipNextBlurCommit) {
+      this.skipNextBlurCommit = false;
+      return;
+    }
+    if (!this.editingCell || this.editingCell.key !== this.songKey(song)) return;
+    const { field, draft } = this.editingCell;
+    this.editingCell = null;
+    if (field === "categories") this.commitCategoriesDraft(song, draft);
+    else this.commitRankDraft(song, draft);
+  }
+
+  private onCellEditKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      (e.target as HTMLInputElement).blur();
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      this.skipNextBlurCommit = true;
+      this.editingCell = null;
+      this.requestUpdate();
+    }
+  }
+
+  private renderCategoriesCell(song: Song) {
+    if (this.isCellEditing(song, "categories")) {
+      const draft = this.editingCell!.draft;
+      return html`
+        <td class="categories-cell editing" @click=${(ev: Event) => ev.stopPropagation()}>
+          <input
+            type="text"
+            class="cell-input"
+            .value=${draft}
+            @input=${this.onCellDraftInput}
+            @blur=${() => this.onEditableCellBlur(song)}
+            @keydown=${this.onCellEditKeydown}
+            title="Category tags: words or phrases separated by semicolons"
+          />
+        </td>
+      `;
+    }
+    return html`
+      <td
+        class="categories-cell"
+        title="Click to edit. Tags separated by semicolons (e.g. Christmas; Patriotic)."
+        @click=${(ev: MouseEvent) => this.startCellEdit(song, "categories", ev)}
+      >
+        ${song.categories}
+      </td>
+    `;
+  }
+
+  private renderRankCell(song: Song) {
+    if (this.isCellEditing(song, "rank")) {
+      const draft = this.editingCell!.draft;
+      return html`
+        <td class="rank-cell editing" @click=${(ev: Event) => ev.stopPropagation()}>
+          <input
+            type="text"
+            class="cell-input cell-input-rank"
+            .value=${draft}
+            @input=${this.onCellDraftInput}
+            @blur=${() => this.onEditableCellBlur(song)}
+            @keydown=${this.onCellEditKeydown}
+            title="Rank 0–100 (integer). Lower can mean higher priority in your workflow."
+          />
+        </td>
+      `;
+    }
+    return html`
+      <td
+        class="rank-cell"
+        title="Click to edit rank (0–100)."
+        @click=${(ev: MouseEvent) => this.startCellEdit(song, "rank", ev)}
+      >
+        ${song.rank}
+      </td>
+    `;
+  }
+
   // -- Drag and drop --------------------------------------------------------
 
   private onSongDragStart(e: DragEvent, song: Song) {
+    const el = e.target as HTMLElement | null;
+    if (el?.closest(".categories-cell, .rank-cell")) {
+      e.preventDefault();
+      return;
+    }
     if (!e.dataTransfer) return;
     e.dataTransfer.setData("application/x-callerbuddy-song", "1");
     e.dataTransfer.effectAllowed = "copy";
@@ -1103,6 +1280,44 @@ export class PlaylistEditor extends LitElement {
 
     .rank-cell {
       text-align: center;
+    }
+
+    .categories-cell {
+      cursor: cell;
+      max-width: 14rem;
+    }
+
+    .categories-cell.editing,
+    .rank-cell.editing {
+      padding: 0;
+      vertical-align: middle;
+    }
+
+    .cell-input {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 3rem;
+      margin: 0;
+      padding: 4px 8px;
+      font: inherit;
+      line-height: inherit;
+      color: inherit;
+      background: var(--cb-panel-bg);
+      border: 1px solid var(--cb-accent);
+      border-radius: 4px;
+    }
+
+    .cell-input:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--cb-accent-muted, var(--cb-accent));
+    }
+
+    .cell-input-rank {
+      text-align: center;
+    }
+
+    .rank-cell:not(.editing) {
+      cursor: cell;
     }
 
     .type-cell .singing {
