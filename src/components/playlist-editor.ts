@@ -1280,25 +1280,44 @@ export class PlaylistEditor extends LitElement {
 
     .rank-cell {
       text-align: center;
+      /* Stable width so switching to <input> does not widen the column (auto layout). */
+      width: 6ch;
+      min-width: 6ch;
+      max-width: 6ch;
+      box-sizing: border-box;
     }
 
     .categories-cell {
       cursor: cell;
+      /* Fixed width like .rank-cell so edit mode does not change column size. */
+      width: 14rem;
+      min-width: 14rem;
       max-width: 14rem;
+      box-sizing: border-box;
+    }
+
+    .categories-cell:not(.editing) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .categories-cell.editing {
+      overflow: visible;
     }
 
     .categories-cell.editing,
     .rank-cell.editing {
-      padding: 0;
+      /* Match .song-table td padding so the cell box does not shrink/grow when editing. */
+      padding: 6px 10px;
       vertical-align: middle;
     }
 
     .cell-input {
       box-sizing: border-box;
       width: 100%;
-      min-width: 3rem;
+      min-width: 0;
       margin: 0;
-      padding: 4px 8px;
+      padding: 2px 6px;
       font: inherit;
       line-height: inherit;
       color: inherit;
