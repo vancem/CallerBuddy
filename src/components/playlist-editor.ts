@@ -1123,16 +1123,16 @@ export class PlaylistEditor extends LitElement {
       align-items: center;
       gap: 12px;
       flex-wrap: nowrap;
-      min-width: 100%;
-      width: max-content;
+      width: 100%;
+      min-width: 0;
     }
 
     .filter-wrap {
-      flex: 1 1 auto;
+      flex: 1 1 0;
       display: flex;
       align-items: center;
       gap: 4px;
-      min-width: min(100%, 200px);
+      min-width: 0;
     }
 
     .filter-clear {
@@ -1159,6 +1159,7 @@ export class PlaylistEditor extends LitElement {
 
     .filter-input {
       flex: 1;
+      min-width: 0;
       padding: 6px 10px;
       border: 1px solid var(--cb-border);
       border-radius: 6px;
