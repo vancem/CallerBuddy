@@ -52,6 +52,10 @@ export class PlaylistEditor extends LitElement {
   dirHandle: FileSystemDirectoryHandle | null = null;
 
   @state() private filterText = "";
+  /** When true, rank filter uses >= threshold; when false, uses < threshold. */
+  @state() private rankCompareGte = true;
+  /** Empty string disables rank filtering. */
+  @state() private rankFilterInput = "";
   @state() private sortField: SortField = "title";
   @state() private sortDir: SortDir = "asc";
   @state() private contextTarget: ContextTarget | null = null;
@@ -193,6 +197,8 @@ export class PlaylistEditor extends LitElement {
     if (stackIndex < 0 || stackIndex >= this.handleStack.length) return;
     this.handleStack = this.handleStack.slice(0, stackIndex + 1);
     this.filterText = "";
+    this.rankFilterInput = "";
+    this.rankCompareGte = true;
     await this.loadCurrentFolder();
   }
 
@@ -301,6 +307,37 @@ export class PlaylistEditor extends LitElement {
                 placeholder="Filter songs by title, label, or categories…"
                 .value=${this.filterText}
                 @input=${this.onFilterInput}
+                @keydown=${this.onFilterKeydown}
+              />
+            </div>
+            <div
+              class="rank-filter"
+              title="Filter by rank (0–100). Leave the number empty to disable. Works together with the text filter."
+            >
+              <span class="rank-filter-label">Rank</span>
+              <button
+                type="button"
+                class="rank-filter-compare"
+                title=${this.rankCompareGte
+                  ? "Comparing with ≥ (greater than or equal). Click to switch to less than."
+                  : "Comparing with < (less than). Click to switch to greater than or equal."}
+                aria-label=${this.rankCompareGte
+                  ? "Rank comparison: greater than or equal. Click to use less than."
+                  : "Rank comparison: less than. Click to use greater than or equal."}
+                @click=${this.onRankCompareToggle}
+              >
+                ${this.rankCompareGte ? ">=" : "<"}
+              </button>
+              <input
+                type="number"
+                class="rank-filter-input"
+                min="0"
+                max="100"
+                step="1"
+                placeholder=""
+                title="Rank threshold (0–100). Empty = no rank filter."
+                .value=${this.rankFilterInput}
+                @input=${this.onRankFilterInput}
                 @keydown=${this.onFilterKeydown}
               />
             </div>
@@ -574,6 +611,18 @@ export class PlaylistEditor extends LitElement {
       );
     }
 
+    const rankRaw = this.rankFilterInput.trim();
+    if (rankRaw !== "") {
+      const threshold = Number(rankRaw);
+      if (Number.isFinite(threshold)) {
+        if (this.rankCompareGte) {
+          songs = songs.filter((s) => s.rank >= threshold);
+        } else {
+          songs = songs.filter((s) => s.rank < threshold);
+        }
+      }
+    }
+
     const dir = this.sortDir === "asc" ? 1 : -1;
     songs.sort((a, b) => {
       const aVal = a[this.sortField];
@@ -617,6 +666,15 @@ export class PlaylistEditor extends LitElement {
   private onClearFilter(e: MouseEvent) {
     e.stopPropagation();
     this.filterText = "";
+  }
+
+  private onRankCompareToggle(e: MouseEvent) {
+    e.stopPropagation();
+    this.rankCompareGte = !this.rankCompareGte;
+  }
+
+  private onRankFilterInput(e: Event) {
+    this.rankFilterInput = (e.target as HTMLInputElement).value;
   }
 
   // -- Resizer --------------------------------------------------------------
@@ -915,6 +973,51 @@ export class PlaylistEditor extends LitElement {
     }
 
     .filter-input:focus {
+      border-color: var(--cb-accent);
+    }
+
+    .rank-filter {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      font-size: 0.85rem;
+    }
+
+    .rank-filter-label {
+      color: var(--cb-fg-secondary);
+      white-space: nowrap;
+    }
+
+    .rank-filter-compare {
+      min-width: 2.5rem;
+      padding: 4px 8px;
+      border: 1px solid var(--cb-border);
+      border-radius: 6px;
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
+      font-size: 0.8rem;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+    }
+
+    .rank-filter-compare:hover {
+      background: var(--cb-hover);
+    }
+
+    .rank-filter-input {
+      width: 3.5rem;
+      padding: 6px 8px;
+      border: 1px solid var(--cb-border);
+      border-radius: 6px;
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+      outline: none;
+    }
+
+    .rank-filter-input:focus {
       border-color: var(--cb-accent);
     }
 
