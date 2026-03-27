@@ -1,5 +1,5 @@
-/* built: 2026-03-26T23:58:40.804Z */
-const CACHE_NAME = "callerbuddy-v0.1.0-pre.13-b7e269ed-dirty";
+/* built: 2026-03-27T05:15:45.942Z */
+const CACHE_NAME = "callerbuddy-v0.1.0-pre.14-6ed6ec7b-dirty";
 
 self.addEventListener("install", (event) => {
   const base = new URL("./", self.location).href;

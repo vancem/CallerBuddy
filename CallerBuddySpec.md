@@ -105,9 +105,11 @@ MD), but also includes
   often semicolon-separated tags (e.g. Christmas; Patriotic), for grouping or filtering.
 - The _rank_ of the song. An integer from 0–100 (higher is better: 100 excellent,
   ~50 average, 0 avoid) representing how much the caller prefers this song.
-- The _date_ of the song. This is timestamp for when the song was first seen by
-  CallerBuddy (note the age of the file) It is useful for callers to find songs
-  he recently added to his collection (so he can practice/use them)
+- The _orderAdded_ of the song (JSON `orderAdded`). A positive integer indicating
+  the order in which the song was added to the library within that CallerBuddy folder:
+  each new file gets one more than the current maximum `orderAdded` in
+  `songs.json` (so values increase over time independent of table sort order).
+  Initial imports can be aligned with an external `rank.csv` `Order` column if desired.
 - The _lastUsed_ date of the song. This is the last time the song was played by
   CallerBuddy. This is useful to find songs the caller has not used (and should
   get back into his rotation)

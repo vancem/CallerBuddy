@@ -10,7 +10,7 @@ function makeSong(musicFile: string): Song {
     lyricsFile: "",
     categories: "",
     rank: 50,
-    dateAdded: "",
+    orderAdded: 15,
     lastUsed: "",
     loopStartTime: 0,
     loopEndTime: 0,

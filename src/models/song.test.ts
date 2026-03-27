@@ -9,6 +9,8 @@ import {
   songForPersistence,
   createSongFromFile,
   normalizeSongFromJson,
+  maxOrderAdded,
+  nextOrderAdded,
   type Song,
 } from "./song.js";
 
@@ -121,7 +123,7 @@ describe("songForPersistence", () => {
       lyricsFile: "RYL 607 - Come Sail Away.html",
       categories: "Pop",
       rank: 30,
-      dateAdded: "2025-01-01T00:00:00.000Z",
+      orderAdded: 3,
       lastUsed: "",
       loopStartTime: 0,
       loopEndTime: 0,
@@ -140,6 +142,23 @@ describe("songForPersistence", () => {
     expect(result.rank).toBe(30);
     expect(JSON.stringify(songForPersistence(song))).toContain('"categories"');
     expect(JSON.stringify(songForPersistence(song))).not.toContain('"category"');
+  });
+});
+
+describe("maxOrderAdded / nextOrderAdded", () => {
+  it("returns 0 / 1 for an empty list", () => {
+    expect(maxOrderAdded([])).toBe(0);
+    expect(nextOrderAdded([])).toBe(1);
+  });
+
+  it("returns max and max+1", () => {
+    const songs = [
+      { orderAdded: 3 } as Song,
+      { orderAdded: 12 } as Song,
+      { orderAdded: 7 } as Song,
+    ];
+    expect(maxOrderAdded(songs)).toBe(12);
+    expect(nextOrderAdded(songs)).toBe(13);
   });
 });
 
@@ -193,10 +212,9 @@ describe("createSongFromFile", () => {
     expect(song.lyricsFile).toBe("Test.html");
   });
 
-  it("sets dateAdded to an ISO timestamp", () => {
+  it("uses a placeholder orderAdded until merge assigns a real value", () => {
     const song = createSongFromFile("Test.mp3");
-    expect(() => new Date(song.dateAdded)).not.toThrow();
-    expect(new Date(song.dateAdded).toISOString()).toBe(song.dateAdded);
+    expect(song.orderAdded).toBe(0);
   });
 
   it("handles filename with no separator", () => {

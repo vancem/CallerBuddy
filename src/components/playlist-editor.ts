@@ -34,7 +34,7 @@ import { loadAndMergeSongs } from "../services/song-library.js";
 import { listDirectory, type DirEntry } from "../services/file-system-service.js";
 import { log } from "../services/logger.js";
 
-type SortField = "title" | "label" | "categories" | "rank" | "dateAdded";
+type SortField = "title" | "label" | "categories" | "rank" | "orderAdded";
 type SortDir = "asc" | "desc";
 
 /** Inline spreadsheet-style edit for Categories / Rank table cells. */

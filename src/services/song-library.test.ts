@@ -27,7 +27,7 @@ function makeSong(overrides: Partial<Song> = {}): Song {
     lyricsFile: "",
     categories: "",
     rank: 50,
-    dateAdded: "2025-01-01T00:00:00.000Z",
+    orderAdded: 15,
     lastUsed: "",
     loopStartTime: 0,
     loopEndTime: 0,
@@ -53,6 +53,7 @@ describe("mergeSongs", () => {
     const result = mergeSongs(scanned, []);
     expect(result).toHaveLength(1);
     expect(result[0].musicFile).toBe("a.mp3");
+    expect(result[0].orderAdded).toBe(1);
   });
 
   it("retains persisted songs when scanned is empty (file may be temporarily missing)", () => {
@@ -64,11 +65,14 @@ describe("mergeSongs", () => {
 
   it("preserves persisted metadata on overlap", () => {
     const scanned = [makeSong({ musicFile: "a.mp3", rank: 50 })];
-    const persisted = [makeSong({ musicFile: "a.mp3", rank: 10, categories: "Classic" })];
+    const persisted = [
+      makeSong({ musicFile: "a.mp3", rank: 10, categories: "Classic", orderAdded: 42 }),
+    ];
     const result = mergeSongs(scanned, persisted);
     expect(result).toHaveLength(1);
     expect(result[0].rank).toBe(10);
     expect(result[0].categories).toBe("Classic");
+    expect(result[0].orderAdded).toBe(42);
   });
 
   it("refreshes lyricsFile from scan on overlap", () => {
@@ -88,12 +92,25 @@ describe("mergeSongs", () => {
 
   it("combines new scanned + missing persisted songs", () => {
     const scanned = [makeSong({ musicFile: "new.mp3" })];
-    const persisted = [makeSong({ musicFile: "old.mp3" })];
+    const persisted = [makeSong({ musicFile: "old.mp3", orderAdded: 20 })];
     const result = mergeSongs(scanned, persisted);
     expect(result).toHaveLength(2);
     const files = result.map((s) => s.musicFile);
     expect(files).toContain("new.mp3");
     expect(files).toContain("old.mp3");
+    expect(result.find((s) => s.musicFile === "new.mp3")!.orderAdded).toBe(21);
+    expect(result.find((s) => s.musicFile === "old.mp3")!.orderAdded).toBe(20);
+  });
+
+  it("assigns sequential orderAdded for multiple new songs in one merge", () => {
+    const scanned = [
+      makeSong({ musicFile: "a.mp3" }),
+      makeSong({ musicFile: "b.mp3" }),
+    ];
+    const persisted = [makeSong({ musicFile: "x.mp3", orderAdded: 100 })];
+    const result = mergeSongs(scanned, persisted);
+    expect(result.find((s) => s.musicFile === "a.mp3")!.orderAdded).toBe(101);
+    expect(result.find((s) => s.musicFile === "b.mp3")!.orderAdded).toBe(102);
   });
 });
 
@@ -122,9 +139,11 @@ describe("scanDirectory", () => {
     expect(sail.lyricsFile).toBe("RYL 607 - Come Sail Away.html");
     expect(sail.label).toBe("RYL 607");
     expect(sail.title).toBe("Come Sail Away");
+    expect(sail.orderAdded).toBe(0);
 
     const another = songs.find((s) => s.musicFile === "Another Track.wav")!;
     expect(another.lyricsFile).toBe("");
+    expect(another.orderAdded).toBe(0);
   });
 
   it("includes .m4a files", async () => {

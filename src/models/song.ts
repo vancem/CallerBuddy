@@ -21,8 +21,11 @@ export interface Song {
   categories: string;
   /** User preference rank; lower is better. Default 50 */
   rank: number;
-  /** ISO timestamp when first seen by CallerBuddy */
-  dateAdded: string;
+  /**
+   * Order in which the song was added to the library (larger = added later).
+   * New entries use {@link nextOrderAdded} so each addition increments (per folder list).
+   */
+  orderAdded: number;
   /** ISO timestamp of last time played. Empty string if never played */
   lastUsed: string;
   /** Time in seconds from start where looping jumps to. Default 0 */
@@ -65,6 +68,9 @@ function pickNum(o: Record<string, unknown>, key: string, fallback: number): num
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }
 
+/** Overwritten when a new song is merged from a folder scan (see song-library `mergeSongs`). */
+const PLACEHOLDER_ORDER_ADDED = 0;
+
 /**
  * Parse one songs.json entry. Accepts legacy `category`; maps to `categories`.
  * Returns null if `musicFile` is missing or invalid.
@@ -92,7 +98,7 @@ export function normalizeSongFromJson(raw: unknown): Song | null {
     lyricsFile: pickStr(o, "lyricsFile", base.lyricsFile),
     categories,
     rank: pickNum(o, "rank", base.rank),
-    dateAdded: pickStr(o, "dateAdded", base.dateAdded),
+    orderAdded: pickNum(o, "orderAdded", PLACEHOLDER_ORDER_ADDED),
     lastUsed: pickStr(o, "lastUsed", base.lastUsed),
     loopStartTime: pickNum(o, "loopStartTime", base.loopStartTime),
     loopEndTime: pickNum(o, "loopEndTime", base.loopEndTime),
@@ -101,6 +107,29 @@ export function normalizeSongFromJson(raw: unknown): Song | null {
     originalTempo: pickNum(o, "originalTempo", base.originalTempo),
     deltaTempo: pickNum(o, "deltaTempo", base.deltaTempo),
   };
+}
+
+/**
+ * Largest `orderAdded` in the list (0 if none or all invalid).
+ * Used when assigning sequential order to newly discovered songs.
+ */
+export function maxOrderAdded(songs: Song[]): number {
+  let m = 0;
+  for (const s of songs) {
+    if (
+      typeof s.orderAdded === "number" &&
+      Number.isFinite(s.orderAdded) &&
+      s.orderAdded > m
+    ) {
+      m = s.orderAdded;
+    }
+  }
+  return m;
+}
+
+/** Next `orderAdded` for a new song: one greater than the current maximum in `songs`. */
+export function nextOrderAdded(songs: Song[]): number {
+  return maxOrderAdded(songs) + 1;
 }
 
 /** Supported music file extensions (lower-case, with dot). */
@@ -188,7 +217,7 @@ export function createSongFromFile(
     lyricsFile,
     categories: "",
     rank: 50,
-    dateAdded: new Date().toISOString(),
+    orderAdded: PLACEHOLDER_ORDER_ADDED,
     lastUsed: "",
     loopStartTime: 0,
     loopEndTime: 0,

@@ -16,6 +16,7 @@ import {
   createSongFromFile,
   songForPersistence,
   normalizeSongFromJson,
+  maxOrderAdded,
 } from "../models/song.js";
 import {
   listDirectory,
@@ -122,7 +123,8 @@ export async function saveSongsJson(
  * Strategy:
  *  - Songs present in both (matched by musicFile) keep the persisted metadata
  *    but update the lyricsFile if a matching lyrics file was found on disk.
- *  - New songs (on disk but not in persisted) are added with defaults.
+ *  - New songs (on disk but not in persisted) get sequential orderAdded
+ *    (maxOrderAdded(persisted) + 1, + 2, … in scan order).
  *  - Songs in persisted but missing on disk are kept (the file might be
  *    temporarily unavailable, e.g. cloud sync lag).
  */
@@ -134,6 +136,7 @@ export function mergeSongs(scanned: Song[], persisted: Song[]): Song[] {
 
   const merged: Song[] = [];
   const seen = new Set<string>();
+  let nextOrder = maxOrderAdded(persisted) + 1;
 
   for (const fresh of scanned) {
     const key = fresh.musicFile.toLowerCase();
@@ -143,7 +146,8 @@ export function mergeSongs(scanned: Song[], persisted: Song[]): Song[] {
       // Keep persisted metadata, refresh lyrics in case a new lyrics file appeared
       merged.push({ ...existing, lyricsFile: fresh.lyricsFile });
     } else {
-      merged.push(fresh);
+      merged.push({ ...fresh, orderAdded: nextOrder });
+      nextOrder += 1;
     }
   }
 

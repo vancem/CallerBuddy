@@ -27,7 +27,7 @@ import {
 } from "./services/audio-engine.js";
 import { detectBPM } from "./services/bpm-detector.js";
 import { defaultSettings, type Settings } from "./models/settings.js";
-import type { Song } from "./models/song.js";
+import { type Song, nextOrderAdded } from "./models/song.js";
 import { log } from "./services/logger.js";
 import JSZip from "jszip";
 import {
@@ -210,6 +210,7 @@ export class CallerBuddy {
       if (folderIdx >= 0) {
         folderSongs[folderIdx] = song;
       } else {
+        song.orderAdded = nextOrderAdded(folderSongs);
         folderSongs.push(song);
       }
       await saveSongsJson(handle, folderSongs);
