@@ -1,4 +1,4 @@
-/* built: 2026-03-27T05:15:45.942Z */
+/* built: 2026-03-27T13:05:47.424Z */
 const CACHE_NAME = "callerbuddy-v0.1.0-pre.14-6ed6ec7b-dirty";
 
 self.addEventListener("install", (event) => {

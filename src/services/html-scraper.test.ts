@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
+import { LYRICS_UI_FONT_STACK } from "../lyrics-default-style.js";
 import { scrapeAndNormalizeLyrics, scrapeTxtLyrics } from "./html-scraper.js";
 
 describe("scrapeAndNormalizeLyrics", () => {
@@ -103,7 +104,7 @@ describe("scrapeAndNormalizeLyrics", () => {
     expect(result).toContain('<meta charset="utf-8">');
     expect(result).toContain("<title>My Song</title>");
     expect(result).toContain("lightyellow");
-    expect(result).toContain("system-ui");
+    expect(result).toContain(LYRICS_UI_FONT_STACK);
     expect(result).toContain("16pt");
   });
 });
