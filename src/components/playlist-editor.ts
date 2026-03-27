@@ -317,63 +317,65 @@ export class PlaylistEditor extends LitElement {
         <section class="browser-panel">
           ${this.renderBreadcrumb()}
           <div class="browser-toolbar">
-            <div class="filter-wrap">
-              ${this.filterText
-                ? html`<button
-                    type="button"
-                    class="filter-clear"
-                    title="Clear filter"
-                    aria-label="Clear filter"
-                    @click=${this.onClearFilter}
-                  >
-                    ×
-                  </button>`
-                : nothing}
-              <input
-                type="text"
-                class="filter-input"
-                placeholder="Filter songs by title, label, or categories…"
-                .value=${this.filterText}
-                @input=${this.onFilterInput}
-                @keydown=${this.onFilterKeydown}
-              />
-            </div>
-            <div
-              class="rank-filter"
-              title="Filter by rank (0–100). Leave the number empty to disable. Works together with the text filter."
-            >
-              <span class="rank-filter-label">Rank</span>
-              <button
-                type="button"
-                class="rank-filter-compare"
-                title=${this.rankCompareGte
-                  ? "Comparing with ≥ (greater than or equal). Click to switch to less than."
-                  : "Comparing with < (less than). Click to switch to greater than or equal."}
-                aria-label=${this.rankCompareGte
-                  ? "Rank comparison: greater than or equal. Click to use less than."
-                  : "Rank comparison: less than. Click to use greater than or equal."}
-                @click=${this.onRankCompareToggle}
+            <div class="browser-toolbar-track">
+              <div class="filter-wrap">
+                ${this.filterText
+                  ? html`<button
+                      type="button"
+                      class="filter-clear"
+                      title="Clear filter"
+                      aria-label="Clear filter"
+                      @click=${this.onClearFilter}
+                    >
+                      ×
+                    </button>`
+                  : nothing}
+                <input
+                  type="text"
+                  class="filter-input"
+                  placeholder="Filter songs by title, label, or categories…"
+                  .value=${this.filterText}
+                  @input=${this.onFilterInput}
+                  @keydown=${this.onFilterKeydown}
+                />
+              </div>
+              <div
+                class="rank-filter"
+                title="Filter by rank (0–100). Leave the number empty to disable. Works together with the text filter."
               >
-                ${this.rankCompareGte ? ">=" : "<"}
-              </button>
-              <input
-                type="number"
-                class="rank-filter-input"
-                min="0"
-                max="100"
-                step="1"
-                placeholder=""
-                title="Rank threshold (0–100). Empty = no rank filter."
-                .value=${this.rankFilterInput}
-                @input=${this.onRankFilterInput}
-                @keydown=${this.onFilterKeydown}
-              />
+                <span class="rank-filter-label">Rank</span>
+                <button
+                  type="button"
+                  class="rank-filter-compare"
+                  title=${this.rankCompareGte
+                    ? "Comparing with ≥ (greater than or equal). Click to switch to less than."
+                    : "Comparing with < (less than). Click to switch to greater than or equal."}
+                  aria-label=${this.rankCompareGte
+                    ? "Rank comparison: greater than or equal. Click to use less than."
+                    : "Rank comparison: less than. Click to use greater than or equal."}
+                  @click=${this.onRankCompareToggle}
+                >
+                  ${this.rankCompareGte ? ">=" : "<"}
+                </button>
+                <input
+                  type="number"
+                  class="rank-filter-input"
+                  min="0"
+                  max="100"
+                  step="1"
+                  placeholder=""
+                  title="Rank threshold (0–100). Empty = no rank filter."
+                  .value=${this.rankFilterInput}
+                  @input=${this.onRankFilterInput}
+                  @keydown=${this.onFilterKeydown}
+                />
+              </div>
+              <span class="song-count">
+                ${this.subfolders.length > 0
+                  ? `${this.subfolders.length} folders, `
+                  : ""}${songs.length} songs
+              </span>
             </div>
-            <span class="song-count">
-              ${this.subfolders.length > 0
-                ? `${this.subfolders.length} folders, `
-                : ""}${songs.length} songs
-            </span>
           </div>
 
           <div class="table-wrapper">
@@ -1101,19 +1103,29 @@ export class PlaylistEditor extends LitElement {
     }
 
     .browser-toolbar {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
       padding: 8px 12px;
       border-bottom: 1px solid var(--cb-border);
     }
 
+    .browser-toolbar-track {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: nowrap;
+      min-width: 100%;
+      width: max-content;
+    }
+
     .filter-wrap {
-      flex: 1;
+      flex: 1 1 auto;
       display: flex;
       align-items: center;
       gap: 4px;
-      min-width: 0;
+      min-width: min(100%, 200px);
     }
 
     .filter-clear {
@@ -1199,6 +1211,7 @@ export class PlaylistEditor extends LitElement {
     }
 
     .song-count {
+      flex-shrink: 0;
       font-size: 0.8rem;
       color: var(--cb-fg-secondary);
       white-space: nowrap;
