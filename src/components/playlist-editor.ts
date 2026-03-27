@@ -1179,6 +1179,10 @@ export class PlaylistEditor extends LitElement {
       gap: 6px;
       flex-shrink: 0;
       font-size: 0.85rem;
+      border-left: 2px solid var(--cb-fg);
+      border-right: 2px solid var(--cb-fg);
+      padding-left: 10px;
+      padding-right: 10px;
     }
 
     .rank-filter-label {
