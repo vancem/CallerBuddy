@@ -316,77 +316,78 @@ export class PlaylistEditor extends LitElement {
         <!-- Right: Song browser -->
         <section class="browser-panel">
           ${this.renderBreadcrumb()}
-          <div class="browser-toolbar">
-            <div class="browser-toolbar-track">
-              <div class="filter-wrap">
-                ${this.filterText
-                  ? html`<button
-                      type="button"
-                      class="filter-clear"
-                      title="Clear filter"
-                      aria-label="Clear filter"
-                      @click=${this.onClearFilter}
-                    >
-                      ×
-                    </button>`
-                  : nothing}
-                <input
-                  type="text"
-                  class="filter-input"
-                  placeholder="Filter songs by title, label, or categories…"
-                  .value=${this.filterText}
-                  @input=${this.onFilterInput}
-                  @keydown=${this.onFilterKeydown}
-                />
-              </div>
-              <div
-                class="rank-filter"
-                title="Filter by rank (0–100). Leave the number empty to disable. Works together with the text filter."
-              >
-                <span class="rank-filter-label">Rank</span>
-                <button
-                  type="button"
-                  class="rank-filter-compare"
-                  title=${this.rankCompareGte
-                    ? "Comparing with ≥ (greater than or equal). Click to switch to less than."
-                    : "Comparing with < (less than). Click to switch to greater than or equal."}
-                  aria-label=${this.rankCompareGte
-                    ? "Rank comparison: greater than or equal. Click to use less than."
-                    : "Rank comparison: less than. Click to use greater than or equal."}
-                  @click=${this.onRankCompareToggle}
+          <div class="browser-content-scroll">
+            <div class="browser-toolbar">
+              <div class="browser-toolbar-track">
+                <div class="filter-wrap">
+                  ${this.filterText
+                    ? html`<button
+                        type="button"
+                        class="filter-clear"
+                        title="Clear filter"
+                        aria-label="Clear filter"
+                        @click=${this.onClearFilter}
+                      >
+                        ×
+                      </button>`
+                    : nothing}
+                  <input
+                    type="text"
+                    class="filter-input"
+                    placeholder="Filter songs by title, label, or categories…"
+                    .value=${this.filterText}
+                    @input=${this.onFilterInput}
+                    @keydown=${this.onFilterKeydown}
+                  />
+                </div>
+                <div
+                  class="rank-filter"
+                  title="Filter by rank (0–100). Leave the number empty to disable. Works together with the text filter."
                 >
-                  ${this.rankCompareGte ? ">=" : "<"}
-                </button>
-                <input
-                  type="number"
-                  class="rank-filter-input"
-                  min="0"
-                  max="100"
-                  step="1"
-                  placeholder=""
-                  title="Rank threshold (0–100). Empty = no rank filter."
-                  .value=${this.rankFilterInput}
-                  @input=${this.onRankFilterInput}
-                  @keydown=${this.onFilterKeydown}
-                />
+                  <span class="rank-filter-label">Rank</span>
+                  <button
+                    type="button"
+                    class="rank-filter-compare"
+                    title=${this.rankCompareGte
+                      ? "Comparing with ≥ (greater than or equal). Click to switch to less than."
+                      : "Comparing with < (less than). Click to switch to greater than or equal."}
+                    aria-label=${this.rankCompareGte
+                      ? "Rank comparison: greater than or equal. Click to use less than."
+                      : "Rank comparison: less than. Click to use greater than or equal."}
+                    @click=${this.onRankCompareToggle}
+                  >
+                    ${this.rankCompareGte ? ">=" : "<"}
+                  </button>
+                  <input
+                    type="number"
+                    class="rank-filter-input"
+                    min="0"
+                    max="100"
+                    step="1"
+                    placeholder=""
+                    title="Rank threshold (0–100). Empty = no rank filter."
+                    .value=${this.rankFilterInput}
+                    @input=${this.onRankFilterInput}
+                    @keydown=${this.onFilterKeydown}
+                  />
+                </div>
+                <span class="song-count">
+                  ${this.subfolders.length > 0
+                    ? `${this.subfolders.length} folders, `
+                    : ""}${songs.length} songs
+                </span>
               </div>
-              <span class="song-count">
-                ${this.subfolders.length > 0
-                  ? `${this.subfolders.length} folders, `
-                  : ""}${songs.length} songs
-              </span>
             </div>
-          </div>
 
-          <div class="table-wrapper">
-            ${this.loading
-              ? html`<p class="muted table-empty">Loading…</p>`
-              : html`
+            <div class="table-block">
+              ${this.loading
+                ? html`<p class="muted table-empty">Loading…</p>`
+                : html`
                 <table class="song-table">
                   <thead>
                     <tr>
-                      <th title="Play this song now in the player"></th>
-                      <th title="Add this song to the playlist"></th>
+                      <th class="play-cell" title="Play this song now in the player"></th>
+                      <th class="add-cell" title="Add this song to the playlist"></th>
                       <th
                         class="sortable"
                         title="Song title, taken from the audio filename."
@@ -467,6 +468,7 @@ export class PlaylistEditor extends LitElement {
                     </p>`
                   : nothing}
               `}
+            </div>
           </div>
         </section>
 
@@ -1102,13 +1104,18 @@ export class PlaylistEditor extends LitElement {
       min-width: 0;
     }
 
-    .browser-toolbar {
-      overflow-x: auto;
-      overflow-y: hidden;
+    .browser-content-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
       -webkit-overflow-scrolling: touch;
-      overscroll-behavior-x: contain;
+      overscroll-behavior: contain;
+    }
+
+    .browser-toolbar {
       padding: 8px 12px;
       border-bottom: 1px solid var(--cb-border);
+      background: var(--cb-panel-bg);
     }
 
     .browser-toolbar-track {
@@ -1195,8 +1202,10 @@ export class PlaylistEditor extends LitElement {
     }
 
     .rank-filter-input {
-      width: 3.5rem;
-      padding: 6px 8px;
+      box-sizing: border-box;
+      width: 3.5ch;
+      min-width: 2.125rem;
+      padding: 5px 4px;
       border: 1px solid var(--cb-border);
       border-radius: 6px;
       background: var(--cb-input-bg);
@@ -1204,6 +1213,14 @@ export class PlaylistEditor extends LitElement {
       font-size: 0.85rem;
       font-variant-numeric: tabular-nums;
       outline: none;
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    .rank-filter-input::-webkit-outer-spin-button,
+    .rank-filter-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
 
     .rank-filter-input:focus {
@@ -1217,10 +1234,9 @@ export class PlaylistEditor extends LitElement {
       white-space: nowrap;
     }
 
-    .table-wrapper {
-      flex: 1;
-      overflow: auto;
+    .table-block {
       padding: 0;
+      min-width: min-content;
     }
 
     .song-table {
@@ -1360,10 +1376,20 @@ export class PlaylistEditor extends LitElement {
       color: var(--cb-patter);
     }
 
-    .add-cell,
-    .play-cell {
-      width: 32px;
+    .song-table th.play-cell,
+    .song-table td.play-cell {
+      width: auto;
+      min-width: 2rem;
       text-align: center;
+      padding: 6px 3px 6px 8px;
+    }
+
+    .song-table th.add-cell,
+    .song-table td.add-cell {
+      width: auto;
+      min-width: 2rem;
+      text-align: center;
+      padding: 6px 8px 6px 3px;
     }
 
     .table-empty {
