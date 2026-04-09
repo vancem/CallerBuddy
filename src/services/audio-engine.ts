@@ -25,6 +25,7 @@
 
 import { PitchShifter } from "soundtouchjs";
 import { log } from "./logger.js";
+import { WakeLockService } from "./wake-lock.js";
 
 // ---------------------------------------------------------------------------
 // Interface
@@ -149,6 +150,8 @@ export class WebAudioEngine implements AudioEngine {
   /** Whether we have already fired the ended callback for the current playback. */
   private endedFired = false;
 
+  private wakeLock = new WakeLockService();
+
   constructor() {
     this.context = new AudioContext();
     this.gainNode = this.context.createGain();
@@ -196,6 +199,7 @@ export class WebAudioEngine implements AudioEngine {
     this.playing = true;
     this.endedFired = false;
     this.startTimeUpdates();
+    void this.wakeLock.acquire();
   }
 
   pause(): void {
@@ -207,6 +211,7 @@ export class WebAudioEngine implements AudioEngine {
     }
     this.playing = false;
     this.stopTimeUpdates();
+    void this.wakeLock.release();
   }
 
   stop(): void {
@@ -219,6 +224,7 @@ export class WebAudioEngine implements AudioEngine {
     this.playing = false;
     this.endedFired = false;
     this.stopTimeUpdates();
+    void this.wakeLock.release();
   }
 
   seek(timeSeconds: number): void {
@@ -339,6 +345,7 @@ export class WebAudioEngine implements AudioEngine {
 
   dispose(): void {
     this.stop();
+    this.wakeLock.dispose();
     this.context.close();
   }
 
