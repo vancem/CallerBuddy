@@ -26,7 +26,7 @@ import {
   type AudioEngine,
 } from "./services/audio-engine.js";
 import { detectBPM } from "./services/bpm-detector.js";
-import { defaultSettings, type Settings } from "./models/settings.js";
+import { defaultSettings, normalizeSettings, type Settings } from "./models/settings.js";
 import { type Song, nextOrderAdded } from "./models/song.js";
 import { log } from "./services/logger.js";
 import JSZip from "jszip";
@@ -150,8 +150,7 @@ export class CallerBuddy {
       const exists = await fileExists(handle, SETTINGS_JSON);
       if (exists) {
         const text = await readTextFile(handle, SETTINGS_JSON);
-        const data = JSON.parse(text) as Settings;
-        this.state.setSettings({ ...defaultSettings(), ...data });
+        this.state.setSettings(normalizeSettings(JSON.parse(text)));
         log.info("Settings loaded from settings.json");
       } else {
         this.state.setSettings(defaultSettings());
@@ -555,7 +554,7 @@ export class CallerBuddy {
     const tab = this.state.tabs.find((t) => t.type === TabType.SongOnboard);
     if (tab) this.state.closeTab(tab.id);
 
-    this.state.emit("songs-loaded");
+    this.state.emit(StateEvents.SONGS_LOADED);
     log.info("importSong: complete");
     return true;
   }

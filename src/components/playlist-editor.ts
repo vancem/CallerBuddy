@@ -25,11 +25,9 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { PlaylistReorderController } from "../controllers/playlist-reorder-controller.js";
+import { PanelResizeController } from "../controllers/panel-resize-controller.js";
 import { DEFAULT_PLAYLIST_PANEL_WIDTH } from "../models/settings.js";
 import { StateEvents } from "../services/app-state.js";
-
-const MIN_PLAYLIST_WIDTH = 180;
-const MAX_PLAYLIST_WIDTH = 500;
 import { isSingingCall } from "../models/song.js";
 import type { Song } from "../models/song.js";
 import { loadAndMergeSongs } from "../services/song-library.js";
@@ -109,12 +107,11 @@ export class PlaylistEditor extends LitElement {
   /** True while the initial (or navigated) folder is being scanned. */
   @state() private loading = false;
 
-  /** Playlist panel width (from settings, updated on resize). */
-  @state() private playlistWidth = DEFAULT_PLAYLIST_PANEL_WIDTH;
+  private resizer = new PanelResizeController(this, DEFAULT_PLAYLIST_PANEL_WIDTH);
 
   connectedCallback() {
     super.connectedCallback();
-    this.playlistWidth =
+    this.resizer.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.addEventListener(StateEvents.SONG_UPDATED, this.refresh);
@@ -128,11 +125,10 @@ export class PlaylistEditor extends LitElement {
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.removeEventListener(StateEvents.SONG_UPDATED, this.refresh);
     callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
-    this.stopResize();
   }
 
   private onSettingsChanged = () => {
-    this.playlistWidth =
+    this.resizer.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     this.requestUpdate();
   };
@@ -269,7 +265,7 @@ export class PlaylistEditor extends LitElement {
     return html`
       <div class="editor" @click=${this.closeContextMenu}>
         <!-- Left: Playlist -->
-        <aside class="playlist-panel" style="width: ${this.playlistWidth}px">
+        <aside class="playlist-panel" style="width: ${this.resizer.width}px">
           <h2>Playlist</h2>
           ${playlist.length === 0
             ? html`<div
@@ -351,7 +347,7 @@ export class PlaylistEditor extends LitElement {
         <div
           class="resizer"
           title="Drag to resize playlist"
-          @mousedown=${this.onResizerMouseDown}
+          @mousedown=${(e: MouseEvent) => this.resizer.onMouseDown(e)}
         ></div>
 
         <!-- Right: Song browser -->
@@ -897,43 +893,6 @@ export class PlaylistEditor extends LitElement {
 
   private onRankFilterInput(e: Event) {
     this.rankFilterInput = (e.target as HTMLInputElement).value;
-  }
-
-  // -- Resizer --------------------------------------------------------------
-
-  private resizeStartX = 0;
-  private resizeStartWidth = 0;
-  private resizeBoundMousemove = (e: MouseEvent) => this.onResizeMouseMove(e);
-  private resizeBoundMouseup = () => this.onResizeMouseUp();
-
-  private onResizerMouseDown(e: MouseEvent) {
-    e.preventDefault();
-    this.resizeStartX = e.clientX;
-    this.resizeStartWidth = this.playlistWidth;
-    document.addEventListener("mousemove", this.resizeBoundMousemove);
-    document.addEventListener("mouseup", this.resizeBoundMouseup);
-    (document.body.style as { cursor?: string }).cursor = "col-resize";
-    (document.body.style as { userSelect?: string }).userSelect = "none";
-  }
-
-  private onResizeMouseMove(e: MouseEvent) {
-    const delta = e.clientX - this.resizeStartX;
-    const w = Math.round(
-      Math.max(MIN_PLAYLIST_WIDTH, Math.min(MAX_PLAYLIST_WIDTH, this.resizeStartWidth + delta)),
-    );
-    this.playlistWidth = w;
-  }
-
-  private onResizeMouseUp() {
-    this.stopResize();
-    void callerBuddy.updateSetting("playlistPanelWidth", this.playlistWidth);
-  }
-
-  private stopResize() {
-    document.removeEventListener("mousemove", this.resizeBoundMousemove);
-    document.removeEventListener("mouseup", this.resizeBoundMouseup);
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
   }
 
   // -- Playlist operations --------------------------------------------------

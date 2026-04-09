@@ -26,3 +26,27 @@ export function defaultSettings(): Settings {
     playlistPanelWidth: DEFAULT_PLAYLIST_PANEL_WIDTH,
   };
 }
+
+/**
+ * Validate and normalize a parsed JSON value into a Settings object.
+ * Unknown or malformed fields fall back to defaults.
+ */
+export function normalizeSettings(raw: unknown): Settings {
+  const defaults = defaultSettings();
+  if (typeof raw !== "object" || raw === null) return defaults;
+  const obj = raw as Record<string, unknown>;
+
+  function pickNum(key: string, fallback: number, min?: number, max?: number): number {
+    const v = obj[key];
+    if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
+    if (min !== undefined && v < min) return fallback;
+    if (max !== undefined && v > max) return fallback;
+    return v;
+  }
+
+  return {
+    breakTimerMinutes: pickNum("breakTimerMinutes", defaults.breakTimerMinutes, 0, 60),
+    patterTimerMinutes: pickNum("patterTimerMinutes", defaults.patterTimerMinutes, 0.5, 15),
+    playlistPanelWidth: pickNum("playlistPanelWidth", defaults.playlistPanelWidth, 100, 1000),
+  };
+}

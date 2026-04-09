@@ -24,6 +24,12 @@ import { formatTime, formatCountdown, formatClock } from "../utils/format.js";
 import type { Song } from "../models/song.js";
 import type { LyricsEditor } from "./lyrics-editor.js";
 import { DEFAULT_LYRICS_STYLE } from "../lyrics-default-style.js";
+import {
+  extractStyleBlock,
+  extractBodyContent,
+  rewriteBodySelectors,
+  wrapLyricsHtml,
+} from "../utils/lyrics-html.js";
 import "./lyrics-editor.js";
 
 /**
@@ -36,53 +42,10 @@ import "./lyrics-editor.js";
  * selectors to `.lyrics-content`, and returns a fragment ready for injection.
  */
 function prepareLyricsHtml(raw: string): string {
-  const styleMatch = raw.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-  let css = styleMatch?.[1] ?? "";
-
-  if (css) {
-    css = css.replace(/\bbody\b/g, ".lyrics-content");
-  }
-
-  const bodyMatch = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  const body = bodyMatch?.[1] ?? raw;
-
-  return (css ? `<style>${css}</style>` : "") + body;
-}
-
-// ---------------------------------------------------------------------------
-// Lyrics HTML helpers for the editor
-// ---------------------------------------------------------------------------
-
-function extractStyleBlock(raw: string): string {
-  const m = raw.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-  return m?.[1] ?? DEFAULT_LYRICS_STYLE;
-}
-
-function extractBodyContent(raw: string): string {
-  const m = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  return m?.[1] ?? raw;
-}
-
-function wrapLyricsHtml(
-  bodyContent: string,
-  cssText: string,
-  title: string,
-): string {
-  return [
-    "<!DOCTYPE html>",
-    "<html>",
-    "<head>",
-    '<meta charset="utf-8">',
-    `<title>${title}</title>`,
-    "<style>",
-    cssText,
-    "</style>",
-    "</head>",
-    "<body>",
-    bodyContent,
-    "</body>",
-    "</html>",
-  ].join("\n");
+  const cssText = extractStyleBlock(raw);
+  const rewritten = rewriteBodySelectors(cssText);
+  const body = extractBodyContent(raw);
+  return (rewritten ? `<style>${rewritten}</style>` : "") + body;
 }
 
 function generateLyricsTemplate(song: Song): string {
@@ -409,7 +372,7 @@ export class SongPlay extends LitElement {
     const cssText = this.lyrics
       ? extractStyleBlock(this.lyrics)
       : DEFAULT_LYRICS_STYLE;
-    const rewrittenCss = cssText.replace(/\bbody\b/g, ".lyrics-content");
+    const rewrittenCss = rewriteBodySelectors(cssText);
 
     return html`
       <lyrics-editor

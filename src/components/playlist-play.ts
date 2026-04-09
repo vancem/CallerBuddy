@@ -13,14 +13,12 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { PlaylistReorderController } from "../controllers/playlist-reorder-controller.js";
+import { PanelResizeController } from "../controllers/panel-resize-controller.js";
 import {
   DEFAULT_BREAK_TIMER_MINUTES,
   DEFAULT_PLAYLIST_PANEL_WIDTH,
 } from "../models/settings.js";
 import { WakeLockService } from "../services/wake-lock.js";
-
-const MIN_PLAYLIST_WIDTH = 180;
-const MAX_PLAYLIST_WIDTH = 500;
 import { StateEvents, TabType } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import { formatCountdown, formatClock } from "../utils/format.js";
@@ -48,8 +46,7 @@ export class PlaylistPlay extends LitElement {
   // Clock
   @state() private clockTime = "";
 
-  /** Playlist panel width (from settings, updated on resize). */
-  @state() private playlistWidth = DEFAULT_PLAYLIST_PANEL_WIDTH;
+  private resizer = new PanelResizeController(this, DEFAULT_PLAYLIST_PANEL_WIDTH);
 
   private reorder = new PlaylistReorderController(this, {
     onReorderComplete: () => {
@@ -69,7 +66,7 @@ export class PlaylistPlay extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.breakMinutes = callerBuddy.state.settings.breakTimerMinutes;
-    this.playlistWidth =
+    this.resizer.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
@@ -89,7 +86,6 @@ export class PlaylistPlay extends LitElement {
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.removeEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
-    this.stopResize();
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     this.stopBreakTimer();
     this.breakWakeLock.dispose();
@@ -146,7 +142,7 @@ export class PlaylistPlay extends LitElement {
   };
 
   private onSettingsChanged = () => {
-    this.playlistWidth =
+    this.resizer.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     this.breakMinutes = callerBuddy.state.settings.breakTimerMinutes;
     this.requestUpdate();
@@ -185,7 +181,7 @@ export class PlaylistPlay extends LitElement {
 
     return html`
       <div class="play-view ${isInactive ? "inactive" : ""}">
-        <aside class="playlist-panel" style="width: ${this.playlistWidth}px">
+        <aside class="playlist-panel" style="width: ${this.resizer.width}px">
           <h2>Playlist</h2>
           ${playlist.length === 0
             ? html`<p class="muted">Playlist is empty.</p>`
@@ -265,7 +261,7 @@ export class PlaylistPlay extends LitElement {
         <div
           class="resizer"
           title="Drag to resize playlist"
-          @mousedown=${this.onResizerMouseDown}
+          @mousedown=${(e: MouseEvent) => this.resizer.onMouseDown(e)}
         ></div>
 
         <!-- Right: Break timer and clock -->
@@ -483,43 +479,6 @@ export class PlaylistPlay extends LitElement {
     this.breakAlarmInterval = window.setInterval(() => {
       callerBuddy.audio.playBeep();
     }, 15_000);
-  }
-
-  // -- Resizer --------------------------------------------------------------
-
-  private resizeStartX = 0;
-  private resizeStartWidth = 0;
-  private resizeBoundMousemove = (e: MouseEvent) => this.onResizeMouseMove(e);
-  private resizeBoundMouseup = () => this.onResizeMouseUp();
-
-  private onResizerMouseDown(e: MouseEvent) {
-    e.preventDefault();
-    this.resizeStartX = e.clientX;
-    this.resizeStartWidth = this.playlistWidth;
-    document.addEventListener("mousemove", this.resizeBoundMousemove);
-    document.addEventListener("mouseup", this.resizeBoundMouseup);
-    (document.body.style as { cursor?: string }).cursor = "col-resize";
-    (document.body.style as { userSelect?: string }).userSelect = "none";
-  }
-
-  private onResizeMouseMove(e: MouseEvent) {
-    const delta = e.clientX - this.resizeStartX;
-    const w = Math.round(
-      Math.max(MIN_PLAYLIST_WIDTH, Math.min(MAX_PLAYLIST_WIDTH, this.resizeStartWidth + delta)),
-    );
-    this.playlistWidth = w;
-  }
-
-  private onResizeMouseUp() {
-    this.stopResize();
-    void callerBuddy.updateSetting("playlistPanelWidth", this.playlistWidth);
-  }
-
-  private stopResize() {
-    document.removeEventListener("mousemove", this.resizeBoundMousemove);
-    document.removeEventListener("mouseup", this.resizeBoundMouseup);
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
   }
 
   // -- Clock ----------------------------------------------------------------

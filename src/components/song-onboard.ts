@@ -21,6 +21,13 @@ import {
   type Mp3Candidate,
   type HtmlCandidate,
 } from "../services/song-onboarding.js";
+import { escapeHtml } from "../services/html-scraper.js";
+import {
+  extractStyleBlock,
+  extractBodyContent,
+  rewriteBodySelectors,
+  wrapLyricsHtml,
+} from "../utils/lyrics-html.js";
 import "./lyrics-editor.js";
 import type { LyricsEditor } from "./lyrics-editor.js";
 
@@ -170,15 +177,8 @@ export class SongOnboard extends LitElement {
     const editor = this.shadowRoot?.querySelector("lyrics-editor") as LyricsEditor | null;
     if (!editor) return this.normalizedHtml;
     const bodyContent = editor.getEditorHtml();
-    const styleMatch = this.normalizedHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-    const styleText = styleMatch?.[1] ?? "";
-    return [
-      "<!DOCTYPE html>", "<html>", "<head>",
-      '<meta charset="utf-8">',
-      `<title>${escapeHtml(this.songTitle)}</title>`,
-      "<style>", styleText, "</style>",
-      "</head>", "<body>", bodyContent, "</body>", "</html>",
-    ].join("\n");
+    const styleText = extractStyleBlock(this.normalizedHtml);
+    return wrapLyricsHtml(bodyContent, styleText, escapeHtml(this.songTitle));
   }
 
   // -- Splitter drag ---------------------------------------------------------
@@ -271,11 +271,9 @@ export class SongOnboard extends LitElement {
       `;
     }
 
-    const bodyMatch = this.normalizedHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    const body = bodyMatch?.[1] ?? this.normalizedHtml;
-    const styleMatch = this.normalizedHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-    const cssText = styleMatch?.[1] ?? "";
-    const rewrittenCss = cssText.replace(/\bbody\b/g, ".lyrics-content");
+    const body = extractBodyContent(this.normalizedHtml);
+    const cssText = extractStyleBlock(this.normalizedHtml);
+    const rewrittenCss = rewriteBodySelectors(cssText);
 
     return html`
       <div class="left-panel">
@@ -777,13 +775,6 @@ export class SongOnboard extends LitElement {
       .field-row { flex-direction: column; }
     }
   `;
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 declare global {
