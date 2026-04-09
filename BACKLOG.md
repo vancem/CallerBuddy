@@ -119,10 +119,20 @@ rationale.
     provides persistent permission handles that can be stored and reused across
     app sessions, which matches our requirements perfectly.
 - We will use OPFS (Origin Private File System) for local caching of audio files
-  and metadata.
-  - Rationale: OPFS is the modern PWA standard for large file storage and
-    provides the performance needed for audio file caching. It's designed for
-    this use case and integrates well with File System Access API.
+  and metadata — **deferred to a post–V1 release** (see Open Design Issues).
+  - Original rationale: OPFS is the modern PWA standard for large file storage
+    and fits aggressive offline caching. We are not dropping the idea; we are
+    deferring implementation until after V1 ships.
+  - Why defer: OPFS is a large, cross-browser surface (handles, sync, eviction,
+    quota). On Android, the folder picker is already local-device-only; on
+    Windows/macOS, cloud-backed folders are often hydrated by the OS/client, so
+    the pain point is uneven. Shipping V1 without a custom OPFS layer avoids
+    that complexity while Folder Access + service worker shell still give a
+    usable offline story for the app shell.
+- **ZIP-based song import (unpack, heuristics, confirm in UI) is in scope for
+  V1**, implemented as the song-onboard flow (`song-onboard` + `song-onboarding`
+  heuristics). Batch import of many ZIPs and richer renaming flows may extend
+  later; FUTURE.md still tracks longer-term ideas.
 - State management will start simple (EventTarget pattern or singleton) and only
   add complexity if needed.
   - Rationale: Lit provides component-level reactivity. For global state
@@ -197,11 +207,14 @@ rationale.
     WebAudioEngine. setPitch() uses pitchSemitones, setTempo() converts BPM
     delta to a ratio. See Design Decisions for full analysis. TypeScript type
     declarations added at src/soundtouchjs.d.ts.
-- [] MEDIUM: Implement OPFS caching layer for offline support.
-  - The spec requires caching audio and lyrics files locally (OPFS) for offline
-    use. The architecture supports this but the caching layer is not yet built.
-    Songs added to the playlist should be cached aggressively. Cache eviction
-    (10+ days unused) is also needed.
+- [q] MEDIUM: Implement OPFS caching layer for offline support — **DEFERRED
+      (post–V1)**.
+  - The spec still calls for caching audio and lyrics in OPFS for stronger
+    offline use; the architecture can accommodate it later. **Decision:** Do
+    not block V1 on OPFS; prioritize ZIP import (song onboarding) and core
+    playback/editor flows. When we revisit OPFS, include aggressive caching of
+    playlist assets, eviction policy (e.g. 10+ days unused), and clear UX when
+    files are unavailable offline.
 - [q] MEDIUM: Drag-and-drop support in the playlist editor.
   - The spec calls for drag-and-drop of songs into the playlist and reordering
     within the playlist. Currently using buttons and context menus.
@@ -283,14 +296,18 @@ rationale.
 - [] WHen the code is pretty complete, an analysis should be done locate any
   lifetime issues. Lifetime issues (e.g. potential leaks) need an explicit
   GitHub issue tracking the problem.
-- [] Make sure ESLint is configured correctly for TypeScript (current config is
+- [x] Make sure ESLint is configured correctly for TypeScript (current config is
   JS-only and doesn't parse .ts files). Need @typescript-eslint/parser and
   @typescript-eslint/eslint-plugin.
+  - DONE: TypeScript-aware ESLint wired via `@typescript-eslint/parser` and
+    `plugin:@typescript-eslint/recommended`; `npm run lint` covers `src/**/*.ts`.
 - [] Add Vitest unit tests for core services (song-library.ts, app-state.ts,
   audio-engine.ts). The project has Vitest as a design decision but no tests
   yet.
-- [] Add Playwright E2E tests for the main workflows (welcome → folder picker →
+- [x] Add Playwright E2E tests for the main workflows (welcome → folder picker →
   playlist editor → play).
+  - DONE: `e2e/basic-flow.spec.ts` (mocked File System Access API). CI runs
+    `npm run e2e` after build/unit tests (see GitHub Actions workflow).
 - [] Implement settings persistence for break timer and patter timer durations
   (currently settings are loaded but the UI doesn't update settings.json when
   the user changes timer values in the playlist-play or song-play views).

@@ -12,21 +12,14 @@
  */
 
 import { scrapeAndNormalizeLyrics, scrapeTxtLyrics, toTitleCase } from "./html-scraper.js";
+import { scoreMp3Candidates, type Mp3Candidate } from "./mp3-candidate-scoring.js";
 
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
-export interface Mp3Candidate {
-  /** Path within the ZIP (may include subdirectory) */
-  path: string;
-  /** Bare filename */
-  filename: string;
-  /** Lower score = more preferred */
-  score: number;
-  /** Human-readable reason for the score */
-  reason: string;
-}
+export type { Mp3Candidate };
+export { scoreMp3Candidates };
 
 export interface HtmlCandidate {
   path: string;
@@ -287,174 +280,6 @@ function normalizeTitle(raw: string): string {
   }
 
   return t;
-}
-
-// ---------------------------------------------------------------------------
-// MP3 scoring
-// ---------------------------------------------------------------------------
-
-function scoreMp3Candidates(
-  mp3Paths: string[],
-  label: string,
-  title: string,
-): Mp3Candidate[] {
-  const candidates = mp3Paths.map((p) => scoreSingleMp3(p, label, title));
-  candidates.sort((a, b) => a.score - b.score);
-  return candidates;
-}
-
-function scoreSingleMp3(
-  path: string,
-  label: string,
-  title: string,
-): Mp3Candidate {
-  const filename = basename(path);
-  const lower = filename.toLowerCase();
-  const nameNoExt = stripExtension(filename);
-  const ext = getExtension(filename);
-
-  let score = 0;
-  const reasons: string[] = [];
-
-  // Format penalty: prefer mp3 over m4a/wav
-  if (ext === ".m4a") {
-    score += 5;
-    reasons.push("m4a format (+5)");
-  } else if (ext === ".wav") {
-    score += 10;
-    reasons.push("wav format (+10)");
-  }
-
-  // Check for exact "LABEL - TITLE" match (best possible)
-  if (label && title) {
-    const idealName = `${label} - ${title}`.toLowerCase();
-    const idealNoCase = stripExtension(lower);
-    if (idealNoCase === idealName) {
-      score -= 20;
-      reasons.push("exact label-title match (-20)");
-    }
-  }
-
-  // Has standard " - " separator
-  if (nameNoExt.includes(" - ")) {
-    score -= 10;
-    reasons.push("standard naming (-10)");
-  }
-
-  // Vocal indicators (strong penalty)
-  if (/\bby\s+\w/i.test(nameNoExt)) {
-    score += 100;
-    reasons.push("called/vocal version (+100)");
-  }
-  if (/\bvocal\b/i.test(nameNoExt)) {
-    score += 100;
-    reasons.push("vocal version (+100)");
-  }
-  if (/\bcalled\b/i.test(nameNoExt)) {
-    score += 100;
-    reasons.push("called version (+100)");
-  }
-
-  // Label suffix detection: strip known label to find suffix
-  const labelSuffix = extractLabelSuffix(nameNoExt, label);
-  if (labelSuffix) {
-    const sl = labelSuffix.toUpperCase();
-    if (sl === "V" || sl.startsWith("V")) {
-      score += 100;
-      reasons.push(`vocal suffix '${labelSuffix}' (+100)`);
-    } else if (sl === "H") {
-      score += 50;
-      reasons.push(`harmony suffix '${labelSuffix}' (+50)`);
-    } else if (sl === "M") {
-      score += 15;
-      reasons.push(`music suffix '${labelSuffix}' (+15)`);
-    } else if (sl === "A" || sl === "B" || sl === "F") {
-      score += 35;
-      reasons.push(`alternate suffix '${labelSuffix}' (+35)`);
-    } else {
-      score += 40;
-      reasons.push(`unknown suffix '${labelSuffix}' (+40)`);
-    }
-  }
-
-  // Parenthetical descriptors
-  const parens = nameNoExt.match(/\(([^)]+)\)/g) ?? [];
-  for (const paren of parens) {
-    const inner = paren.slice(1, -1).toLowerCase();
-    if (/^(m|music|instrumental)$/.test(inner)) {
-      score += 10;
-      reasons.push(`instrumental marker (+10)`);
-    } else if (/instrumental\s*sample/.test(inner)) {
-      score += 80;
-      reasons.push("instrumental sample (+80)");
-    } else if (/harmony|harm/.test(inner)) {
-      score += 50;
-      reasons.push("harmony version (+50)");
-    } else if (/no\s*(leads|mel|fills)/.test(inner)) {
-      score += 20;
-      reasons.push("stripped version (+20)");
-    } else if (/extended|long\s*intro/.test(inner)) {
-      score += 30;
-      reasons.push("extended version (+30)");
-    } else if (/high\s*key|low\s*key/.test(inner)) {
-      score += 40;
-      reasons.push("key variant (+40)");
-    } else if (/keychange|half\s*step/.test(inner)) {
-      score += 90;
-      reasons.push("key change variant (+90)");
-    } else if (/vocal|called/.test(inner)) {
-      score += 100;
-      reasons.push("vocal/called (+100)");
-    } else if (/bgv/.test(inner)) {
-      score += 60;
-      reasons.push("background vocal (+60)");
-    } else if (/\d{4}\s*(music\s*)?mix|re-?mix/.test(inner)) {
-      score += 45;
-      reasons.push("remix/remaster (+45)");
-    }
-  }
-
-  // "BGV" in filename outside parentheses
-  if (/\bBGV\b/i.test(nameNoExt) && !parens.some((p) => /bgv/i.test(p))) {
-    score += 60;
-    reasons.push("BGV marker (+60)");
-  }
-
-  // "Original" prefix
-  if (/^original\b/i.test(nameNoExt)) {
-    score += 110;
-    reasons.push("original recording (+110)");
-  }
-
-  // Pitch suffix like ".-2", ".-4"
-  if (/\.-\d+$/.test(nameNoExt)) {
-    score += 40;
-    reasons.push("pitch-shifted (+40)");
-  }
-
-  // strong melody marker
-  if (/strong\s*melody/i.test(nameNoExt)) {
-    score += 25;
-    reasons.push("strong melody variant (+25)");
-  }
-
-  return {
-    path,
-    filename,
-    score,
-    reason: reasons.length > 0 ? reasons.join("; ") : "base instrumental",
-  };
-}
-
-/** Find a variant suffix letter(s) appended directly to the label number. */
-function extractLabelSuffix(filename: string, label: string): string {
-  if (!label) return "";
-
-  // Build a regex that matches the label then captures trailing letters
-  const labelEscaped = label.replace(/[-\s]/g, "[-\\s]?");
-  const re = new RegExp(`${labelEscaped}([A-Za-z]{1,3})\\b`, "i");
-  const m = filename.match(re);
-  return m?.[1] ?? "";
 }
 
 // ---------------------------------------------------------------------------

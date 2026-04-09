@@ -1,7 +1,7 @@
 {
   "name": "callerbuddy",
   "private": true,
-  "version": "0.1.0-pre.17",
+  "version": "0.1.0-pre.18",
   "type": "module",
   "scripts": {
     "inject-version": "node scripts/inject-version.cjs",
@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.build.json && vite build",
     "preview": "vite preview",
-    "ci": "npm run build && npm test",
+    "lint": "eslint \"src/**/*.ts\"",
+    "ci": "npm run build && npm test && npm run lint && npm run e2e",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
@@ -23,6 +24,9 @@
     "web-audio-beat-detector": "^8.2.35"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
+    "eslint": "^8.57.1",
     "@playwright/test": "^1.58.2",
     "jsdom": "^29.0.1",
     "marked": "^18.0.0",

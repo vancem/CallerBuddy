@@ -26,3 +26,9 @@ export function formatClock(): string {
     minute: "2-digit",
   });
 }
+
+/** Safe string for logs/alerts when `catch` binds `unknown`. */
+export function formatUnknownError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}

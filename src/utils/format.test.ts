@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { formatTime, formatCountdown, formatClock } from "./format.js";
+import {
+  formatTime,
+  formatCountdown,
+  formatClock,
+  formatUnknownError,
+} from "./format.js";
 
 describe("formatTime", () => {
   it("formats zero seconds", () => {
@@ -61,5 +66,16 @@ describe("formatClock", () => {
     vi.setSystemTime(new Date(2025, 0, 15, 14, 30, 0));
     const result = formatClock();
     expect(result).toMatch(/\d{1,2}:\d{2}/);
+  });
+});
+
+describe("formatUnknownError", () => {
+  it("uses Error.message for Error instances", () => {
+    expect(formatUnknownError(new Error("oops"))).toBe("oops");
+  });
+
+  it("stringifies non-Error values", () => {
+    expect(formatUnknownError("plain")).toBe("plain");
+    expect(formatUnknownError(42)).toBe("42");
   });
 });

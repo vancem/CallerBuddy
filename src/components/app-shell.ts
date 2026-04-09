@@ -50,21 +50,28 @@ export class AppShell extends LitElement {
   }
 
   private isFullscreen(): boolean {
-    return !!(document.fullscreenElement ?? (document as any).webkitFullscreenElement);
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+    };
+    return !!(document.fullscreenElement ?? doc.webkitFullscreenElement);
   }
 
   private toggleFullscreen() {
     this.showMenu = false;
     if (this.isFullscreen()) {
+      const doc = document as Document & {
+        webkitExitFullscreen?: () => Promise<void>;
+      };
       const exitFS: (() => Promise<void>) | undefined =
         document.exitFullscreen?.bind(document) ??
-        (document as any).webkitExitFullscreen?.bind(document);
+        doc.webkitExitFullscreen?.bind(document);
       exitFS?.()?.catch?.(() => {});
     } else {
-      const el = document.documentElement;
+      const el = document.documentElement as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void>;
+      };
       const requestFS: (() => Promise<void>) | undefined =
-        el.requestFullscreen?.bind(el) ??
-        (el as any).webkitRequestFullscreen?.bind(el);
+        el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
       requestFS?.()?.catch?.(() => {});
     }
   }
@@ -382,9 +389,12 @@ export class AppShell extends LitElement {
   private async onClose() {
     this.showMenu = false;
     if (this.isFullscreen()) {
+      const doc = document as Document & {
+        webkitExitFullscreen?: () => Promise<void>;
+      };
       const exitFS: (() => Promise<void>) | undefined =
         document.exitFullscreen?.bind(document) ??
-        (document as any).webkitExitFullscreen?.bind(document);
+        doc.webkitExitFullscreen?.bind(document);
       await exitFS?.()?.catch?.(() => {});
     }
     window.close();

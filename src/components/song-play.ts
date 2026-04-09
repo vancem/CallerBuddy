@@ -15,12 +15,18 @@
  * See CallerBuddySpec.md §"playSong UI".
  */
 
-import { LitElement, css, html, nothing } from "lit";
+import { LitElement, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { isSingingCall, isPatter, lyricsFilenameFor } from "../models/song.js";
-import { formatTime, formatCountdown, formatClock } from "../utils/format.js";
+import { formatTime, formatClock } from "../utils/format.js";
+import { songPlayStyles } from "./song-play-styles.js";
+import {
+  renderPatterControls,
+  renderSlider,
+  renderTransport,
+} from "./song-play-partials.js";
 import type { Song } from "../models/song.js";
 import type { LyricsEditor } from "./lyrics-editor.js";
 import { DEFAULT_LYRICS_STYLE } from "../lyrics-default-style.js";
@@ -329,12 +335,40 @@ export class SongPlay extends LitElement {
         <div class="left-panel">
           ${this.editing || isSingingCall(song)
             ? this.renderLyrics()
-            : this.renderPatterControls()}
+            : renderPatterControls({
+                loopStart: this.loopStart,
+                loopEnd: this.loopEnd,
+                showLoopHelp: this.showLoopHelp,
+                showPatterTimerHelp: this.showPatterTimerHelp,
+                patterTimerEnabled: this.patterTimerEnabled,
+                patterMinutes: this.patterMinutes,
+                patterCountdown: this.patterCountdown,
+                toggleLoopHelp: () => {
+                  this.showLoopHelp = !this.showLoopHelp;
+                },
+                togglePatterTimerHelp: () => {
+                  this.showPatterTimerHelp = !this.showPatterTimerHelp;
+                },
+                onLoopBoxKeydown: (which, e) => this.onLoopBoxKeydown(which, e),
+                onLoopBtnMousedown: (e) => this.onLoopBtnMousedown(e),
+                nudgeLoop: (which, d) => this.nudgeLoop(which, d),
+                setLoopFromCurrent: (which) => this.setLoopFromCurrent(which),
+                onPatterTimerEnabledChange: (e) =>
+                  this.onPatterTimerEnabledChange(e),
+                onPatterMinutesChange: (e) => this.onPatterMinutesChange(e),
+                onPatterMinutesKeydown: (e) => this.onPatterMinutesKeydown(e),
+              })}
         </div>
 
         <!-- Right panel: controls and info (focus anchor so shortcuts work) -->
         <div class="right-panel" tabindex="-1">
-          ${this.renderTransport()}
+          ${renderTransport({
+            playing: this.playing,
+            onPlayPause: () => this.onPlayPause(),
+            onRestart: () => this.onRestart(),
+            onSeekDelta: (s) => this.onSeekDelta(s),
+            onGoToEnd: () => this.onGoToEnd(),
+          })}
           ${this.renderAdjustments(song)}
           ${this.renderTimeInfo()}
           ${this.renderPlayExtrasRow()}
@@ -342,7 +376,19 @@ export class SongPlay extends LitElement {
 
         <!-- Bottom: progress slider -->
         <div class="slider-panel">
-          ${this.renderSlider()}
+          ${renderSlider({
+            effectiveDuration: this.getEffectiveDuration(),
+            effectiveCurrent: this.getEffectiveCurrentTime(),
+            sourceDuration: this.duration,
+            loopStart: this.loopStart,
+            loopEnd: this.loopEnd,
+            loopActive: this.loopEnd > 0,
+            onSliderInput: (e) => this.onSliderInput(e),
+            onLoopMarkerPointerDown: (which, e) =>
+              this.onLoopMarkerPointerDown(which, e),
+            onLoopMarkerPointerMove: (e) => this.onLoopMarkerPointerMove(e),
+            onLoopMarkerPointerUp: (e) => this.onLoopMarkerPointerUp(e),
+          })}
         </div>
       </div>
     `;
@@ -519,133 +565,6 @@ export class SongPlay extends LitElement {
     this.lyricsModified = false;
   }
 
-  // -- Patter controls (loop + timer) ---------------------------------------
-
-  private renderPatterControls() {
-    return html`
-      <div class="patter-controls">
-        <h3>Loop Controls
-          <button class="ctx-help-btn" title="What are loop controls?"
-            @click=${() => { this.showLoopHelp = !this.showLoopHelp; }}>?</button>
-        </h3>
-        ${this.showLoopHelp ? html`
-          <div class="ctx-help-panel">
-            Looping repeats a section of the music seamlessly so patter can
-            run as long as you need. Set <strong>Loop Start</strong> and
-            <strong>Loop End</strong> to define the region. Click
-            <strong>Set</strong> to capture the current playback position,
-            then fine-tune with the nudge buttons (&plusmn;10ms or &plusmn;100ms).
-            Looping activates when Loop End is greater than zero. Points are saved per song.
-          </div>` : nothing}
-        <div class="loop-box" tabindex="0"
-             title="Click to focus \u2014 ←/→ nudge \u00b110ms, Ctrl+←/→ nudge \u00b1100ms, Enter = Set"
-             @keydown=${(e: KeyboardEvent) => this.onLoopBoxKeydown("start", e)}>
-          <label>Loop Start:</label>
-          <span class="loop-value">${this.loopStart.toFixed(2)}s</span>
-          <button class="nudge" tabindex="-1" title="Nudge \u2212100ms (Ctrl+\u2190)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.nudgeLoop("start", -0.1)}>\u25c4\u25c4</button>
-          <button class="nudge" tabindex="-1" title="Nudge \u221210ms (\u2190)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.nudgeLoop("start", -0.01)}>\u25c4</button>
-          <button class="nudge set-btn" tabindex="-1" title="Set to current position (Enter)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.setLoopFromCurrent("start")}>Set</button>
-          <button class="nudge" tabindex="-1" title="Nudge +10ms (\u2192)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.nudgeLoop("start", 0.01)}>\u25ba</button>
-          <button class="nudge" tabindex="-1" title="Nudge +100ms (Ctrl+\u2192)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.nudgeLoop("start", 0.1)}>\u25ba\u25ba</button>
-        </div>
-        <div class="loop-box" tabindex="0"
-             title="Click to focus \u2014 ←/→ nudge \u00b110ms, Ctrl+←/→ nudge \u00b1100ms, Enter = Set"
-             @keydown=${(e: KeyboardEvent) => this.onLoopBoxKeydown("end", e)}>
-          <label>Loop End:</label>
-          <span class="loop-value">${this.loopEnd.toFixed(2)}s</span>
-          <button class="nudge" tabindex="-1" title="Nudge \u2212100ms (Ctrl+\u2190)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.nudgeLoop("end", -0.1)}>\u25c4\u25c4</button>
-          <button class="nudge" tabindex="-1" title="Nudge \u221210ms (\u2190)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.nudgeLoop("end", -0.01)}>\u25c4</button>
-          <button class="nudge set-btn" tabindex="-1" title="Set to current position (Enter)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.setLoopFromCurrent("end")}>Set</button>
-          <button class="nudge" tabindex="-1" title="Nudge +10ms (\u2192)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.nudgeLoop("end", 0.01)}>\u25ba</button>
-          <button class="nudge" tabindex="-1" title="Nudge +100ms (Ctrl+\u2192)"
-            @mousedown=${this.onLoopBtnMousedown}
-            @click=${() => this.nudgeLoop("end", 0.1)}>\u25ba\u25ba</button>
-        </div>
-        <div class="loop-status ${this.loopEnd > 0 ? "active" : "inactive"}">
-          ${this.loopEnd > 0 ? "Looping active" : "Looping inactive (set Loop End to enable)"}
-        </div>
-
-        <hr />
-
-        <h3>Patter Timer
-          <button class="ctx-help-btn" title="What is the patter timer?"
-            @click=${() => { this.showPatterTimerHelp = !this.showPatterTimerHelp; }}>?</button>
-        </h3>
-        ${this.showPatterTimerHelp ? html`
-          <div class="ctx-help-panel">
-            The patter timer counts down while the music plays. Set the
-            duration in minutes. When it reaches zero a chime sounds once,
-            and the counter continues into negative (red) so you can see
-            how far over time you are. Your duration setting is saved.
-          </div>` : nothing}
-        <div class="patter-timer-controls ${this.patterTimerEnabled ? "" : "timer-disabled"}">
-          <div class="patter-toggle-row">
-            <label class="patter-toggle">
-              <input
-                type="checkbox"
-                .checked=${this.patterTimerEnabled}
-                @change=${this.onPatterTimerEnabledChange}
-              />
-              Enabled
-            </label>
-          </div>
-          <div class="patter-row">
-            <label>Duration (min):</label>
-            <input
-              type="number"
-              min="1"
-              max="15"
-              step="0.5"
-              .value=${String(this.patterMinutes)}
-              @change=${this.onPatterMinutesChange}
-              @keydown=${this.onPatterMinutesKeydown}
-            />
-          </div>
-          <div class="patter-countdown ${!this.patterTimerEnabled ? "disabled" : ""} ${this.patterCountdown <= 0 ? "overtime" : ""}">
-            ${formatCountdown(this.patterCountdown)}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  // -- Transport controls ---------------------------------------------------
-
-  private renderTransport() {
-    return html`
-      <div class="transport">
-        <button class="ctrl-btn" title="Restart (Home)" @click=${this.onRestart}>⏮</button>
-        <button class="ctrl-btn" title="Back 5s (Ctrl+←)" @click=${() => this.onSeekDelta(-5)}>⏪</button>
-        <button class="ctrl-btn" title="Back 2s (←)" @click=${() => this.onSeekDelta(-2)}>◄</button>
-        <button class="ctrl-btn play-btn" title="${this.playing ? "Pause (Space)" : "Play (Space)"}"
-          @click=${this.onPlayPause}>
-          ${this.playing ? "⏸" : "▶"}
-        </button>
-        <button class="ctrl-btn" title="Forward 2s (→)" @click=${() => this.onSeekDelta(2)}>►</button>
-        <button class="ctrl-btn" title="Forward 5s (Ctrl+→)" @click=${() => this.onSeekDelta(5)}>⏩</button>
-        <button class="ctrl-btn" title="Go to end (End)" @click=${this.onGoToEnd}>⏭</button>
-      </div>
-    `;
-  }
-
   // -- Volume / pitch / tempo adjustments -----------------------------------
 
   private renderAdjustments(song: Song) {
@@ -740,66 +659,6 @@ export class SongPlay extends LitElement {
           <span class="time-label">Time</span>
           <span class="time-value clock">${this.clockTime}</span>
         </div>
-      </div>
-    `;
-  }
-
-  // -- Progress slider (7 segments) -----------------------------------------
-
-  private renderSlider() {
-    const effectiveDuration = this.getEffectiveDuration();
-    const effectiveCurrent = this.getEffectiveCurrentTime();
-    const pct = effectiveDuration > 0 ? (effectiveCurrent / effectiveDuration) * 100 : 0;
-    // Loop markers (in source time, so use source duration for placement)
-    const loopStartPct = this.duration > 0 ? (this.loopStart / this.duration) * 100 : 0;
-    const loopEndPct = this.duration > 0 ? (this.loopEnd / this.duration) * 100 : 0;
-
-    return html`
-      <div class="slider-container">
-        <!-- Track with rounded corners (clips segments + progress) -->
-        <div class="slider-track">
-          <div class="segments">
-            ${[0, 1, 2, 3, 4, 5, 6].map(
-              (i) => html`
-                <div
-                  class="segment ${i % 2 === 0 ? "even" : "odd"}"
-                  style="width: ${100 / 7}%"
-                ></div>
-              `,
-            )}
-          </div>
-          <div class="progress" style="width: ${pct}%"></div>
-        </div>
-
-        <!-- Loop markers (outside track so not clipped by border-radius) -->
-        ${this.loopEnd > 0
-          ? html`
-              <div class="loop-marker start" style="left: ${loopStartPct}%"
-                title="Loop start: ${this.loopStart.toFixed(2)}s \u2014 drag to reposition"
-                @pointerdown=${(e: PointerEvent) => this.onLoopMarkerPointerDown("start", e)}
-                @pointermove=${this.onLoopMarkerPointerMove}
-                @pointerup=${this.onLoopMarkerPointerUp}
-              ></div>
-              <div class="loop-marker end" style="left: ${loopEndPct}%"
-                title="Loop end: ${this.loopEnd.toFixed(2)}s \u2014 drag to reposition"
-                @pointerdown=${(e: PointerEvent) => this.onLoopMarkerPointerDown("end", e)}
-                @pointermove=${this.onLoopMarkerPointerMove}
-                @pointerup=${this.onLoopMarkerPointerUp}
-              ></div>
-            `
-          : nothing}
-
-        <!-- Clickable overlay: range in effective time so cursor matches playback -->
-        <input
-          type="range"
-          class="slider-input"
-          min="0"
-          max=${effectiveDuration || 1}
-          step="0.1"
-          .value=${String(effectiveCurrent)}
-          @input=${this.onSliderInput}
-          title="Song position"
-        />
       </div>
     `;
   }
@@ -1110,584 +969,7 @@ export class SongPlay extends LitElement {
     this.clockTime = formatClock();
   }
 
-  static styles = css`
-    :host {
-      display: block;
-      height: 100%;
-    }
-
-    .song-play {
-      display: grid;
-      grid-template-columns: 1fr 320px;
-      grid-template-rows: 1fr auto;
-      height: 100%;
-    }
-
-    /* -- Left panel: lyrics or patter controls ----------------------------- */
-
-    .left-panel {
-      grid-column: 1;
-      grid-row: 1;
-      overflow-y: auto;
-      border-right: 1px solid var(--cb-border);
-    }
-
-    .lyrics-content {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 16px;
-    }
-
-    /* :where() gives these defaults zero specificity so authored HTML styles
-       (e.g. background: lightyellow from a lyrics file) can override them. */
-    :where(.lyrics-content) {
-      font-size: 1rem;
-      line-height: 1.7;
-      background: var(--cb-bg);
-      color: var(--cb-fg);
-    }
-
-    .lyrics-content.lyrics-plain {
-      white-space: pre-wrap;
-    }
-
-    .lyrics-content a {
-      color: var(--cb-accent);
-    }
-
-    .lyrics-content a:visited {
-      color: var(--cb-accent-hover);
-    }
-
-    .lyrics-content hr {
-      border-color: var(--cb-border);
-    }
-
-    /* -- Patter controls --------------------------------------------------- */
-
-    .patter-controls {
-      max-width: 500px;
-      margin: 0 auto;
-      padding: 16px;
-    }
-
-    .patter-controls h3 {
-      margin: 0 0 8px;
-      font-size: 1rem;
-    }
-
-    .patter-controls hr {
-      border: none;
-      border-top: 1px solid var(--cb-border);
-      margin: 16px 0;
-    }
-
-    .loop-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-      font-size: 0.9rem;
-      padding: 8px;
-      border: 2px solid var(--cb-border);
-      border-radius: 6px;
-      outline: none;
-      cursor: default;
-      transition: border-color 0.15s;
-    }
-
-    .loop-box:focus {
-      border-color: var(--cb-accent);
-      box-shadow: 0 0 0 1px var(--cb-accent);
-    }
-
-    .loop-box label {
-      width: 80px;
-    }
-
-    .loop-value {
-      width: 70px;
-      font-variant-numeric: tabular-nums;
-      font-family: monospace;
-    }
-
-    .loop-status {
-      font-size: 0.85rem;
-      padding: 4px 8px;
-      border-radius: 4px;
-      margin-top: 4px;
-    }
-
-    .loop-status.active {
-      color: var(--cb-success);
-      background: var(--cb-success-bg);
-    }
-
-    .loop-status.inactive {
-      color: var(--cb-fg-tertiary);
-    }
-
-    .nudge {
-      padding: 4px 8px;
-      border: 1px solid var(--cb-border);
-      border-radius: 4px;
-      background: var(--cb-input-bg);
-      color: var(--cb-fg);
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-
-    .nudge:hover {
-      background: var(--cb-hover);
-    }
-
-    .patter-timer-controls.timer-disabled .patter-row,
-    .patter-timer-controls.timer-disabled .patter-countdown {
-      opacity: 0.5;
-    }
-
-    .patter-timer-controls .patter-toggle {
-      opacity: 1;
-    }
-
-    .patter-toggle-row {
-      margin-bottom: 8px;
-    }
-
-    .patter-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-
-    .patter-toggle input {
-      cursor: pointer;
-    }
-
-    .patter-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.9rem;
-    }
-
-    .patter-row input {
-      width: 60px;
-      padding: 4px 8px;
-      border: 1px solid var(--cb-border);
-      border-radius: 4px;
-      background: var(--cb-input-bg);
-      color: var(--cb-fg);
-    }
-
-    .patter-countdown {
-      font-size: 2rem;
-      font-weight: 300;
-      font-variant-numeric: tabular-nums;
-      margin-top: 8px;
-    }
-
-    .patter-countdown.disabled {
-      color: var(--cb-fg-tertiary);
-    }
-
-    .patter-countdown.overtime {
-      color: var(--cb-error);
-    }
-
-    .patter-countdown.disabled.overtime {
-      color: var(--cb-fg-tertiary);
-    }
-
-    /* -- Contextual help --------------------------------------------------- */
-
-    .ctx-help-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 18px;
-      height: 18px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      border-radius: 50%;
-      border: 1px solid var(--cb-border);
-      background: var(--cb-input-bg);
-      color: var(--cb-fg-secondary);
-      cursor: pointer;
-      vertical-align: middle;
-      margin-left: 6px;
-      padding: 0;
-      line-height: 1;
-    }
-
-    .ctx-help-btn:hover {
-      background: var(--cb-hover);
-      color: var(--cb-fg);
-    }
-
-    .adj-help-btn {
-      align-self: flex-end;
-      margin-bottom: 2px;
-    }
-
-    .ctx-help-panel {
-      font-size: 0.8rem;
-      line-height: 1.5;
-      color: var(--cb-fg-secondary);
-      background: var(--cb-hover);
-      border-radius: 6px;
-      padding: 8px 10px;
-      margin-bottom: 6px;
-    }
-
-    .ctx-help-panel kbd {
-      display: inline-block;
-      padding: 1px 4px;
-      font-family: inherit;
-      font-size: 0.8em;
-      background: var(--cb-input-bg);
-      border: 1px solid var(--cb-border);
-      border-radius: 3px;
-    }
-
-    /* -- Right panel: controls and info ------------------------------------ */
-
-    .right-panel {
-      grid-column: 2;
-      grid-row: 1;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      overflow-y: auto;
-    }
-
-    /* -- Transport controls ------------------------------------------------ */
-
-    .transport {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    }
-
-    .ctrl-btn {
-      background: none;
-      border: 1px solid var(--cb-border);
-      color: var(--cb-fg);
-      font-size: 1.1rem;
-      width: 36px;
-      height: 36px;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .ctrl-btn:hover {
-      background: var(--cb-hover);
-    }
-
-    .ctrl-btn.play-btn {
-      width: 44px;
-      height: 44px;
-      font-size: 1.3rem;
-      background: var(--cb-accent);
-      color: var(--cb-fg-on-accent);
-      border-color: transparent;
-    }
-
-    .ctrl-btn.play-btn:hover {
-      background: var(--cb-accent-hover);
-    }
-
-    /* -- Adjustments (volume/pitch/tempo) ---------------------------------- */
-
-    .adjustments {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .adj-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .adj-label {
-      width: 60px;
-      font-size: 0.85rem;
-      color: var(--cb-fg-secondary);
-    }
-
-    .adj-value {
-      width: 40px;
-      text-align: center;
-      font-variant-numeric: tabular-nums;
-      font-weight: 500;
-    }
-
-    .adj-btn {
-      background: none;
-      border: 1px solid var(--cb-border);
-      color: var(--cb-fg);
-      padding: 4px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85rem;
-    }
-
-    .adj-btn:hover {
-      background: var(--cb-hover);
-    }
-
-    .adj-hint {
-      font-size: 0.75rem;
-      color: var(--cb-fg-tertiary);
-      margin-left: 4px;
-    }
-
-    .meta-block {
-      margin-top: 4px;
-      padding-top: 10px;
-      border-top: 1px solid var(--cb-border);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .meta-row {
-      display: grid;
-      grid-template-columns: 7.5rem 1fr;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .meta-label {
-      font-size: 0.85rem;
-      color: var(--cb-fg-secondary);
-    }
-
-    .meta-input {
-      padding: 4px 8px;
-      border: 1px solid var(--cb-border);
-      border-radius: 4px;
-      background: var(--cb-input-bg);
-      color: var(--cb-fg);
-      font-size: 0.85rem;
-    }
-
-    .meta-input-categories {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .meta-input-rank {
-      width: 4.5rem;
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* -- Time info --------------------------------------------------------- */
-
-    .time-info {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .time-row {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-    }
-
-    .time-label {
-      width: 60px;
-      font-size: 0.8rem;
-      color: var(--cb-fg-secondary);
-    }
-
-    .time-value {
-      font-variant-numeric: tabular-nums;
-      font-size: 1rem;
-    }
-
-    .time-value.clock {
-      font-size: 1.3rem;
-      font-weight: 300;
-    }
-
-    /* -- Progress slider --------------------------------------------------- */
-
-    .slider-panel {
-      grid-column: 1 / -1;
-      grid-row: 2;
-      padding: 8px 12px 12px;
-      border-top: 1px solid var(--cb-border);
-    }
-
-    .slider-container {
-      position: relative;
-      height: 28px;
-    }
-
-    .slider-track {
-      position: absolute;
-      inset: 0;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .segments {
-      display: flex;
-      position: absolute;
-      inset: 0;
-    }
-
-    .segment.even {
-      background: var(--cb-segment-even);
-    }
-
-    .segment.odd {
-      background: var(--cb-segment-odd);
-    }
-
-    .progress {
-      position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      background: var(--cb-progress);
-      pointer-events: none;
-      transition: width 0.1s linear;
-    }
-
-    .loop-marker {
-      position: absolute;
-      top: -2px;
-      bottom: -2px;
-      width: 2px;
-      padding: 0 5px;
-      margin-left: -6px;
-      box-sizing: content-box;
-      background-clip: content-box;
-      z-index: 3;
-      cursor: ew-resize;
-      touch-action: none;
-    }
-
-    .loop-marker:hover {
-      padding: 0 4px;
-      margin-left: -5px;
-      border-left: 1px solid;
-      border-right: 1px solid;
-    }
-
-    .loop-marker.start {
-      background-color: var(--cb-success);
-    }
-
-    .loop-marker.start:hover {
-      border-color: var(--cb-success);
-    }
-
-    .loop-marker.end {
-      background-color: var(--cb-error);
-    }
-
-    .loop-marker.end:hover {
-      border-color: var(--cb-error);
-    }
-
-    .slider-input {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      cursor: pointer;
-      margin: 0;
-      z-index: 1;
-    }
-
-    /* -- Shared ------------------------------------------------------------ */
-
-    .secondary {
-      border-radius: 6px;
-      border: 1px solid var(--cb-border);
-      padding: 6px 14px;
-      font-size: 0.85rem;
-      background: transparent;
-      color: var(--cb-fg);
-      cursor: pointer;
-    }
-
-    .secondary:hover {
-      background: var(--cb-hover);
-    }
-
-    .muted {
-      color: var(--cb-fg-tertiary);
-    }
-
-    .centered {
-      text-align: center;
-      padding: 3rem;
-    }
-
-    .play-extras-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    /* -- Narrow / phone layout --------------------------------------------- */
-
-    @media (max-width: 700px) {
-      .song-play {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr auto;
-      }
-
-      .right-panel {
-        grid-column: 1;
-        grid-row: 1;
-        padding: 10px;
-        gap: 12px;
-        overflow-y: visible;
-      }
-
-      .left-panel {
-        grid-column: 1;
-        grid-row: 2;
-        border-right: none;
-        border-top: 1px solid var(--cb-border);
-      }
-
-      .slider-panel {
-        grid-column: 1;
-        grid-row: 3;
-      }
-
-      .transport {
-        flex-wrap: wrap;
-      }
-
-      .patter-controls {
-        max-width: none;
-      }
-
-      .loop-box {
-        flex-wrap: wrap;
-      }
-    }
-  `;
+  static styles = songPlayStyles;
 }
 
 declare global {

@@ -22,6 +22,7 @@ import {
   type HtmlCandidate,
 } from "../services/song-onboarding.js";
 import { escapeHtml } from "../services/html-scraper.js";
+import { formatUnknownError } from "../utils/format.js";
 import {
   extractStyleBlock,
   extractBodyContent,
@@ -159,7 +160,7 @@ export class SongOnboard extends LitElement {
       win.document.close();
     } catch (err) {
       win.document.open();
-      win.document.write(`<p>Failed to load: ${err}</p>`);
+      win.document.write(`<p>Failed to load: ${formatUnknownError(err)}</p>`);
       win.document.close();
     }
   }
@@ -227,7 +228,7 @@ export class SongOnboard extends LitElement {
     try {
       await callerBuddy.importSong(editedProposal);
     } catch (err) {
-      alert(`Import failed: ${err}`);
+      alert(`Import failed: ${formatUnknownError(err)}`);
     } finally {
       this.importing = false;
     }

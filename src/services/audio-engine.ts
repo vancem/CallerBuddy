@@ -293,7 +293,7 @@ export class WebAudioEngine implements AudioEngine {
 
   setLoopPoints(startSeconds: number, endSeconds: number): void {
     let start = startSeconds;
-    let end = endSeconds;
+    const end = endSeconds;
     // Require start < end when looping is on (end > 0); allow both 0 = disabled
     if (end > 0 && start >= end) {
       start = Math.max(0, end - 0.001);

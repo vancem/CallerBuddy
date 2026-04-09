@@ -28,7 +28,7 @@ track of them. But they are low priority right now.
   non-practice (that is performances) are tracked. Then provide filters to avoid
   songs used in the last month, or sort songs by the amount of time since last
   use.
-- [] Add editing of the lyrics - Typically callers buy songs on the internet
+- [x] Add editing of the lyrics - Typically callers buy songs on the internet
   that come in ZIP files that contain music (sometimes with several variations
   of the song), and lyrics in various formats (html, docx, text...). Depending
   on the recording company, these ZIP files use different conventions. Sometimes
@@ -41,6 +41,9 @@ track of them. But they are low priority right now.
   as needed, and selecting the variation that the caller prefers). This is all
   done by hand today, and some basic rules will create a good guess, that you
   can then confirm with the user, speeding things up a lot.
+  - **V1:** Single-ZIP onboarding with heuristics + confirmation is implemented
+    (see `song-onboard`, `song-onboarding`). **Still future:** multi-ZIP batch
+    import and heavier renaming pipelines.
 - [] Lyric files tend to have a wide variety of formats. As part of this
   conversion process, the original lyric files are transformed into either
   Markdown or standard HTML, so that all lyrics will have a uniform format.

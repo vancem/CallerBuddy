@@ -14,7 +14,7 @@ const SECTION_KEYWORD_RE =
   /^(opener|figure|breaks?|middle\s*break|closer?|tag|verse|bridge)\b/i;
 
 const COMBINED_SECTION_RE =
-  /^(opener\s*[,\/&]\s*(break\s*[,\/&]\s*)*(closer?)?|opener\s*[,\/&]\s*closer?)/i;
+  /^(opener\s*[,/&]\s*(break\s*[,/&]\s*)*(closer?)?|opener\s*[,/&]\s*closer?)/i;
 
 /**
  * Square dance call names (from calls.txt).
@@ -546,6 +546,8 @@ function sanitizeText(text: string): string {
     .replace(/[\u2013\u2014\u0096\u0097]/g, "-")
     .replace(/[\u2026\u0085]/g, "...")
     .replace(/\uFFFD/g, "")
+    // Strip C0/C1 controls — intentional for lyric sanitization
+    // eslint-disable-next-line no-control-regex -- remove non-printable bytes
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "");
 }
 
