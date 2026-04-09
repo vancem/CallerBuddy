@@ -17,12 +17,24 @@ if (!import.meta.env.DEV && "serviceWorker" in navigator) {
     navigator.serviceWorker
       .register(import.meta.env.BASE_URL + "sw.js", { updateViaCache: "none" })
       .then((registration) => {
-        // When user returns to the tab, check for updates (helps mobile pick up new versions).
-        // Skip when offline to avoid hanging on registration.update().
+        // When user returns to the tab, check for updates (helps mobile pick up new
+        // versions). A quick HEAD probe with a 1.5s timeout verifies real connectivity
+        // first — navigator.onLine is true whenever the radio is on, even with no
+        // cell reception, which would cause registration.update() to hang.
         document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible" && navigator.onLine) {
-            registration.update();
-          }
+          if (document.visibilityState !== "visible" || !navigator.onLine) return;
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 1500);
+          fetch(import.meta.env.BASE_URL + "sw.js", {
+            method: "HEAD",
+            signal: ctrl.signal,
+            cache: "no-store",
+          })
+            .then(() => {
+              clearTimeout(tid);
+              registration.update();
+            })
+            .catch(() => clearTimeout(tid));
         });
       })
       .catch(() => {});

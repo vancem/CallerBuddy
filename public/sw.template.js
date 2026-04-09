@@ -1,10 +1,13 @@
 /* built: __BUILD_TIME__ */
 const CACHE_NAME = "__CACHE_NAME__";
+const PRECACHE_URLS = "__PRECACHE_URLS__";
 
 self.addEventListener("install", (event) => {
   const base = new URL("./", self.location).href;
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll([base, base + "index.html"]))
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(PRECACHE_URLS.map((url) => base + url))
+    )
   );
   self.skipWaiting();
 });
@@ -44,10 +47,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Sub-resources (JS, CSS, images): cache-first for speed.
+  // Sub-resources (JS, CSS, images): cache-first with a 3s timeout on the
+  // network fallback so we never hang when the radio is on but unreachable.
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      return cached ?? fetch(event.request);
+      if (cached) return cached;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      return fetch(event.request, { signal: controller.signal })
+        .then((response) => {
+          clearTimeout(timeoutId);
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          clearTimeout(timeoutId);
+          return new Response("", { status: 503, statusText: "Offline" });
+        });
     })
   );
 });
