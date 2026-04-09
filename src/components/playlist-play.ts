@@ -17,6 +17,7 @@ import {
   DEFAULT_BREAK_TIMER_MINUTES,
   DEFAULT_PLAYLIST_PANEL_WIDTH,
 } from "../models/settings.js";
+import { WakeLockService } from "../services/wake-lock.js";
 
 const MIN_PLAYLIST_WIDTH = 180;
 const MAX_PLAYLIST_WIDTH = 500;
@@ -56,6 +57,11 @@ export class PlaylistPlay extends LitElement {
     },
   });
 
+  /** True when the break timer was running but paused because the window lost focus. */
+  private breakPausedByBlur = false;
+
+  private breakWakeLock = new WakeLockService();
+
   private clockInterval: number | null = null;
   private breakInterval: number | null = null;
   private breakAlarmInterval: number | null = null;
@@ -69,6 +75,8 @@ export class PlaylistPlay extends LitElement {
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.addEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
     document.addEventListener("keydown", this._boundKeydown);
+    window.addEventListener("blur", this._boundWindowBlur);
+    window.addEventListener("focus", this._boundWindowFocus);
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
     this.updateClock();
   }
@@ -76,15 +84,32 @@ export class PlaylistPlay extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this._boundKeydown);
+    window.removeEventListener("blur", this._boundWindowBlur);
+    window.removeEventListener("focus", this._boundWindowFocus);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.removeEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
     this.stopResize();
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     this.stopBreakTimer();
+    this.breakWakeLock.dispose();
   }
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
+
+  private _boundWindowBlur = () => {
+    if (this.breakTimerRunning && this.breakInterval !== null) {
+      this.pauseBreakTimer();
+      this.breakPausedByBlur = true;
+    }
+  };
+
+  private _boundWindowFocus = () => {
+    if (this.breakPausedByBlur) {
+      this.breakPausedByBlur = false;
+      this.resumeBreakTimer();
+    }
+  };
 
   private onKeydown(e: KeyboardEvent) {
     // This component stays alive while other tabs are active.
@@ -405,16 +430,19 @@ export class PlaylistPlay extends LitElement {
     this.stopBreakTimer();
     this.breakCountdown = Math.round(this.breakMinutes * 60);
     this.breakTimerRunning = true;
+    this.breakPausedByBlur = false;
     this.breakInterval = window.setInterval(() => {
       this.breakCountdown--;
       if (this.breakCountdown === 0) {
         this.playBreakAlarm();
       }
     }, 1000);
+    void this.breakWakeLock.acquire();
   }
 
   private stopBreakTimer() {
     this.breakTimerRunning = false;
+    this.breakPausedByBlur = false;
     if (this.breakInterval !== null) {
       clearInterval(this.breakInterval);
       this.breakInterval = null;
@@ -423,6 +451,30 @@ export class PlaylistPlay extends LitElement {
       clearInterval(this.breakAlarmInterval);
       this.breakAlarmInterval = null;
     }
+    void this.breakWakeLock.release();
+  }
+
+  /** Pause the break timer tick without resetting countdown (used on window blur). */
+  private pauseBreakTimer() {
+    if (this.breakInterval !== null) {
+      clearInterval(this.breakInterval);
+      this.breakInterval = null;
+    }
+    if (this.breakAlarmInterval !== null) {
+      clearInterval(this.breakAlarmInterval);
+      this.breakAlarmInterval = null;
+    }
+  }
+
+  /** Resume the break timer tick from where it left off (used on window focus). */
+  private resumeBreakTimer() {
+    if (!this.breakTimerRunning || this.breakInterval !== null) return;
+    this.breakInterval = window.setInterval(() => {
+      this.breakCountdown--;
+      if (this.breakCountdown === 0) {
+        this.playBreakAlarm();
+      }
+    }, 1000);
   }
 
   private playBreakAlarm() {
