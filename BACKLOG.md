@@ -218,10 +218,15 @@ rationale.
   - DONE: Implemented click-to-navigate folders with breadcrumb navigation, and
     open-in-new-tab via folder context menu. Side-by-side split pane deferred.
     See AI_Logs/Summary.26-02-26.01.subfolderNavigation.md.
-- [] LOW: Help documentation tab.
+- [x] LOW: Help documentation tab.
   - The spec mentions a help tab displaying an HTML help document. This is a
     stub; the infrastructure is there (tab system supports it) but no help
     content exists yet.
+  - DONE: Implemented as a hybrid system: in-app Help tab (singleton, accessed
+    from hamburger menu and Welcome screen) with tutorial walkthrough, 7 how-to
+    guides, keyboard shortcuts reference, and glossary. Also added contextual ?
+    help icons for loop controls, pitch/tempo, patter timer, and song import.
+    Enhanced tooltips across all components. See AI_Logs/Summary.26-03-26.01.md.
 
 ## Coding Standards
 

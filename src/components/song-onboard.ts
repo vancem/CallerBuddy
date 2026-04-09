@@ -46,6 +46,7 @@ export class SongOnboard extends LitElement {
   @state() private sourceType: "zip" | "folder" = "zip";
   @state() private showContents = false;
   @state() private importing = false;
+  @state() private showImportHelp = false;
 
   /** Left panel width fraction (0–1). Default: 2/3. */
   @state() private splitFraction = 2 / 3;
@@ -294,7 +295,19 @@ export class SongOnboard extends LitElement {
       <div class="right-panel">
         <div class="panel-heading">
           Import Song from ${sourceLabel}
+          <button class="ctx-help-btn" title="How does import work?"
+            @click=${() => { this.showImportHelp = !this.showImportHelp; }}>?</button>
         </div>
+        ${this.showImportHelp ? html`
+          <div class="ctx-help-panel">
+            CallerBuddy analyzed the ${sourceLabel.toLowerCase()} and guessed the
+            record label, title, which music file to use, and cleaned up the
+            lyrics. Review each section below&mdash;you can change the label,
+            title, pick a different MP3, or edit the lyrics on the left.
+            When you click <strong>Import</strong>, the music and lyrics files
+            are copied into your CallerBuddy folder using the standard
+            <code>LABEL - Title</code> naming convention.
+          </div>` : nothing}
         <p class="explain">
           We analyzed <strong>${this.sourceName}</strong> and made our
           best guesses below. Edit anything that looks wrong, then click
@@ -303,11 +316,13 @@ export class SongOnboard extends LitElement {
 
         <div class="action-row">
           <button class="import-btn" @click=${this.onImport}
-            ?disabled=${this.importing || !this.selectedMp3}>
+            ?disabled=${this.importing || !this.selectedMp3}
+            title="Copy the selected music and lyrics into your CallerBuddy folder">
             ${this.importing ? "Importing…" : "Import"}
           </button>
           <button class="cancel-btn" @click=${this.onCancel}
-            ?disabled=${this.importing}>
+            ?disabled=${this.importing}
+            title="Discard this import and close the tab">
             Cancel
           </button>
         </div>
@@ -342,7 +357,8 @@ export class SongOnboard extends LitElement {
 
         <!-- Show source contents -->
         <div class="section">
-          <button class="toggle-btn" @click=${this.toggleContents}>
+          <button class="toggle-btn" @click=${this.toggleContents}
+            title="Show or hide the full list of files in the source ${sourceLabel}">
             ${this.showContents ? "Hide" : "Show"} complete
             ${sourceLabel} contents (${this.allEntries.length} files)
           </button>
@@ -385,13 +401,15 @@ export class SongOnboard extends LitElement {
               <span class="field-label">Label</span>
               <input type="text" .value=${this.label}
                 @input=${this.onLabelInput}
-                placeholder="e.g. BS 2469" />
+                placeholder="e.g. BS 2469"
+                title="Publisher label and catalog number (e.g. BS 2469). Used in the destination filename." />
             </label>
             <label class="field">
               <span class="field-label">Title</span>
               <input type="text" .value=${this.songTitle}
                 @input=${this.onTitleInput}
-                placeholder="e.g. Witch Doctor" />
+                placeholder="e.g. Witch Doctor"
+                title="Song title (e.g. Witch Doctor). Used in the destination filename." />
             </label>
           </div>
         </div>
@@ -498,6 +516,46 @@ export class SongOnboard extends LitElement {
       font-size: 1.1rem;
       font-weight: 600;
       margin: 0;
+    }
+
+    .ctx-help-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-radius: 50%;
+      border: 1px solid var(--cb-border);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg-secondary);
+      cursor: pointer;
+      vertical-align: middle;
+      margin-left: 6px;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .ctx-help-btn:hover {
+      background: var(--cb-hover);
+      color: var(--cb-fg);
+    }
+
+    .ctx-help-panel {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: var(--cb-fg-secondary);
+      background: var(--cb-hover);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+
+    .ctx-help-panel code {
+      background: var(--cb-input-bg);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.85em;
     }
 
     .explain {

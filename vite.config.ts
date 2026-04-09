@@ -1,16 +1,29 @@
 /// <reference types="vitest/config" />
 import { createRequire } from "module";
+import { marked } from "marked";
+import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 
 const require = createRequire(import.meta.url);
 const { injectVersionPlugin } = require("./scripts/vite-inject-version.cjs");
+
+function markdownPlugin(): Plugin {
+  return {
+    name: "vite-markdown",
+    transform(code, id) {
+      if (!id.endsWith(".md")) return;
+      const html = marked.parse(code, { async: false }) as string;
+      return { code: `export const html = ${JSON.stringify(html)};`, map: null };
+    },
+  };
+}
 
 // For GitHub Pages: set BASE_PATH to your repo name, e.g. BASE_PATH=/CallerBuddy
 const basePath = (process.env.BASE_PATH || "").replace(/\/?$/, "");
 const base = basePath ? `/${basePath}/` : "/";
 
 export default defineConfig({
-  plugins: [injectVersionPlugin()],
+  plugins: [injectVersionPlugin(), markdownPlugin()],
   base,
   test: {
     globals: true,

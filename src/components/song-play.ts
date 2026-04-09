@@ -133,6 +133,10 @@ export class SongPlay extends LitElement {
   private patterAlarmInterval: number | null = null;
   @state() private patterAlarmFired = false;
 
+  @state() private showLoopHelp = false;
+  @state() private showAdjustHelp = false;
+  @state() private showPatterTimerHelp = false;
+
   private clockInterval: number | null = null;
   private elapsedInterval: number | null = null;
 
@@ -555,7 +559,19 @@ export class SongPlay extends LitElement {
   private renderPatterControls() {
     return html`
       <div class="patter-controls">
-        <h3>Loop Controls</h3>
+        <h3>Loop Controls
+          <button class="ctx-help-btn" title="What are loop controls?"
+            @click=${() => { this.showLoopHelp = !this.showLoopHelp; }}>?</button>
+        </h3>
+        ${this.showLoopHelp ? html`
+          <div class="ctx-help-panel">
+            Looping repeats a section of the music seamlessly so patter can
+            run as long as you need. Set <strong>Loop Start</strong> and
+            <strong>Loop End</strong> to define the region. Click
+            <strong>Set</strong> to capture the current playback position,
+            then fine-tune with the nudge buttons (&plusmn;10ms or &plusmn;100ms).
+            Looping activates when Loop End is greater than zero. Points are saved per song.
+          </div>` : nothing}
         <div class="loop-box" tabindex="0"
              title="Click to focus \u2014 ←/→ nudge \u00b110ms, Ctrl+←/→ nudge \u00b1100ms, Enter = Set"
              @keydown=${(e: KeyboardEvent) => this.onLoopBoxKeydown("start", e)}>
@@ -604,7 +620,17 @@ export class SongPlay extends LitElement {
 
         <hr />
 
-        <h3>Patter Timer</h3>
+        <h3>Patter Timer
+          <button class="ctx-help-btn" title="What is the patter timer?"
+            @click=${() => { this.showPatterTimerHelp = !this.showPatterTimerHelp; }}>?</button>
+        </h3>
+        ${this.showPatterTimerHelp ? html`
+          <div class="ctx-help-panel">
+            The patter timer counts down while the music plays. Set the
+            duration in minutes. When it reaches zero a chime sounds once,
+            and the counter continues into negative (red) so you can see
+            how far over time you are. Your duration setting is saved.
+          </div>` : nothing}
         <div class="patter-timer-controls ${this.patterTimerEnabled ? "" : "timer-disabled"}">
           <div class="patter-toggle-row">
             <label class="patter-toggle">
@@ -660,6 +686,17 @@ export class SongPlay extends LitElement {
   private renderAdjustments(song: Song) {
     return html`
       <div class="adjustments">
+        <button class="ctx-help-btn adj-help-btn" title="What do these controls do?"
+          @click=${() => { this.showAdjustHelp = !this.showAdjustHelp; }}>?</button>
+        ${this.showAdjustHelp ? html`
+          <div class="ctx-help-panel">
+            <strong>Volume</strong> (0&ndash;100): playback loudness.
+            <strong>Pitch</strong>: shift in half-steps (+ = higher, &minus; = lower).
+            <strong>Tempo</strong>: BPM change from the original speed (+ = faster, &minus; = slower).
+            All adjustments are saved per song and apply automatically next time.
+            Keys: <kbd>v</kbd>/<kbd>V</kbd> volume, <kbd>p</kbd>/<kbd>P</kbd> pitch,
+            <kbd>t</kbd>/<kbd>T</kbd> tempo.
+          </div>` : nothing}
         <div class="adj-row">
           <span class="adj-label">Volume</span>
           <button class="adj-btn" title="Decrease volume (v)" @click=${() => this.adjustVolume(-5)}>◄</button>
@@ -1297,6 +1334,57 @@ export class SongPlay extends LitElement {
 
     .patter-countdown.disabled.overtime {
       color: var(--cb-fg-tertiary);
+    }
+
+    /* -- Contextual help --------------------------------------------------- */
+
+    .ctx-help-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-radius: 50%;
+      border: 1px solid var(--cb-border);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg-secondary);
+      cursor: pointer;
+      vertical-align: middle;
+      margin-left: 6px;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .ctx-help-btn:hover {
+      background: var(--cb-hover);
+      color: var(--cb-fg);
+    }
+
+    .adj-help-btn {
+      align-self: flex-end;
+      margin-bottom: 2px;
+    }
+
+    .ctx-help-panel {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: var(--cb-fg-secondary);
+      background: var(--cb-hover);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+    }
+
+    .ctx-help-panel kbd {
+      display: inline-block;
+      padding: 1px 4px;
+      font-family: inherit;
+      font-size: 0.8em;
+      background: var(--cb-input-bg);
+      border: 1px solid var(--cb-border);
+      border-radius: 3px;
     }
 
     /* -- Right panel: controls and info ------------------------------------ */

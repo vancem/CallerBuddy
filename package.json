@@ -1,7 +1,7 @@
 {
   "name": "callerbuddy",
   "private": true,
-  "version": "0.1.0-pre.15",
+  "version": "0.1.0-pre.16",
   "type": "module",
   "scripts": {
     "inject-version": "node scripts/inject-version.cjs",
@@ -25,6 +25,7 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "jsdom": "^29.0.1",
+    "marked": "^18.0.0",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"

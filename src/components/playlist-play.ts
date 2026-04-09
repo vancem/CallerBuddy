@@ -199,6 +199,7 @@ export class PlaylistPlay extends LitElement {
                           />
                         </label>
                         <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
+                          title="${isSingingCall(song) ? "Singing call" : "Patter (no lyrics)"}"
                           >${isSingingCall(song) ? "♪" : "♫"}</span
                         >
                         <span class="pl-title">${song.title}</span>
@@ -253,7 +254,8 @@ export class PlaylistPlay extends LitElement {
             <h3>Break Timer</h3>
             <div class="break-controls">
               <div class="break-toggle-row">
-                <label class="break-toggle">
+                <label class="break-toggle"
+                  title="When enabled, the break timer counts down automatically after each song ends">
                   <input
                     type="checkbox"
                     .checked=${this.breakTimerEnabled}

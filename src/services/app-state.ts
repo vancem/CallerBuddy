@@ -22,6 +22,7 @@ export const TabType = {
   PlaylistPlay: "playlist-play",
   SongPlay: "song-play",
   SongOnboard: "song-onboard",
+  Help: "help",
 } as const;
 
 export type TabType = (typeof TabType)[keyof typeof TabType];

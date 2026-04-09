@@ -26,6 +26,7 @@ import "./playlist-editor.js";
 import "./playlist-play.js";
 import "./song-play.js";
 import "./song-onboard.js";
+import "./help-view.js";
 
 @customElement("app-shell")
 export class AppShell extends LitElement {
@@ -248,6 +249,8 @@ export class AppShell extends LitElement {
         return html`<song-play></song-play>`;
       case TabType.SongOnboard:
         return html`<song-onboard></song-onboard>`;
+      case TabType.Help:
+        return html`<help-view></help-view>`;
       default:
         return html`<p>Unknown tab type</p>`;
     }
@@ -278,6 +281,10 @@ export class AppShell extends LitElement {
           ${this.isFullscreen() ? "In Window" : "Full Screen"}
         </button>
         <hr />
+        <button class="menu-item" role="menuitem" @click=${this.onHelp}
+          title="Open help documentation with walkthroughs and keyboard shortcuts">
+          Help
+        </button>
         <button class="menu-item" role="menuitem" @click=${this.onClose}>
           Close
         </button>
@@ -365,6 +372,11 @@ export class AppShell extends LitElement {
     } catch {
       // user cancelled or picker unavailable
     }
+  }
+
+  private onHelp() {
+    this.showMenu = false;
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help");
   }
 
   private async onClose() {

@@ -13,6 +13,7 @@
 import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
+import { TabType } from "../services/app-state.js";
 import { APP_VERSION } from "../version.js";
 import { log } from "../services/logger.js";
 
@@ -87,6 +88,13 @@ export class WelcomeView extends LitElement {
             `
           : ""}
 
+        <button
+          class="help-link"
+          @click=${this.openHelp}
+        >
+          View Help &amp; Walkthroughs
+        </button>
+
         <p class="version" aria-label="App version">v${APP_VERSION}</p>
       </div>
     `;
@@ -108,6 +116,10 @@ export class WelcomeView extends LitElement {
     } finally {
       this.loading = false;
     }
+  }
+
+  private openHelp() {
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help");
   }
 
   private async pickFolder() {
@@ -207,6 +219,24 @@ export class WelcomeView extends LitElement {
     .chosen {
       margin-top: 1rem;
       font-size: 0.95rem;
+    }
+
+    .help-link {
+      display: inline-block;
+      margin-top: 1.5rem;
+      padding: 0;
+      background: none;
+      border: none;
+      color: var(--cb-accent);
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .help-link:hover {
+      color: var(--cb-accent-hover);
     }
 
     .version {
