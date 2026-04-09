@@ -140,6 +140,7 @@ export class PlaylistEditor extends LitElement {
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
 
   private onKeydown(e: KeyboardEvent) {
+    if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
     if (e.key === "Escape" && this.editorClosable && this.tabId) {
       const inInput =
         e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;

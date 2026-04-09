@@ -74,13 +74,6 @@ let nextTabId = 1;
 export class AppState extends EventTarget {
   rootHandle: FileSystemDirectoryHandle | null = null;
 
-  /**
-   * @deprecated Songs are now per-editor. Each playlist-editor component
-   * manages its own song list loaded from its dirHandle. This field is
-   * retained only for the updateSong() path in caller-buddy.ts.
-   */
-  songs: Song[] = [];
-
   playlist: Song[] = [];
   settings: Settings = defaultSettings();
 
@@ -121,12 +114,6 @@ export class AppState extends EventTarget {
       tab.closable = !(await this.isRootHandle(data.dirHandle));
     }
     this.emit(StateEvents.CHANGED);
-  }
-
-  /** @deprecated Songs are now per-editor. Kept for backward compatibility. */
-  setSongs(songs: Song[]): void {
-    this.songs = songs;
-    this.emit(StateEvents.SONGS_LOADED);
   }
 
   setSettings(settings: Settings): void {

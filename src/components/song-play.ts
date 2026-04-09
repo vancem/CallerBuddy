@@ -207,6 +207,8 @@ export class SongPlay extends LitElement {
     if (this.elapsedInterval !== null) clearInterval(this.elapsedInterval);
     this.stopPatterTimer();
     callerBuddy.setSongPlayUnsavedGuard(null);
+    callerBuddy.audio.onTimeUpdate(() => {});
+    callerBuddy.audio.onEnded(() => {});
     // Tab switch already ran runSongPlayUnsavedGuard; teardown without prompting again.
     void callerBuddy.finalizeSongPlayClose();
   }
@@ -1672,81 +1674,6 @@ export class SongPlay extends LitElement {
     .centered {
       text-align: center;
       padding: 3rem;
-    }
-
-    /* -- Lyrics editor ----------------------------------------------------- */
-
-    .editor-container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-
-    .editor-toolbar {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 6px 8px;
-      border-bottom: 1px solid var(--cb-border);
-      background: var(--cb-surface, var(--cb-bg));
-      flex-shrink: 0;
-    }
-
-    .toolbar-btn {
-      padding: 4px 10px;
-      border: 1px solid var(--cb-border);
-      border-radius: 4px;
-      background: var(--cb-input-bg);
-      color: var(--cb-fg);
-      cursor: pointer;
-      font-size: 0.85rem;
-      min-width: 32px;
-      text-align: center;
-    }
-
-    .toolbar-btn:hover {
-      background: var(--cb-hover);
-    }
-
-    .toolbar-btn.section-btn {
-      color: red;
-      font-weight: 500;
-    }
-
-    .toolbar-btn.info-btn {
-      color: blue;
-      font-weight: 500;
-    }
-
-    .toolbar-btn.save-btn {
-      background: var(--cb-accent);
-      color: var(--cb-fg-on-accent);
-      border-color: transparent;
-      font-weight: 500;
-    }
-
-    .toolbar-btn.save-btn:hover {
-      background: var(--cb-accent-hover);
-    }
-
-    .toolbar-btn.cancel-btn {
-      color: var(--cb-fg-secondary);
-    }
-
-    .toolbar-spacer {
-      flex: 1;
-    }
-
-    .lyrics-editor {
-      flex: 1;
-      overflow-y: auto;
-      outline: none;
-      cursor: text;
-      padding: 16px;
-      box-sizing: border-box;
-      border: 2px solid var(--cb-accent);
-      border-top: none;
-      min-height: 200px;
     }
 
     .play-extras-row {

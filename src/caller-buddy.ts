@@ -193,15 +193,7 @@ export class CallerBuddy {
     const handle = song.dirHandle ?? this.state.rootHandle;
     if (!handle) return;
 
-    // Update in global songs array (backward compat for BPM detection callbacks)
     const key = song.musicFile.toLowerCase();
-    const idx = this.state.songs.findIndex(
-      (s) => s.musicFile.toLowerCase() === key,
-    );
-    if (idx >= 0) {
-      this.state.songs[idx] = song;
-    }
-
     try {
       const folderSongs = await loadSongsJson(handle);
       const folderIdx = folderSongs.findIndex(
