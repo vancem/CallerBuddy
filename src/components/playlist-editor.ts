@@ -1142,7 +1142,7 @@ export class PlaylistEditor extends LitElement {
       display: flex;
       flex-direction: column;
       min-width: 0;
-There      min-height: 0;
+      min-height: 0;
     }
 
     .browser-content-scroll {
