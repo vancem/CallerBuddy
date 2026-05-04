@@ -36,10 +36,14 @@ export class AppShell extends LitElement {
   private _boundFsChange = () => this.onFullscreenChange();
   private _boundPopstate = () => this.onPopstate();
 
-  /** When true, the next user click/tap will re-request fullscreen. Set when
-   *  fullscreen is exited unexpectedly on a touch-primary installed PWA. */
-  private _wantsFullscreen = false;
-  private _boundReenterFs = () => this.reenterFullscreen();
+  /** True on touch-primary installed PWAs (phones/tablets). Cached once. */
+  private _isTouchPwa = false;
+
+  /** Set to true when the app intentionally exits fullscreen (Close button).
+   *  Prevents auto-reenter from fighting the user's intent. */
+  private _closingApp = false;
+
+  private _boundAutoFs = () => this.autoEnterFullscreen();
 
   connectedCallback() {
     super.connectedCallback();
@@ -54,6 +58,19 @@ export class AppShell extends LitElement {
     history.replaceState({ cbSentinel: true }, "");
     history.pushState({ cbSentinel: true }, "");
     window.addEventListener("popstate", this._boundPopstate);
+
+    // On touch-primary installed PWAs, the manifest "display: fullscreen"
+    // hides OS chrome but does NOT invoke the Fullscreen API.  Only the API
+    // fixes the Android viewport-width bug that makes portrait text tiny.
+    // Since requestFullscreen() requires a user gesture, we register a
+    // one-shot capture-phase click handler to invoke it on the first tap.
+    this._isTouchPwa =
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches &&
+      (window.matchMedia("(display-mode: fullscreen)").matches ||
+        window.matchMedia("(display-mode: standalone)").matches);
+    if (this._isTouchPwa && !this.isFullscreenApi()) {
+      document.addEventListener("click", this._boundAutoFs, { capture: true, once: true });
+    }
   }
 
   disconnectedCallback() {
@@ -61,7 +78,7 @@ export class AppShell extends LitElement {
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.removeEventListener("keydown", this._boundKeydown);
     document.removeEventListener("fullscreenchange", this._boundFsChange);
-    document.removeEventListener("click", this._boundReenterFs, true);
+    document.removeEventListener("click", this._boundAutoFs, true);
     window.removeEventListener("popstate", this._boundPopstate);
   }
 
@@ -73,27 +90,33 @@ export class AppShell extends LitElement {
     void this.handleGoBack();
   }
 
-  /** On touch-primary installed PWAs, if the user accidentally exits
-   *  fullscreen (system gesture / swipe), re-enter on the next tap so the
-   *  viewport-width bug doesn't resurface. */
+  /** Invoke the Fullscreen API on the first user gesture (touch PWA only). */
+  private autoEnterFullscreen() {
+    if (this.isFullscreenApi()) return;
+    this.requestFullscreenApi();
+  }
+
+  /** When fullscreen state changes, on touch PWAs re-enter fullscreen on
+   *  the next tap — unless the user explicitly chose to close the app. */
   private onFullscreenChange() {
     this.requestUpdate();
-    const isTouchPwa =
-      window.matchMedia("(hover: none) and (pointer: coarse)").matches &&
-      (window.matchMedia("(display-mode: fullscreen)").matches ||
-        window.matchMedia("(display-mode: standalone)").matches);
-    if (!isTouchPwa) return;
-
-    if (!this.isFullscreen()) {
-      this._wantsFullscreen = true;
-      document.addEventListener("click", this._boundReenterFs, true);
+    if (!this._isTouchPwa || this._closingApp) return;
+    if (!this.isFullscreenApi()) {
+      document.addEventListener("click", this._boundAutoFs, { capture: true, once: true });
     }
   }
 
-  private reenterFullscreen() {
-    if (!this._wantsFullscreen) return;
-    this._wantsFullscreen = false;
-    document.removeEventListener("click", this._boundReenterFs, true);
+  /** Whether the Fullscreen API is currently active (distinct from the
+   *  manifest "display: fullscreen" mode which hides OS chrome but does
+   *  not engage the API). */
+  private isFullscreenApi(): boolean {
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+    };
+    return !!(document.fullscreenElement ?? doc.webkitFullscreenElement);
+  }
+
+  private requestFullscreenApi() {
     const el = document.documentElement as HTMLElement & {
       webkitRequestFullscreen?: () => Promise<void>;
     };
@@ -102,30 +125,22 @@ export class AppShell extends LitElement {
     requestFS?.()?.catch?.(() => {});
   }
 
-  private isFullscreen(): boolean {
+  private exitFullscreenApi(): Promise<void> | undefined {
     const doc = document as Document & {
-      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void>;
     };
-    return !!(document.fullscreenElement ?? doc.webkitFullscreenElement);
+    const exitFS =
+      document.exitFullscreen?.bind(document) ??
+      doc.webkitExitFullscreen?.bind(document);
+    return exitFS?.()?.catch?.(() => {});
   }
 
   private toggleFullscreen() {
     this.showMenu = false;
-    if (this.isFullscreen()) {
-      const doc = document as Document & {
-        webkitExitFullscreen?: () => Promise<void>;
-      };
-      const exitFS: (() => Promise<void>) | undefined =
-        document.exitFullscreen?.bind(document) ??
-        doc.webkitExitFullscreen?.bind(document);
-      exitFS?.()?.catch?.(() => {});
+    if (this.isFullscreenApi()) {
+      this.exitFullscreenApi();
     } else {
-      const el = document.documentElement as HTMLElement & {
-        webkitRequestFullscreen?: () => Promise<void>;
-      };
-      const requestFS: (() => Promise<void>) | undefined =
-        el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
-      requestFS?.()?.catch?.(() => {});
+      this.requestFullscreenApi();
     }
   }
 
@@ -338,7 +353,7 @@ export class AppShell extends LitElement {
           Import Song from Folder…
         </button>
         <button class="menu-item" role="menuitem" @click=${this.toggleFullscreen}>
-          ${this.isFullscreen() ? "In Window" : "Full Screen"}
+          ${this.isFullscreenApi() ? "In Window" : "Full Screen"}
         </button>
         <hr />
         <button class="menu-item" role="menuitem" @click=${this.onHelp}
@@ -441,14 +456,10 @@ export class AppShell extends LitElement {
 
   private async onClose() {
     this.showMenu = false;
-    if (this.isFullscreen()) {
-      const doc = document as Document & {
-        webkitExitFullscreen?: () => Promise<void>;
-      };
-      const exitFS: (() => Promise<void>) | undefined =
-        document.exitFullscreen?.bind(document) ??
-        doc.webkitExitFullscreen?.bind(document);
-      await exitFS?.()?.catch?.(() => {});
+    this._closingApp = true;
+    document.removeEventListener("click", this._boundAutoFs, true);
+    if (this.isFullscreenApi()) {
+      await this.exitFullscreenApi();
     }
     window.close();
   }
