@@ -69,6 +69,7 @@ describe("AppState", () => {
         breakTimerMinutes: 10,
         patterTimerMinutes: 7,
         playlistPanelWidth: 300,
+        playlistPaths: [],
       });
       expect(state.settings.breakTimerMinutes).toBe(10);
       expect(handler).toHaveBeenCalledOnce();

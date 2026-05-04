@@ -20,7 +20,7 @@ import {
   writeTextFile,
   fileExists,
 } from "./services/file-system-service.js";
-import { loadSongsJson, saveSongsJson, loadAndMergeSongs } from "./services/song-library.js";
+import { loadSongsJson, saveSongsJson, loadAndMergeSongs, scanDirectory } from "./services/song-library.js";
 import {
   WebAudioEngine,
   type AudioEngine,
@@ -196,6 +196,12 @@ export class CallerBuddy {
     await this.loadSettings();
     log.info("activateRoot: settings loaded");
 
+    log.info("activateRoot: restoring playlist…");
+    await this.restorePlaylist(handle);
+    log.info("activateRoot: playlist restored");
+
+    this.listenForPlaylistChanges();
+
     log.info("activateRoot: opening playlist editor tab…");
     await this.state.openEditorTab(handle, handle.name);
     log.info("activateRoot: complete");
@@ -239,6 +245,103 @@ export class CallerBuddy {
   async updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
     this.state.setSettings({ ...this.state.settings, [key]: value });
     await this.saveSettings();
+  }
+
+  // -----------------------------------------------------------------------
+  // Playlist persistence
+  // -----------------------------------------------------------------------
+
+  /** Debounce handle for persisting playlist changes. */
+  private playlistSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private playlistListenerAttached = false;
+
+  /**
+   * Subscribe to PLAYLIST_CHANGED so every add/remove/reorder/clear
+   * persists the current playlist paths into settings.json.
+   */
+  private listenForPlaylistChanges(): void {
+    if (this.playlistListenerAttached) return;
+    this.playlistListenerAttached = true;
+    this.state.addEventListener(StateEvents.PLAYLIST_CHANGED, () => {
+      if (this.playlistSaveTimer) clearTimeout(this.playlistSaveTimer);
+      this.playlistSaveTimer = setTimeout(() => this.persistPlaylistPaths(), 500);
+    });
+  }
+
+  private async persistPlaylistPaths(): Promise<void> {
+    const rootHandle = this.state.rootHandle;
+    if (!rootHandle) return;
+    const paths: string[] = [];
+    for (const song of this.state.playlist) {
+      const dirHandle = song.dirHandle ?? rootHandle;
+      try {
+        const segments = await rootHandle.resolve(dirHandle);
+        if (segments && segments.length > 0) {
+          paths.push(segments.join("/") + "/" + song.musicFile);
+        } else {
+          paths.push(song.musicFile);
+        }
+      } catch {
+        paths.push(song.musicFile);
+      }
+    }
+    this.state.settings = { ...this.state.settings, playlistPaths: paths };
+    await this.saveSettings();
+    log.info(`Playlist persisted: ${paths.length} song(s)`);
+  }
+
+  /**
+   * Rebuild the in-memory playlist from the paths stored in settings.json.
+   * Each path is relative to CallerBuddyRoot (e.g. "Christmas/Song.MP3" or
+   * just "Song.MP3" for root-level songs). Loads songs.json (or scans) from
+   * each referenced subfolder to get full metadata.
+   */
+  private async restorePlaylist(rootHandle: FileSystemDirectoryHandle): Promise<void> {
+    const paths = this.state.settings.playlistPaths;
+    if (paths.length === 0) return;
+
+    // Map from full relative path (lowercase) → Song with dirHandle attached.
+    const songsByPath = new Map<string, Song>();
+    const foldersToLoad = new Set<string>();
+
+    for (const p of paths) {
+      const slashIdx = p.lastIndexOf("/");
+      foldersToLoad.add(slashIdx >= 0 ? p.substring(0, slashIdx) : "");
+    }
+
+    for (const folder of foldersToLoad) {
+      try {
+        const dirHandle = folder
+          ? await resolveSubdir(rootHandle, folder)
+          : rootHandle;
+        let songs = await loadSongsJson(dirHandle);
+        if (songs.length === 0) {
+          songs = await scanDirectory(dirHandle);
+        }
+        for (const s of songs) {
+          const fullPath = folder ? folder + "/" + s.musicFile : s.musicFile;
+          s.dirHandle = dirHandle;
+          songsByPath.set(fullPath.toLowerCase(), s);
+        }
+      } catch (err) {
+        log.warn(`restorePlaylist: could not load folder "${folder}":`, err);
+      }
+    }
+
+    const restored: Song[] = [];
+    for (const p of paths) {
+      const song = songsByPath.get(p.toLowerCase());
+      if (song) {
+        restored.push({ ...song });
+      } else {
+        log.warn(`restorePlaylist: song not found for path "${p}", skipping`);
+      }
+    }
+
+    if (restored.length > 0) {
+      this.state.playlist = restored;
+      log.info(`restorePlaylist: restored ${restored.length} of ${paths.length} song(s)`);
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -698,6 +801,19 @@ interface OnboardingSource {
   type: "zip" | "folder";
   readText: (path: string) => Promise<string>;
   readBinary: (path: string) => Promise<ArrayBuffer>;
+}
+
+/** Walk a slash-separated relative path from a root directory handle. */
+async function resolveSubdir(
+  root: FileSystemDirectoryHandle,
+  relativePath: string,
+): Promise<FileSystemDirectoryHandle> {
+  let dir = root;
+  for (const part of relativePath.split("/")) {
+    if (!part) continue;
+    dir = await dir.getDirectoryHandle(part);
+  }
+  return dir;
 }
 
 /** Recursively list all file paths in a directory, relative to the root. */

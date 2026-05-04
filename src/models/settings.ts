@@ -16,6 +16,8 @@ export interface Settings {
   patterTimerMinutes: number;
   /** Width in px of the playlist panel (resizable). Default 280. */
   playlistPanelWidth: number;
+  /** Relative musicFile paths for the persisted playlist (from CallerBuddyRoot). */
+  playlistPaths: string[];
 }
 
 /** Returns a Settings object populated with default values. */
@@ -24,6 +26,7 @@ export function defaultSettings(): Settings {
     breakTimerMinutes: DEFAULT_BREAK_TIMER_MINUTES,
     patterTimerMinutes: 5,
     playlistPanelWidth: DEFAULT_PLAYLIST_PANEL_WIDTH,
+    playlistPaths: [],
   };
 }
 
@@ -44,9 +47,18 @@ export function normalizeSettings(raw: unknown): Settings {
     return v;
   }
 
+  const rawPaths = obj["playlistPaths"];
+  const playlistPaths: string[] = [];
+  if (Array.isArray(rawPaths)) {
+    for (const p of rawPaths) {
+      if (typeof p === "string" && p) playlistPaths.push(p);
+    }
+  }
+
   return {
     breakTimerMinutes: pickNum("breakTimerMinutes", defaults.breakTimerMinutes, 0, 60),
     patterTimerMinutes: pickNum("patterTimerMinutes", defaults.patterTimerMinutes, 0.5, 15),
     playlistPanelWidth: pickNum("playlistPanelWidth", defaults.playlistPanelWidth, 100, 1000),
+    playlistPaths,
   };
 }
