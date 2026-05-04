@@ -34,12 +34,21 @@ export class AppShell extends LitElement {
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   private _boundFsChange = () => this.requestUpdate();
+  private _boundPopstate = () => this.onPopstate();
 
   connectedCallback() {
     super.connectedCallback();
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.addEventListener("keydown", this._boundKeydown);
     document.addEventListener("fullscreenchange", this._boundFsChange);
+
+    // Trap the Android back button (and browser back) so it doesn't
+    // navigate away from the PWA. We keep a sentinel history entry on
+    // top; when the user presses back the sentinel is popped, we
+    // re-push it immediately, and optionally perform in-app navigation.
+    history.replaceState({ cbSentinel: true }, "");
+    history.pushState({ cbSentinel: true }, "");
+    window.addEventListener("popstate", this._boundPopstate);
   }
 
   disconnectedCallback() {
@@ -47,6 +56,15 @@ export class AppShell extends LitElement {
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.removeEventListener("keydown", this._boundKeydown);
     document.removeEventListener("fullscreenchange", this._boundFsChange);
+    window.removeEventListener("popstate", this._boundPopstate);
+  }
+
+  /** Called when the browser back button (Android nav bar) is pressed. */
+  private onPopstate() {
+    // Re-push the sentinel so the trap stays active for the next press.
+    history.pushState({ cbSentinel: true }, "");
+    // Use in-app tab back navigation if available.
+    void this.handleGoBack();
   }
 
   private isFullscreen(): boolean {
