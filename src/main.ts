@@ -9,20 +9,19 @@ import { callerBuddy } from "./caller-buddy.js";
 import { log } from "./services/logger.js";
 import "./components/app-shell.js";
 
-// ── Android standalone-PWA viewport fix ──────────────────────────────
+// ── Android installed-PWA viewport fix (safety net) ──────────────────
 // On some Android devices (Samsung One UI in particular), the installed PWA
-// uses the landscape viewport width even in portrait orientation.  This causes
-// the layout to render at ~892 CSS-px and then get scaled down to ~412 CSS-px,
-// making everything appear roughly half-sized.
-//
-// The workaround: when running in standalone mode, detect a width mismatch and
-// force the viewport meta tag to recalculate by briefly setting an explicit
-// pixel width and then restoring `device-width`.
+// in non-fullscreen mode uses the landscape viewport width even in portrait.
+// The primary fix is `"display": "fullscreen"` in the manifest, which
+// bypasses the bug entirely.  This workaround is kept as a safety net for
+// edge cases where the user exits fullscreen or the manifest mode is
+// downgraded by the browser.
 function applyViewportFix() {
-  const isStandalone =
+  const isInstalledPwa =
     window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  if (!isStandalone) return;
+  if (!isInstalledPwa) return;
 
   const viewport = document.querySelector<HTMLMetaElement>(
     'meta[name="viewport"]',
@@ -68,7 +67,8 @@ log.info(
   `[viewport-diag] innerWidth=${window.innerWidth} innerHeight=${window.innerHeight} ` +
     `screen=${screen.width}x${screen.height} dpr=${devicePixelRatio} ` +
     `orientation=${screen.orientation?.type ?? "unknown"} ` +
-    `standalone=${window.matchMedia("(display-mode: standalone)").matches}`,
+    `standalone=${window.matchMedia("(display-mode: standalone)").matches} ` +
+    `fullscreen=${window.matchMedia("(display-mode: fullscreen)").matches}`,
 );
 
 // Initialize the CallerBuddy application

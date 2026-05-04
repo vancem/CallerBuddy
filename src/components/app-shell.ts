@@ -33,8 +33,13 @@ export class AppShell extends LitElement {
   @state() private showMenu = false;
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
-  private _boundFsChange = () => this.requestUpdate();
+  private _boundFsChange = () => this.onFullscreenChange();
   private _boundPopstate = () => this.onPopstate();
+
+  /** When true, the next user click/tap will re-request fullscreen. Set when
+   *  fullscreen is exited unexpectedly on a touch-primary installed PWA. */
+  private _wantsFullscreen = false;
+  private _boundReenterFs = () => this.reenterFullscreen();
 
   connectedCallback() {
     super.connectedCallback();
@@ -56,6 +61,7 @@ export class AppShell extends LitElement {
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.removeEventListener("keydown", this._boundKeydown);
     document.removeEventListener("fullscreenchange", this._boundFsChange);
+    document.removeEventListener("click", this._boundReenterFs, true);
     window.removeEventListener("popstate", this._boundPopstate);
   }
 
@@ -65,6 +71,35 @@ export class AppShell extends LitElement {
     history.pushState({ cbSentinel: true }, "");
     // Use in-app tab back navigation if available.
     void this.handleGoBack();
+  }
+
+  /** On touch-primary installed PWAs, if the user accidentally exits
+   *  fullscreen (system gesture / swipe), re-enter on the next tap so the
+   *  viewport-width bug doesn't resurface. */
+  private onFullscreenChange() {
+    this.requestUpdate();
+    const isTouchPwa =
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches &&
+      (window.matchMedia("(display-mode: fullscreen)").matches ||
+        window.matchMedia("(display-mode: standalone)").matches);
+    if (!isTouchPwa) return;
+
+    if (!this.isFullscreen()) {
+      this._wantsFullscreen = true;
+      document.addEventListener("click", this._boundReenterFs, true);
+    }
+  }
+
+  private reenterFullscreen() {
+    if (!this._wantsFullscreen) return;
+    this._wantsFullscreen = false;
+    document.removeEventListener("click", this._boundReenterFs, true);
+    const el = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>;
+    };
+    const requestFS =
+      el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
+    requestFS?.()?.catch?.(() => {});
   }
 
   private isFullscreen(): boolean {
