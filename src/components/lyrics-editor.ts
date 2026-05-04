@@ -208,7 +208,7 @@ export class LyricsEditor extends LitElement {
       color: var(--cb-fg);
       cursor: pointer;
       font-size: 0.85rem;
-      min-width: 32px;
+      min-width: 2rem;
       text-align: center;
     }
 
@@ -252,7 +252,7 @@ export class LyricsEditor extends LitElement {
       cursor: text;
       padding: 16px;
       box-sizing: border-box;
-      min-height: 200px;
+      min-height: 12.5rem;
     }
 
     .lyrics-editor:focus {

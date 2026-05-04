@@ -1107,7 +1107,7 @@ export class PlaylistEditor extends LitElement {
 
     .pl-type {
       font-size: 0.9rem;
-      width: 18px;
+      width: 1.125rem;
       text-align: center;
       flex-shrink: 0;
     }
@@ -1224,8 +1224,8 @@ export class PlaylistEditor extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
+      width: 1.75rem;
+      height: 1.75rem;
       padding: 0;
       border: 1px solid var(--cb-border);
       border-radius: 6px;

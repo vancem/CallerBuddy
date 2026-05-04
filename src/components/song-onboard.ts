@@ -521,8 +521,8 @@ export class SongOnboard extends LitElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 18px;
-      height: 18px;
+      width: 1.125rem;
+      height: 1.125rem;
       font-size: 0.7rem;
       font-weight: 700;
       border-radius: 50%;

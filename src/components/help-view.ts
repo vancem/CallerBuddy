@@ -90,7 +90,7 @@ export class HelpView extends LitElement {
     /* -- Table of contents ------------------------------------------------ */
 
     .toc {
-      width: 220px;
+      width: 13.75rem;
       flex-shrink: 0;
       padding: 16px 12px;
       border-right: 1px solid var(--cb-border);

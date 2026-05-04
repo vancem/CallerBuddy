@@ -101,3 +101,16 @@ body {
     env(safe-area-inset-bottom)
     env(safe-area-inset-left);
 }
+
+/* ── Touch-device scaling ──────────────────────────────────────────────
+ * On touch-primary devices (phones / tablets) the default 16px base is
+ * too small for comfortable reading and reliable tap targets.  Bumping
+ * the root font-size by 20% scales every rem-based dimension — text,
+ * padding, button sizes — in both portrait and landscape orientations,
+ * while leaving desktop completely unchanged.
+ * ───────────────────────────────────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  :root {
+    font-size: 120%;
+  }
+}

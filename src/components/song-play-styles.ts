@@ -96,11 +96,11 @@ export const songPlayStyles = css`
     }
 
     .loop-box label {
-      width: 80px;
+      width: 5rem;
     }
 
     .loop-value {
-      width: 70px;
+      width: 4.375rem;
       font-variant-numeric: tabular-nums;
       font-family: monospace;
     }
@@ -168,7 +168,7 @@ export const songPlayStyles = css`
     }
 
     .patter-row input {
-      width: 60px;
+      width: 3.75rem;
       padding: 4px 8px;
       border: 1px solid var(--cb-border);
       border-radius: 4px;
@@ -201,8 +201,8 @@ export const songPlayStyles = css`
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 18px;
-      height: 18px;
+      width: 1.125rem;
+      height: 1.125rem;
       font-size: 0.7rem;
       font-weight: 700;
       border-radius: 50%;
@@ -272,8 +272,8 @@ export const songPlayStyles = css`
       border: 1px solid var(--cb-border);
       color: var(--cb-fg);
       font-size: 1.1rem;
-      width: 36px;
-      height: 36px;
+      width: 2.25rem;
+      height: 2.25rem;
       border-radius: 6px;
       cursor: pointer;
       display: flex;
@@ -286,8 +286,8 @@ export const songPlayStyles = css`
     }
 
     .ctrl-btn.play-btn {
-      width: 44px;
-      height: 44px;
+      width: 2.75rem;
+      height: 2.75rem;
       font-size: 1.3rem;
       background: var(--cb-accent);
       color: var(--cb-fg-on-accent);
@@ -313,13 +313,13 @@ export const songPlayStyles = css`
     }
 
     .adj-label {
-      width: 60px;
+      width: 3.75rem;
       font-size: 0.85rem;
       color: var(--cb-fg-secondary);
     }
 
     .adj-value {
-      width: 40px;
+      width: 2.5rem;
       text-align: center;
       font-variant-numeric: tabular-nums;
       font-weight: 500;
@@ -400,7 +400,7 @@ export const songPlayStyles = css`
     }
 
     .time-label {
-      width: 60px;
+      width: 3.75rem;
       font-size: 0.8rem;
       color: var(--cb-fg-secondary);
     }
@@ -426,7 +426,7 @@ export const songPlayStyles = css`
 
     .slider-container {
       position: relative;
-      height: 28px;
+      height: 1.75rem;
     }
 
     .slider-track {

@@ -585,13 +585,13 @@ export class PlaylistPlay extends LitElement {
     }
 
     .pl-check input {
-      width: 16px;
-      height: 16px;
+      width: 1rem;
+      height: 1rem;
       cursor: pointer;
     }
 
     .pl-type {
-      width: 16px;
+      width: 1rem;
       text-align: center;
       flex-shrink: 0;
     }
@@ -746,7 +746,7 @@ export class PlaylistPlay extends LitElement {
     }
 
     .break-input-row input {
-      width: 60px;
+      width: 3.75rem;
       padding: 4px 8px;
       border: 1px solid var(--cb-border);
       border-radius: 4px;
@@ -762,7 +762,7 @@ export class PlaylistPlay extends LitElement {
     }
 
     .break-section .time-label {
-      width: 60px;
+      width: 3.75rem;
       font-size: 0.9rem;
     }
 

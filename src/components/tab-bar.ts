@@ -76,7 +76,7 @@ export class CbTabBar extends LitElement {
       background: var(--cb-tab-bar-bg);
       border-bottom: 1px solid var(--cb-border);
       overflow-x: auto;
-      min-height: 36px;
+      min-height: 2.25rem;
     }
 
     .tab {
@@ -104,7 +104,7 @@ export class CbTabBar extends LitElement {
     }
 
     .tab-title {
-      max-width: 160px;
+      max-width: 10rem;
       overflow: hidden;
       text-overflow: ellipsis;
     }
