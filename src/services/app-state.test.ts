@@ -12,6 +12,7 @@ function makeSong(musicFile: string): Song {
     rank: 50,
     orderAdded: 15,
     lastUsed: "",
+    playWeight: 0,
     loopStartTime: 0,
     loopEndTime: 0,
     volume: 80,

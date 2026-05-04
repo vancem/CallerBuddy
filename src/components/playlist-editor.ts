@@ -33,8 +33,16 @@ import type { Song } from "../models/song.js";
 import { loadAndMergeSongs } from "../services/song-library.js";
 import { listDirectory, type DirEntry } from "../services/file-system-service.js";
 import { log } from "../services/logger.js";
+import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js";
 
-type SortField = "title" | "label" | "categories" | "rank" | "orderAdded";
+type SortField =
+  | "title"
+  | "label"
+  | "categories"
+  | "rank"
+  | "orderAdded"
+  | "lastUsedDays"
+  | "playedDisplay";
 type SortDir = "asc" | "desc";
 
 /** Inline spreadsheet-style edit for Categories / Rank table cells. */
@@ -113,8 +121,8 @@ export class PlaylistEditor extends LitElement {
     super.connectedCallback();
     this.resizer.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
-    callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
-    callerBuddy.state.addEventListener(StateEvents.SONG_UPDATED, this.refresh);
+    callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
+    callerBuddy.state.addEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     document.addEventListener("keydown", this._boundKeydown);
   }
@@ -122,8 +130,8 @@ export class PlaylistEditor extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this._boundKeydown);
-    callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
-    callerBuddy.state.removeEventListener(StateEvents.SONG_UPDATED, this.refresh);
+    callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
+    callerBuddy.state.removeEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
     callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
   }
 
@@ -165,9 +173,25 @@ export class PlaylistEditor extends LitElement {
     callerBuddy.state.closeTab(this.tabId);
   }
 
-  private refresh = () => {
+  private onPlaylistChanged = () => {
     this.requestUpdate();
   };
+
+  /**
+   * Persisted song fields (e.g. lastUsed, playWeight) are written via updateSong;
+   * reload this folder’s songs.json + scan so the table is not stuck on stale in-memory objects.
+   */
+  private onSongUpdated = () => {
+    void this.reloadCurrentFolderFromDisk();
+  };
+
+  private async reloadCurrentFolderFromDisk() {
+    if (!this.currentHandle) {
+      this.requestUpdate();
+      return;
+    }
+    await this.loadCurrentFolder();
+  }
 
   // -- Folder loading -------------------------------------------------------
 
@@ -453,6 +477,20 @@ export class PlaylistEditor extends LitElement {
                       >
                         Rank ${this.sortIndicator("rank")}
                       </th>
+                      <th
+                        class="sortable last-col-head"
+                        title="Days since this song was last counted as played (practice sessions do not count)."
+                        @click=${() => this.toggleSort("lastUsedDays")}
+                      >
+                        Last ${this.sortIndicator("lastUsedDays")}
+                      </th>
+                      <th
+                        class="sortable played-col-head"
+                        title="Weighted average of how often the song was played recently. Under 1 means OK to use again without being too repetitive."
+                        @click=${() => this.toggleSort("playedDisplay")}
+                      >
+                        Played ${this.sortIndicator("playedDisplay")}
+                      </th>
                       <th title="Singing call (has lyrics) or patter (no lyrics file).">Type</th>
                     </tr>
                   </thead>
@@ -486,6 +524,18 @@ export class PlaylistEditor extends LitElement {
                           <td class="label-cell">${song.label}</td>
                           ${this.renderCategoriesCell(song)}
                           ${this.renderRankCell(song)}
+                          <td
+                            class="last-cell"
+                            title="Days since this song was last counted as played (practice sessions do not count)."
+                          >
+                            ${this.formatLastUsedDays(song)}
+                          </td>
+                          <td
+                            class="played-cell"
+                            title="Weighted average of how often the song was played recently. Under 1 means OK to use again without being too repetitive."
+                          >
+                            ${this.formatPlayedDisplay(song)}
+                          </td>
                           <td class="type-cell">
                             <span
                               class="${isSingingCall(song) ? "singing" : "patter"}"
@@ -552,7 +602,7 @@ export class PlaylistEditor extends LitElement {
           title="Click to open in new tab, right-click for options"
         >
           <td class="folder-icon-cell" colspan="2">📁</td>
-          <td colspan="5" class="folder-name">${entry.name}</td>
+          <td colspan="7" class="folder-name">${entry.name}</td>
         </tr>
       `,
     );
@@ -644,6 +694,19 @@ export class PlaylistEditor extends LitElement {
 
   private songKey(song: Song): string {
     return song.musicFile.toLowerCase();
+  }
+
+  private formatLastUsedDays(song: Song): string {
+    if (!song.lastUsed.trim()) return "—";
+    const days = daysSinceLastUsedMs(song.lastUsed, Date.now());
+    const floored = Number.isFinite(days) ? Math.floor(days) : 0;
+    return String(floored);
+  }
+
+  private formatPlayedDisplay(song: Song): string {
+    const nowMs = Date.now();
+    const v = displayPlayWeight(song.playWeight, song.lastUsed, nowMs);
+    return (Number.isFinite(v) ? v : 0).toFixed(2);
   }
 
   private isCellEditing(song: Song, field: "categories" | "rank"): boolean {
@@ -842,16 +905,36 @@ export class PlaylistEditor extends LitElement {
     }
 
     const dir = this.sortDir === "asc" ? 1 : -1;
+    const nowMs = Date.now();
     songs.sort((a, b) => {
-      const aVal = a[this.sortField];
-      const bVal = b[this.sortField];
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        return dir * aVal.localeCompare(bVal, undefined, { sensitivity: "base" });
+      let cmp = 0;
+      switch (this.sortField) {
+        case "lastUsedDays": {
+          const aKey = a.lastUsed.trim()
+            ? daysSinceLastUsedMs(a.lastUsed, nowMs)
+            : Number.POSITIVE_INFINITY;
+          const bKey = b.lastUsed.trim()
+            ? daysSinceLastUsedMs(b.lastUsed, nowMs)
+            : Number.POSITIVE_INFINITY;
+          cmp = aKey - bKey;
+          break;
+        }
+        case "playedDisplay": {
+          const safe = (s: Song) => displayPlayWeight(s.playWeight, s.lastUsed, nowMs);
+          cmp = safe(a) - safe(b);
+          break;
+        }
+        default: {
+          const aVal = a[this.sortField as keyof Song];
+          const bVal = b[this.sortField as keyof Song];
+          if (typeof aVal === "string" && typeof bVal === "string") {
+            cmp = aVal.localeCompare(bVal, undefined, { sensitivity: "base" });
+          } else if (typeof aVal === "number" && typeof bVal === "number") {
+            cmp = aVal - bVal;
+          }
+        }
       }
-      if (typeof aVal === "number" && typeof bVal === "number") {
-        return dir * (aVal - bVal);
-      }
-      return 0;
+      return dir * cmp;
     });
 
     return songs;
@@ -1320,6 +1403,41 @@ export class PlaylistEditor extends LitElement {
       min-width: 6ch;
       max-width: 6ch;
       box-sizing: border-box;
+    }
+
+    /* Play history: compact numeric columns (up to 3-digit day count; played as ##0.00) */
+    .song-table td.last-cell {
+      text-align: right;
+      /* Target ~3 digit integers; min fits en dash when never played */
+      width: 3ch;
+      min-width: 3ch;
+      padding-left: 4px;
+      padding-right: 4px;
+      font-variant-numeric: tabular-nums;
+      box-sizing: border-box;
+    }
+
+    .song-table th.last-col-head {
+      text-align: right;
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+
+    .song-table td.played-cell {
+      text-align: right;
+      /* Up to ###.## (two decimals) */
+      width: 6ch;
+      min-width: 6ch;
+      padding-left: 4px;
+      padding-right: 4px;
+      font-variant-numeric: tabular-nums;
+      box-sizing: border-box;
+    }
+
+    .song-table th.played-col-head {
+      text-align: right;
+      padding-left: 4px;
+      padding-right: 4px;
     }
 
     .categories-cell {

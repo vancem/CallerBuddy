@@ -26,8 +26,13 @@ export interface Song {
    * New entries use {@link nextOrderAdded} so each addition increments (per folder list).
    */
   orderAdded: number;
-  /** ISO timestamp of last time played. Empty string if never played */
+  /** ISO timestamp of last time the song counted as played (see play history rules). Empty if never */
   lastUsed: string;
+  /**
+   * Internal weight for play-frequency decay (28-day half-life). Persisted;
+   * see play-history helpers for update/display semantics. Default 0.
+   */
+  playWeight: number;
   /** Time in seconds from start where looping jumps to. Default 0 */
   loopStartTime: number;
   /** Time in seconds where song loops back to loopStartTime. 0 = no looping */
@@ -65,7 +70,15 @@ function pickStr(o: Record<string, unknown>, key: string, fallback: string): str
 
 function pickNum(o: Record<string, unknown>, key: string, fallback: number): number {
   const v = o[key];
-  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (t !== "") {
+      const n = Number(t);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return fallback;
 }
 
 /** Overwritten when a new song is merged from a folder scan (see song-library `mergeSongs`). */
@@ -100,6 +113,7 @@ export function normalizeSongFromJson(raw: unknown): Song | null {
     rank: pickNum(o, "rank", base.rank),
     orderAdded: pickNum(o, "orderAdded", PLACEHOLDER_ORDER_ADDED),
     lastUsed: pickStr(o, "lastUsed", base.lastUsed),
+    playWeight: pickNum(o, "playWeight", base.playWeight),
     loopStartTime: pickNum(o, "loopStartTime", base.loopStartTime),
     loopEndTime: pickNum(o, "loopEndTime", base.loopEndTime),
     volume: pickNum(o, "volume", base.volume),
@@ -219,6 +233,7 @@ export function createSongFromFile(
     rank: 50,
     orderAdded: PLACEHOLDER_ORDER_ADDED,
     lastUsed: "",
+    playWeight: 0,
     loopStartTime: 0,
     loopEndTime: 0,
     volume: 80,

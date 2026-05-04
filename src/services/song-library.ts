@@ -80,26 +80,27 @@ export async function loadSongsJson(
     log.info("No songs.json found; starting fresh.");
     return [];
   }
+  const text = await readTextFile(dirHandle, SONGS_JSON);
+  let data: unknown;
   try {
-    const text = await readTextFile(dirHandle, SONGS_JSON);
-    const data = JSON.parse(text) as unknown;
-    assert(Array.isArray(data), "songs.json must contain an array");
-    const songs: Song[] = [];
-    let skipped = 0;
-    for (const raw of data) {
-      const song = normalizeSongFromJson(raw);
-      if (song) songs.push(song);
-      else skipped++;
-    }
-    if (skipped > 0) {
-      log.warn(`loadSongsJson: skipped ${skipped} invalid entr${skipped === 1 ? "y" : "ies"}`);
-    }
-    log.info(`Loaded ${songs.length} songs from songs.json`);
-    return songs;
+    data = JSON.parse(text) as unknown;
   } catch (err) {
-    log.error("Failed to load songs.json:", err);
-    return [];
+    log.error("Failed to parse songs.json:", err);
+    throw new Error("songs.json is not valid JSON");
   }
+  assert(Array.isArray(data), "songs.json must contain an array");
+  const songs: Song[] = [];
+  let skipped = 0;
+  for (const raw of data) {
+    const song = normalizeSongFromJson(raw);
+    if (song) songs.push(song);
+    else skipped++;
+  }
+  if (skipped > 0) {
+    log.warn(`loadSongsJson: skipped ${skipped} invalid entr${skipped === 1 ? "y" : "ies"}`);
+  }
+  log.info(`Loaded ${songs.length} songs from songs.json`);
+  return songs;
 }
 
 /** Save songs array to songs.json in the directory. Strips runtime-only fields. */

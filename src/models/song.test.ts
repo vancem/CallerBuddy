@@ -125,6 +125,7 @@ describe("songForPersistence", () => {
       rank: 30,
       orderAdded: 3,
       lastUsed: "",
+      playWeight: 0,
       loopStartTime: 0,
       loopEndTime: 0,
       volume: 80,
@@ -184,6 +185,26 @@ describe("normalizeSongFromJson", () => {
   it("returns null without musicFile", () => {
     expect(normalizeSongFromJson({ title: "x" })).toBeNull();
   });
+
+  it("reads playWeight from JSON", () => {
+    const song = normalizeSongFromJson({
+      musicFile: "a.mp3",
+      playWeight: 1.5,
+    });
+    expect(song!.playWeight).toBe(1.5);
+  });
+
+  it("coerces string numbers for legacy or hand-edited JSON", () => {
+    const song = normalizeSongFromJson({
+      musicFile: "a.mp3",
+      rank: "30",
+      playWeight: "1.25",
+      loopStartTime: "0",
+    });
+    expect(song!.rank).toBe(30);
+    expect(song!.playWeight).toBe(1.25);
+    expect(song!.loopStartTime).toBe(0);
+  });
 });
 
 describe("createSongFromFile", () => {
@@ -204,6 +225,7 @@ describe("createSongFromFile", () => {
     expect(song.loopStartTime).toBe(0);
     expect(song.loopEndTime).toBe(0);
     expect(song.lastUsed).toBe("");
+    expect(song.playWeight).toBe(0);
     expect(song.lyricsFile).toBe("");
   });
 

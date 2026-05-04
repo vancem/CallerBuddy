@@ -36,6 +36,7 @@ import {
   rewriteBodySelectors,
   wrapLyricsHtml,
 } from "../utils/lyrics-html.js";
+import { tempoRatioFromSong } from "../utils/play-history.js";
 import "./lyrics-editor.js";
 
 /**
@@ -117,8 +118,7 @@ export class SongPlay extends LitElement {
   private getTempoRatio(): number {
     const song = this.song;
     if (!song) return 1;
-    const ref = song.originalTempo > 0 ? song.originalTempo : 128;
-    return Math.max(0.5, Math.min(2, (ref + song.deltaTempo) / ref));
+    return tempoRatioFromSong(song);
   }
 
   /** Playback duration in seconds (source duration / tempo ratio). */
@@ -143,6 +143,7 @@ export class SongPlay extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    callerBuddy.beginSongPlaySession();
     callerBuddy.setSongPlayUnsavedGuard(() => this.runSongPlayUnsavedGuard());
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
     this.updateClock();
@@ -155,13 +156,15 @@ export class SongPlay extends LitElement {
       this.currentTime = t;
       this.duration = callerBuddy.audio.getDuration();
       this.playing = callerBuddy.audio.isPlaying();
+      callerBuddy.tickSongPlaySession(callerBuddy.audio.isPlaying());
     });
 
     callerBuddy.audio.onEnded(() => {
       this.playing = false;
       this.stopPatterTimer();
+      callerBuddy.markSongPlayNaturalEnd();
       // Auto-close: return to playlist play
-      callerBuddy.closeSongPlay();
+      void callerBuddy.closeSongPlay();
     });
 
     // Load lyrics and song state
@@ -436,8 +439,17 @@ export class SongPlay extends LitElement {
   private renderPlayExtrasRow() {
     const song = this.song;
     if (!song) return nothing;
+    const practice = callerBuddy.getPracticeMode();
     return html`
       <div class="play-extras-row">
+        <button
+          type="button"
+          class="secondary practice-btn"
+          title="When practice is on, the song is not counted in play history (last used / how often played)."
+          @click=${this.onTogglePractice}
+        >
+          ${practice ? "Stop practice" : "Start practice"}
+        </button>
         ${this.renderEditLyricsButton()}
         <button
           class="secondary close-play-btn"
@@ -448,6 +460,11 @@ export class SongPlay extends LitElement {
         </button>
       </div>
     `;
+  }
+
+  private onTogglePractice() {
+    callerBuddy.setPracticeMode(!callerBuddy.getPracticeMode());
+    this.requestUpdate();
   }
 
   private renderEditLyricsButton() {

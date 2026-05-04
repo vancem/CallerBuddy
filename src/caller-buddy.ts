@@ -28,6 +28,12 @@ import {
 import { detectBPM } from "./services/bpm-detector.js";
 import { defaultSettings, normalizeSettings, type Settings } from "./models/settings.js";
 import { type Song, nextOrderAdded } from "./models/song.js";
+import {
+  daysSinceLastUsedMs,
+  nextPlayWeight,
+  qualifyingPlayWallSeconds,
+  tempoRatioFromSong,
+} from "./utils/play-history.js";
 import { log } from "./services/logger.js";
 import JSZip from "jszip";
 import {
@@ -54,6 +60,62 @@ export class CallerBuddy {
    * When true, {@link finalizeSongPlayClose} also closes the Now Playing tab.
    */
   private closeNowPlayingWhenSongPlayCloses = false;
+
+  /**
+   * Directory handle used for the last successful {@link loadSongAudio}; used to
+   * persist play history so we write to the same folder the audio came from
+   * even if `song.dirHandle` was lost in transit (e.g. playlist references).
+   */
+  private lastLoadedSongDirHandle: FileSystemDirectoryHandle | null = null;
+
+  /**
+   * When true, closing the player does not update lastUsed / playWeight.
+   * App-wide, not persisted across reloads.
+   */
+  private practiceMode = false;
+
+  private songPlaySession: {
+    accumulatedPlayingWallSec: number;
+    naturalEnd: boolean;
+    lastPlayingClockMs: number;
+  } | null = null;
+
+  getPracticeMode(): boolean {
+    return this.practiceMode;
+  }
+
+  setPracticeMode(value: boolean): void {
+    this.practiceMode = value;
+  }
+
+  /** Called when song-play mounts: fresh session for wall-clock qualification. */
+  beginSongPlaySession(): void {
+    this.songPlaySession = {
+      accumulatedPlayingWallSec: 0,
+      naturalEnd: false,
+      lastPlayingClockMs: 0,
+    };
+  }
+
+  /** Wall time while playing (excludes pauses); drive from audio timeupdate tick. */
+  tickSongPlaySession(isPlaying: boolean): void {
+    const s = this.songPlaySession;
+    if (!s) return;
+    const now = performance.now();
+    if (isPlaying) {
+      if (s.lastPlayingClockMs > 0) {
+        s.accumulatedPlayingWallSec += (now - s.lastPlayingClockMs) / 1000;
+      }
+      s.lastPlayingClockMs = now;
+    } else {
+      s.lastPlayingClockMs = 0;
+    }
+  }
+
+  /** Natural end of the file (not loop repeat): counts as a qualifying play. */
+  markSongPlayNaturalEnd(): void {
+    if (this.songPlaySession) this.songPlaySession.naturalEnd = true;
+  }
 
   // -----------------------------------------------------------------------
   // Initialization
@@ -185,12 +247,22 @@ export class CallerBuddy {
 
   /**
    * Update a song's metadata and persist to songs.json in the song's folder.
-   * Uses song.dirHandle to write to the correct folder's songs.json.
-   * Falls back to rootHandle if dirHandle is not set.
+   * Uses `opts.dirHandle` if provided, else song.dirHandle, else rootHandle.
    */
-  async updateSong(song: Song): Promise<void> {
-    const handle = song.dirHandle ?? this.state.rootHandle;
-    if (!handle) return;
+  async updateSong(
+    song: Song,
+    opts?: { dirHandle?: FileSystemDirectoryHandle },
+  ): Promise<void> {
+    const handle = opts?.dirHandle ?? song.dirHandle ?? this.state.rootHandle;
+    if (!handle) {
+      log.warn(`updateSong: no directory handle for "${song.musicFile}"; skipped persist`);
+      return;
+    }
+    if (!song.dirHandle && !opts?.dirHandle && handle === this.state.rootHandle) {
+      log.debug(
+        `updateSong: using CallerBuddy root for "${song.musicFile}" (song.dirHandle unset)`,
+      );
+    }
 
     const key = song.musicFile.toLowerCase();
     try {
@@ -205,11 +277,10 @@ export class CallerBuddy {
         folderSongs.push(song);
       }
       await saveSongsJson(handle, folderSongs);
+      this.state.emit(StateEvents.SONG_UPDATED);
     } catch (err) {
       log.warn("Could not persist song update:", err);
     }
-
-    this.state.emit(StateEvents.SONG_UPDATED);
   }
 
   /** Read the lyrics file for a song. Returns the HTML/MD text or empty string. */
@@ -246,13 +317,22 @@ export class CallerBuddy {
   /** Load and decode the audio data for a song, prepare the audio engine. */
   async loadSongAudio(song: Song): Promise<void> {
     const handle = song.dirHandle ?? this.state.rootHandle;
-    if (!handle) return;
-    const data = await readBinaryFile(handle, song.musicFile);
-    await this.audio.loadAudio(data);
-    this.audio.setVolume(song.volume);
-    this.audio.setLoopPoints(song.loopStartTime, song.loopEndTime);
-    this.audio.setPitch(song.pitch);
-    this.audio.setTempo(song.deltaTempo, song.originalTempo);
+    if (!handle) {
+      this.lastLoadedSongDirHandle = null;
+      return;
+    }
+    this.lastLoadedSongDirHandle = handle;
+    try {
+      const data = await readBinaryFile(handle, song.musicFile);
+      await this.audio.loadAudio(data);
+      this.audio.setVolume(song.volume);
+      this.audio.setLoopPoints(song.loopStartTime, song.loopEndTime);
+      this.audio.setPitch(song.pitch);
+      this.audio.setTempo(song.deltaTempo, song.originalTempo);
+    } catch (err) {
+      this.lastLoadedSongDirHandle = null;
+      throw err;
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -381,25 +461,48 @@ export class CallerBuddy {
   }
 
   /**
-   * Tear down song play (stop audio, persist lastUsed, remove tab, clear current song).
+   * Tear down song play (stop audio, optionally persist play history, remove tab, clear current song).
    * Idempotent: no-op if there is no song play tab and no current song.
    */
   async finalizeSongPlayClose(): Promise<void> {
     const tab = this.state.tabs.find((t) => t.type === TabType.SongPlay);
     const song = this.state.currentSong;
-    if (!tab && !song) return;
+    if (!tab && !song) {
+      this.lastLoadedSongDirHandle = null;
+      return;
+    }
 
     const alsoCloseNowPlaying = this.closeNowPlayingWhenSongPlayCloses;
 
-    this.audio.stop();
-    if (song) {
-      const updated = { ...song, lastUsed: new Date().toISOString() };
-      await this.updateSong(updated);
+    const persistDirHandle = this.lastLoadedSongDirHandle;
+    const session = this.songPlaySession;
+    this.songPlaySession = null;
+
+    if (song && session && !this.practiceMode) {
+      const duration = this.audio.getDuration();
+      const ratio = tempoRatioFromSong(song);
+      const threshold = qualifyingPlayWallSeconds(duration, ratio);
+      const qualifies =
+        session.naturalEnd ||
+        (Number.isFinite(threshold) && session.accumulatedPlayingWallSec >= threshold);
+      if (qualifies) {
+        const nowIso = new Date().toISOString();
+        const nowMs = Date.now();
+        const deltaDays = daysSinceLastUsedMs(song.lastUsed, nowMs);
+        const wNew = nextPlayWeight(song.playWeight, deltaDays);
+        const updated = { ...song, lastUsed: nowIso, playWeight: wNew };
+        await this.updateSong(updated, {
+          dirHandle: persistDirHandle ?? undefined,
+        });
+      }
     }
+
+    this.lastLoadedSongDirHandle = null;
+    this.audio.stop();
+    this.state.setCurrentSong(null);
     if (tab) {
       this.state.closeTab(tab.id);
     }
-    this.state.setCurrentSong(null);
 
     if (alsoCloseNowPlaying) {
       this.closeNowPlayingWhenSongPlayCloses = false;

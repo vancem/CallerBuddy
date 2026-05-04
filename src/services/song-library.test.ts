@@ -29,6 +29,7 @@ function makeSong(overrides: Partial<Song> = {}): Song {
     rank: 50,
     orderAdded: 15,
     lastUsed: "",
+    playWeight: 0,
     loopStartTime: 0,
     loopEndTime: 0,
     volume: 80,
@@ -215,12 +216,11 @@ describe("loadSongsJson", () => {
     expect(songs[0].rank).toBe(7);
   });
 
-  it("returns [] on parse error", async () => {
+  it("throws when file exists but JSON is invalid", async () => {
     vi.mocked(fileExists).mockResolvedValue(true);
     vi.mocked(readTextFile).mockResolvedValue("not json");
 
-    const songs = await loadSongsJson(fakeDirHandle);
-    expect(songs).toEqual([]);
+    await expect(loadSongsJson(fakeDirHandle)).rejects.toThrow(/valid JSON/);
   });
 });
 
