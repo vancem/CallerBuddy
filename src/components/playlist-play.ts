@@ -167,8 +167,7 @@ export class PlaylistPlay extends LitElement {
   private getSelectedIndex(): number {
     if (this.selectedIndex !== null) return this.selectedIndex;
     const playlist = callerBuddy.state.playlist;
-    const played = callerBuddy.state.getPlayedSongPaths();
-    const i = playlist.findIndex((s) => !played.has(s.musicFile));
+    const i = playlist.findIndex((s) => !callerBuddy.state.isPlaylistEntryPlayed(s));
     return i >= 0 ? i : -1; // -1 = all played
   }
 
@@ -177,7 +176,6 @@ export class PlaylistPlay extends LitElement {
     const isPlayingSong = callerBuddy.state.currentSong !== null;
     const isInactive = isPlayingSong || this.isStartingPlayback;
     const sel = this.getSelectedIndex();
-    const playedPaths = callerBuddy.state.getPlayedSongPaths();
 
     return html`
       <div class="play-view ${isInactive ? "inactive" : ""}">
@@ -194,7 +192,7 @@ export class PlaylistPlay extends LitElement {
                   @drop=${this.reorder.onPlaylistDrop}
                 >
                   ${playlist.map((song, i) => {
-                    const played = playedPaths.has(song.musicFile);
+                    const played = callerBuddy.state.isPlaylistEntryPlayed(song);
                     const r = this.reorder;
                     return html`
                       <li
@@ -216,7 +214,7 @@ export class PlaylistPlay extends LitElement {
                             .checked=${played}
                             title=${played ? "Mark as unplayed" : "Mark as played"}
                             @change=${() =>
-                              callerBuddy.state.setSongPlayed(song.musicFile, !played)}
+                              callerBuddy.state.setSongPlayed(song, !played)}
                           />
                         </label>
                         <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
@@ -359,7 +357,7 @@ export class PlaylistPlay extends LitElement {
     try {
       this.stopBreakTimer();
       const song = playlist[idx];
-      callerBuddy.state.markSongPlayed(song.musicFile);
+      callerBuddy.state.markSongPlayed(song);
       this.selectedIndex = null; // reset to auto-select next unplayed
       await callerBuddy.openSongPlay(song);
     } finally {

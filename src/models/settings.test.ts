@@ -3,6 +3,7 @@ import {
   defaultSettings,
   DEFAULT_BREAK_TIMER_MINUTES,
   DEFAULT_PLAYLIST_PANEL_WIDTH,
+  normalizeSettings,
 } from "./settings.js";
 
 describe("defaultSettings", () => {
@@ -11,6 +12,8 @@ describe("defaultSettings", () => {
     expect(s.breakTimerMinutes).toBe(DEFAULT_BREAK_TIMER_MINUTES);
     expect(s.patterTimerMinutes).toBe(5);
     expect(s.playlistPanelWidth).toBe(DEFAULT_PLAYLIST_PANEL_WIDTH);
+    expect(s.playlistPaths).toEqual([]);
+    expect(s.playlistPlayedPaths).toEqual([]);
   });
 
   it("returns a new object each call (no shared reference)", () => {
@@ -18,5 +21,20 @@ describe("defaultSettings", () => {
     const b = defaultSettings();
     expect(a).toEqual(b);
     expect(a).not.toBe(b);
+  });
+});
+
+describe("normalizeSettings", () => {
+  it("defaults playlistPlayedPaths when missing", () => {
+    const s = normalizeSettings({ playlistPaths: ["a.mp3"] });
+    expect(s.playlistPlayedPaths).toEqual([]);
+  });
+
+  it("reads playlistPlayedPaths", () => {
+    const s = normalizeSettings({
+      playlistPaths: ["a.mp3", "b.mp3"],
+      playlistPlayedPaths: ["a.mp3"],
+    });
+    expect(s.playlistPlayedPaths).toEqual(["a.mp3"]);
   });
 });

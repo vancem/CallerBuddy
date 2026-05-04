@@ -93,7 +93,7 @@ export class PlaylistEditor extends LitElement {
     onExternalDrop: (idx) => {
       const song = this.draggedSong;
       if (song) {
-        callerBuddy.state.insertInPlaylist(song, idx);
+        void callerBuddy.insertSongInPlaylist(song, idx);
         this.draggedSong = null;
       }
     },
@@ -503,7 +503,7 @@ export class PlaylistEditor extends LitElement {
                           @dragstart=${(e: DragEvent) => this.onSongDragStart(e, song)}
                           @dragend=${this.onEditorDragEnd}
                           @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "song", song })}
-                          @dblclick=${() => this.addToPlaylist(song)}
+                          @dblclick=${() => void this.addToPlaylist(song)}
                           title="Drag to playlist, double-click, or right-click to add"
                         >
                           <td class="play-cell">
@@ -517,7 +517,7 @@ export class PlaylistEditor extends LitElement {
                             <button
                               class="icon-btn add-btn"
                               title="Add to playlist"
-                              @click=${() => this.addToPlaylist(song)}
+                              @click=${() => void this.addToPlaylist(song)}
                             >+</button>
                           </td>
                           <td>${song.title}</td>
@@ -676,9 +676,9 @@ export class PlaylistEditor extends LitElement {
     if (!this.contextTarget || this.contextTarget.kind !== "song") return;
     const song = this.contextTarget.song;
     if (position === "start") {
-      callerBuddy.state.insertAtStartOfPlaylist(song);
+      void callerBuddy.insertSongAtStartOfPlaylist(song);
     } else {
-      callerBuddy.state.addToPlaylist(song);
+      void callerBuddy.addSongToPlaylist(song);
     }
     this.contextTarget = null;
   }
@@ -870,7 +870,7 @@ export class PlaylistEditor extends LitElement {
     e.preventDefault();
 
     if (this.draggedSong) {
-      callerBuddy.state.addToPlaylist(this.draggedSong);
+      void callerBuddy.addSongToPlaylist(this.draggedSong);
       this.draggedSong = null;
     }
 
@@ -980,8 +980,8 @@ export class PlaylistEditor extends LitElement {
 
   // -- Playlist operations --------------------------------------------------
 
-  private addToPlaylist(song: Song) {
-    callerBuddy.state.addToPlaylist(song);
+  private async addToPlaylist(song: Song) {
+    await callerBuddy.addSongToPlaylist(song);
   }
 
   /**
@@ -989,7 +989,7 @@ export class PlaylistEditor extends LitElement {
    * See CallerBuddySpec.md §"Single song Workflow".
    */
   private async playSongNow(song: Song) {
-    callerBuddy.state.addToPlaylist(song);
+    await callerBuddy.addSongToPlaylist(song);
     callerBuddy.openPlaylistPlay();
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = "wait";

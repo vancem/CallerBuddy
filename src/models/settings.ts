@@ -18,6 +18,11 @@ export interface Settings {
   playlistPanelWidth: number;
   /** Relative musicFile paths for the persisted playlist (from CallerBuddyRoot). */
   playlistPaths: string[];
+  /**
+   * Subset of playlistPaths (same strings) for songs marked "played" in Now Playing.
+   * Persisted so checkbox state survives restart.
+   */
+  playlistPlayedPaths: string[];
 }
 
 /** Returns a Settings object populated with default values. */
@@ -27,6 +32,7 @@ export function defaultSettings(): Settings {
     patterTimerMinutes: 5,
     playlistPanelWidth: DEFAULT_PLAYLIST_PANEL_WIDTH,
     playlistPaths: [],
+    playlistPlayedPaths: [],
   };
 }
 
@@ -55,10 +61,19 @@ export function normalizeSettings(raw: unknown): Settings {
     }
   }
 
+  const rawPlayed = obj["playlistPlayedPaths"];
+  const playlistPlayedPaths: string[] = [];
+  if (Array.isArray(rawPlayed)) {
+    for (const p of rawPlayed) {
+      if (typeof p === "string" && p) playlistPlayedPaths.push(p);
+    }
+  }
+
   return {
     breakTimerMinutes: pickNum("breakTimerMinutes", defaults.breakTimerMinutes, 0, 60),
     patterTimerMinutes: pickNum("patterTimerMinutes", defaults.patterTimerMinutes, 0.5, 15),
     playlistPanelWidth: pickNum("playlistPanelWidth", defaults.playlistPanelWidth, 100, 1000),
     playlistPaths,
+    playlistPlayedPaths,
   };
 }

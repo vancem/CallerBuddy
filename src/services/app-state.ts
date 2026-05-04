@@ -88,7 +88,7 @@ export class AppState extends EventTarget {
   /** The song currently being played, or null. */
   currentSong: Song | null = null;
 
-  /** Set of musicFile paths for songs already played this session (Now Playing). */
+  /** Lowercased CallerBuddyRoot-relative playlist keys (paths or musicFile). */
   private playedSongPaths = new Set<string>();
 
   // -- Mutation helpers (fire events) ---------------------------------------
@@ -124,7 +124,31 @@ export class AppState extends EventTarget {
   // -- Playlist manipulation ------------------------------------------------
 
   private isInPlaylist(song: Song): boolean {
+    const incomingKey = (song.playlistRelPath ?? "").toLowerCase();
+    if (incomingKey) {
+      return this.playlist.some(
+        (s) => (s.playlistRelPath ?? "").toLowerCase() === incomingKey,
+      );
+    }
     return this.playlist.some((s) => s.musicFile === song.musicFile);
+  }
+
+  private playlistEntryKey(song: Song): string {
+    return (song.playlistRelPath ?? song.musicFile).toLowerCase();
+  }
+
+  /** Whether this playlist row is marked played (Now Playing checkbox). */
+  isPlaylistEntryPlayed(song: Song): boolean {
+    return this.playedSongPaths.has(this.playlistEntryKey(song));
+  }
+
+  /**
+   * Restore played checkboxes from settings (CallerBuddyRoot-relative paths,
+   * lowercased internally). Call after assigning `playlist`.
+   */
+  hydratePlayedPlaylistFromPaths(canonicalPaths: string[]): void {
+    this.playedSongPaths = new Set(canonicalPaths.map((p) => p.toLowerCase()));
+    this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
   addToPlaylist(song: Song): void {
@@ -173,23 +197,24 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
-  /** Mark a song as played (by music file path) for Now Playing. */
-  markSongPlayed(musicFile: string): void {
-    this.playedSongPaths.add(musicFile);
+  /** Mark a playlist row as played (after it was performed in the player). */
+  markSongPlayed(song: Song): void {
+    this.playedSongPaths.add(this.playlistEntryKey(song));
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
-  /** Set whether a song is marked as played (e.g. from checkbox toggle). */
-  setSongPlayed(musicFile: string, played: boolean): void {
+  /** Set Now Playing checkbox for a playlist row. */
+  setSongPlayed(song: Song, played: boolean): void {
+    const key = this.playlistEntryKey(song);
     if (played) {
-      this.playedSongPaths.add(musicFile);
+      this.playedSongPaths.add(key);
     } else {
-      this.playedSongPaths.delete(musicFile);
+      this.playedSongPaths.delete(key);
     }
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
-  /** Read-only set of music file paths that have been played this session. */
+  /** @internal Lowercased keys for persist; prefer {@link isPlaylistEntryPlayed}. */
   getPlayedSongPaths(): ReadonlySet<string> {
     return this.playedSongPaths;
   }

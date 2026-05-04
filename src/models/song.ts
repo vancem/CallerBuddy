@@ -47,6 +47,13 @@ export interface Song {
   deltaTempo: number;
 
   /**
+   * CallerBuddyRoot-relative path for this row in the Now Playing playlist
+   * (e.g. "sub/Song.mp3"), used to persist checkbox state. Runtime-only;
+   * not stored in songs.json.
+   */
+  playlistRelPath?: string;
+
+  /**
    * Runtime-only: the directory handle containing this song's files.
    * Set when songs are loaded by a playlist editor instance.
    * NOT persisted to songs.json — stripped by saveSongsJson().
@@ -58,8 +65,8 @@ export interface Song {
  * Strip runtime-only fields (dirHandle) from a Song for JSON serialization.
  * Returns a shallow copy without non-persistable properties.
  */
-export function songForPersistence(song: Song): Omit<Song, "dirHandle"> {
-  const { dirHandle: _, ...persistable } = song;
+export function songForPersistence(song: Song): Omit<Song, "dirHandle" | "playlistRelPath"> {
+  const { dirHandle: _, playlistRelPath: __, ...persistable } = song;
   return persistable;
 }
 

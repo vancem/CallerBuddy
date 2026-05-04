@@ -133,10 +133,12 @@ describe("songForPersistence", () => {
       originalTempo: 128,
       deltaTempo: 0,
       dirHandle: {} as FileSystemDirectoryHandle,
+      playlistRelPath: "sub/a.mp3",
     };
 
     const result = songForPersistence(song);
     expect(result).not.toHaveProperty("dirHandle");
+    expect(result).not.toHaveProperty("playlistRelPath");
     expect(result.label).toBe("RYL 607");
     expect(result.title).toBe("Come Sail Away");
     expect(result.categories).toBe("Pop");

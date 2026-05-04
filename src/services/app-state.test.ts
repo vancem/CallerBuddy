@@ -70,6 +70,7 @@ describe("AppState", () => {
         patterTimerMinutes: 7,
         playlistPanelWidth: 300,
         playlistPaths: [],
+        playlistPlayedPaths: [],
       });
       expect(state.settings.breakTimerMinutes).toBe(10);
       expect(handler).toHaveBeenCalledOnce();
@@ -175,7 +176,7 @@ describe("AppState", () => {
 
     it("clearPlaylist empties list and clears played paths", () => {
       state.addToPlaylist(a);
-      state.markSongPlayed("a.mp3");
+      state.markSongPlayed(a);
       state.clearPlaylist();
       expect(state.playlist).toEqual([]);
       expect(state.getPlayedSongPaths().size).toBe(0);
@@ -187,23 +188,36 @@ describe("AppState", () => {
   // -----------------------------------------------------------------------
 
   describe("played-song tracking", () => {
+    const a = makeSong("a.mp3");
+    const b = makeSong("b.mp3");
+
     it("markSongPlayed adds to played set", () => {
-      state.markSongPlayed("a.mp3");
+      state.markSongPlayed(a);
       expect(state.getPlayedSongPaths().has("a.mp3")).toBe(true);
     });
 
     it("setSongPlayed can add and remove", () => {
-      state.setSongPlayed("a.mp3", true);
+      state.setSongPlayed(a, true);
       expect(state.getPlayedSongPaths().has("a.mp3")).toBe(true);
-      state.setSongPlayed("a.mp3", false);
+      state.setSongPlayed(a, false);
       expect(state.getPlayedSongPaths().has("a.mp3")).toBe(false);
     });
 
     it("resetPlayedSongs clears all", () => {
-      state.markSongPlayed("a.mp3");
-      state.markSongPlayed("b.mp3");
+      state.markSongPlayed(a);
+      state.markSongPlayed(b);
       state.resetPlayedSongs();
       expect(state.getPlayedSongPaths().size).toBe(0);
+    });
+
+    it("uses playlistRelPath when set for distinct rows", () => {
+      const s1 = { ...makeSong("x.mp3"), playlistRelPath: "f1/x.mp3" };
+      const s2 = { ...makeSong("x.mp3"), playlistRelPath: "f2/x.mp3" };
+      state.addToPlaylist(s1);
+      state.addToPlaylist(s2);
+      state.markSongPlayed(s1);
+      expect(state.isPlaylistEntryPlayed(s1)).toBe(true);
+      expect(state.isPlaylistEntryPlayed(s2)).toBe(false);
     });
   });
 

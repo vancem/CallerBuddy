@@ -273,21 +273,58 @@ export class CallerBuddy {
     if (!rootHandle) return;
     const paths: string[] = [];
     for (const song of this.state.playlist) {
-      const dirHandle = song.dirHandle ?? rootHandle;
-      try {
-        const segments = await rootHandle.resolve(dirHandle);
-        if (segments && segments.length > 0) {
-          paths.push(segments.join("/") + "/" + song.musicFile);
-        } else {
-          paths.push(song.musicFile);
-        }
-      } catch {
-        paths.push(song.musicFile);
+      await this.ensurePlaylistRelPathForSong(song);
+      paths.push(song.playlistRelPath!);
+    }
+    const playedOut: string[] = [];
+    for (const song of this.state.playlist) {
+      if (this.state.isPlaylistEntryPlayed(song)) {
+        playedOut.push(song.playlistRelPath ?? song.musicFile);
       }
     }
-    this.state.settings = { ...this.state.settings, playlistPaths: paths };
+    this.state.settings = {
+      ...this.state.settings,
+      playlistPaths: paths,
+      playlistPlayedPaths: playedOut,
+    };
     await this.saveSettings();
-    log.info(`Playlist persisted: ${paths.length} song(s)`);
+    log.info(`Playlist persisted: ${paths.length} song(s), ${playedOut.length} marked played`);
+  }
+
+  /**
+   * Set {@link Song.playlistRelPath} from CallerBuddyRoot + song folder (same rules as persist).
+   */
+  async ensurePlaylistRelPathForSong(song: Song): Promise<void> {
+    if (song.playlistRelPath) return;
+    const rootHandle = this.state.rootHandle;
+    if (!rootHandle) return;
+    const dirHandle = song.dirHandle ?? rootHandle;
+    try {
+      const segments = await rootHandle.resolve(dirHandle);
+      if (segments && segments.length > 0) {
+        song.playlistRelPath = segments.join("/") + "/" + song.musicFile;
+      } else {
+        song.playlistRelPath = song.musicFile;
+      }
+    } catch {
+      song.playlistRelPath = song.musicFile;
+    }
+  }
+
+  /** Add to playlist after resolving {@link Song.playlistRelPath}. */
+  async addSongToPlaylist(song: Song): Promise<void> {
+    await this.ensurePlaylistRelPathForSong(song);
+    this.state.addToPlaylist(song);
+  }
+
+  async insertSongAtStartOfPlaylist(song: Song): Promise<void> {
+    await this.ensurePlaylistRelPathForSong(song);
+    this.state.insertAtStartOfPlaylist(song);
+  }
+
+  async insertSongInPlaylist(song: Song, index: number): Promise<void> {
+    await this.ensurePlaylistRelPathForSong(song);
+    this.state.insertInPlaylist(song, index);
   }
 
   /**
@@ -298,7 +335,10 @@ export class CallerBuddy {
    */
   private async restorePlaylist(rootHandle: FileSystemDirectoryHandle): Promise<void> {
     const paths = this.state.settings.playlistPaths;
-    if (paths.length === 0) return;
+    if (paths.length === 0) {
+      this.state.clearPlaylist();
+      return;
+    }
 
     // Map from full relative path (lowercase) → Song with dirHandle attached.
     const songsByPath = new Map<string, Song>();
@@ -332,7 +372,7 @@ export class CallerBuddy {
     for (const p of paths) {
       const song = songsByPath.get(p.toLowerCase());
       if (song) {
-        restored.push({ ...song });
+        restored.push({ ...song, playlistRelPath: p });
       } else {
         log.warn(`restorePlaylist: song not found for path "${p}", skipping`);
       }
@@ -340,7 +380,10 @@ export class CallerBuddy {
 
     if (restored.length > 0) {
       this.state.playlist = restored;
+      this.state.hydratePlayedPlaylistFromPaths(this.state.settings.playlistPlayedPaths);
       log.info(`restorePlaylist: restored ${restored.length} of ${paths.length} song(s)`);
+    } else {
+      this.state.clearPlaylist();
     }
   }
 
