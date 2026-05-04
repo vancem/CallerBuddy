@@ -19,7 +19,13 @@ import { LitElement, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { callerBuddy } from "../caller-buddy.js";
-import { isSingingCall, isPatter, lyricsFilenameFor } from "../models/song.js";
+import {
+  isSingingCall,
+  isPatter,
+  lyricsFilenameFor,
+  effectiveAudioLoopPoints,
+  clampPatterLoopRegion,
+} from "../models/song.js";
 import { formatTime, formatClock } from "../utils/format.js";
 import { songPlayStyles } from "./song-play-styles.js";
 import {
@@ -154,8 +160,13 @@ export class SongPlay extends LitElement {
     // Listen for time updates from audio engine
     callerBuddy.audio.onTimeUpdate((t) => {
       this.currentTime = t;
-      this.duration = callerBuddy.audio.getDuration();
+      const newDur = callerBuddy.audio.getDuration();
+      const durChanged = newDur !== this.duration;
+      this.duration = newDur;
       this.playing = callerBuddy.audio.isPlaying();
+      if (durChanged) {
+        this.syncImplicitPatterLoopIfNeeded();
+      }
       callerBuddy.tickSongPlaySession(callerBuddy.audio.isPlaying());
     });
 
@@ -212,20 +223,28 @@ export class SongPlay extends LitElement {
     void callerBuddy.closeSongPlay();
   };
 
-  /** True when the event originated inside an input/textarea/select (including in shadow DOM). */
-  private isKeyEventFromFormField(e: KeyboardEvent): boolean {
-    return e.composedPath().some(
-      (n) =>
-        n instanceof HTMLInputElement ||
-        n instanceof HTMLTextAreaElement ||
-        n instanceof HTMLSelectElement,
-    );
+  /**
+   * True when shortcuts should yield to native typing or widget behavior.
+   * Range sliders are excluded so play/pause, seek, etc. work from the progress bar.
+   */
+  private shouldYieldShortcutsToFocusedControl(e: KeyboardEvent): boolean {
+    return e.composedPath().some((n) => {
+      if (n instanceof HTMLTextAreaElement || n instanceof HTMLSelectElement) {
+        return true;
+      }
+      if (n instanceof HTMLInputElement) {
+        const t = n.type;
+        if (t === "range") return false;
+        return true;
+      }
+      return false;
+    });
   }
 
   private onKeydown(e: KeyboardEvent) {
     if (this.editing) return;
     // document listener sees retargeted target; use composed path for fields inside this shadow root.
-    if (this.isKeyEventFromFormField(e)) return;
+    if (this.shouldYieldShortcutsToFocusedControl(e)) return;
 
     switch (e.key) {
       case " ":
@@ -286,8 +305,10 @@ export class SongPlay extends LitElement {
     const song = this.song;
     if (!song) return;
 
-    this.loopStart = song.loopStartTime;
-    this.loopEnd = song.loopEndTime;
+    const dur = callerBuddy.audio.getDuration();
+    const eff = effectiveAudioLoopPoints(song, dur);
+    this.loopStart = eff.start;
+    this.loopEnd = eff.end;
     this.patterMinutes = callerBuddy.state.settings.patterTimerMinutes;
     this.patterCountdown = this.patterMinutes * 60;
 
@@ -295,8 +316,35 @@ export class SongPlay extends LitElement {
       this.lyrics = await callerBuddy.loadLyrics(song);
     }
 
-    this.duration = callerBuddy.audio.getDuration();
+    this.duration = dur;
+    callerBuddy.audio.setLoopPoints(this.loopStart, this.loopEnd);
     this.syncPlaybackStateIfAudioAlreadyPlaying();
+  }
+
+  /**
+   * When patter uses implicit full-file loop (loopEndTime ≤ 0), refresh UI/engine if duration changes.
+   */
+  private syncImplicitPatterLoopIfNeeded() {
+    const song = this.song;
+    if (!song || !isPatter(song) || song.loopEndTime > 0) return;
+    const eff = effectiveAudioLoopPoints(song, this.duration);
+    if (eff.start !== this.loopStart || eff.end !== this.loopEnd) {
+      this.loopStart = eff.start;
+      this.loopEnd = eff.end;
+      callerBuddy.audio.setLoopPoints(eff.start, eff.end);
+      this.requestUpdate();
+    }
+  }
+
+  /** Clamp patter loop markers to legal range after UI edits. */
+  private clampPatterLoopIfNeeded() {
+    const song = this.song;
+    if (!song || !isPatter(song) || this.duration <= 0) return;
+    const c = clampPatterLoopRegion(this.loopStart, this.loopEnd, this.duration);
+    if (c.start !== this.loopStart || c.end !== this.loopEnd) {
+      this.loopStart = c.start;
+      this.loopEnd = c.end;
+    }
   }
 
   /** After openSongPlay auto-starts audio, align patter/elapsed state with the transport. */
@@ -385,7 +433,10 @@ export class SongPlay extends LitElement {
             sourceDuration: this.duration,
             loopStart: this.loopStart,
             loopEnd: this.loopEnd,
-            loopActive: this.loopEnd > 0,
+            loopActive:
+              isPatter(song)
+                ? this.duration > 0 && this.loopEnd > this.loopStart
+                : this.loopEnd > 0,
             onSliderInput: (e) => this.onSliderInput(e),
             onLoopMarkerPointerDown: (which, e) =>
               this.onLoopMarkerPointerDown(which, e),
@@ -809,6 +860,7 @@ export class SongPlay extends LitElement {
     } else {
       this.loopEnd = Math.max(0, this.loopEnd + delta);
     }
+    this.clampPatterLoopIfNeeded();
     this.applyLoopPoints();
   }
 
@@ -818,10 +870,14 @@ export class SongPlay extends LitElement {
     } else {
       this.loopEnd = this.currentTime;
     }
+    this.clampPatterLoopIfNeeded();
     this.applyLoopPoints();
   }
 
   private applyLoopPoints() {
+    if (this.song && isPatter(this.song) && this.duration > 0) {
+      this.clampPatterLoopIfNeeded();
+    }
     callerBuddy.audio.setLoopPoints(this.loopStart, this.loopEnd);
     if (this.song) {
       this.song.loopStartTime = this.loopStart;
@@ -851,6 +907,9 @@ export class SongPlay extends LitElement {
       this.loopStart = time;
     } else {
       this.loopEnd = time;
+    }
+    if (this.song && isPatter(this.song)) {
+      this.clampPatterLoopIfNeeded();
     }
     // Update audio engine live, but don't persist to disk during drag
     callerBuddy.audio.setLoopPoints(this.loopStart, this.loopEnd);

@@ -35,7 +35,11 @@ export interface Song {
   playWeight: number;
   /** Time in seconds from start where looping jumps to. Default 0 */
   loopStartTime: number;
-  /** Time in seconds where song loops back to loopStartTime. 0 = no looping */
+  /**
+   * Time in seconds where song loops back to loopStartTime.
+   * Singing calls: 0 means looping is off.
+   * Patter (no lyrics): 0 means “full file” — see {@link effectiveAudioLoopPoints}.
+   */
   loopEndTime: number;
   /** Volume 0-100. Default 80 */
   volume: number;
@@ -167,6 +171,71 @@ export function isSingingCall(song: Song): boolean {
 /** True if song is a patter call (no lyrics). */
 export function isPatter(song: Song): boolean {
   return song.lyricsFile === "";
+}
+
+/**
+ * Seconds before EOF used as the default patter loop end when {@link Song.loopEndTime}
+ * is 0 — avoids racing the decoder’s natural end against the loop seek.
+ */
+export const PATTER_LOOP_TAIL_EPSILON_SEC = 0.02;
+
+/**
+ * Default loop end time for patter when no explicit loop end is stored (loopEndTime ≤ 0).
+ * Slightly before decode duration when possible.
+ */
+export function patterDefaultLoopEndSec(durationSeconds: number): number {
+  const d = durationSeconds;
+  if (!(d > 0)) return 0;
+  const candidate = d - PATTER_LOOP_TAIL_EPSILON_SEC;
+  if (candidate > 0) return candidate;
+  return Math.max(d * 0.5, Math.min(d, 0.001));
+}
+
+/**
+ * Clamp patter loop markers to [0, duration] with a minimal gap so playback always loops.
+ */
+export function clampPatterLoopRegion(
+  startSeconds: number,
+  endSeconds: number,
+  durationSeconds: number,
+): { start: number; end: number } {
+  const d = durationSeconds;
+  if (!(d > 0)) return { start: 0, end: 0 };
+  let s = Math.max(0, Math.min(startSeconds, d));
+  let e = Math.max(0, Math.min(endSeconds, d));
+  const minGap = 0.001;
+  if (e - s < minGap) {
+    e = Math.min(d, s + minGap);
+    if (e - s < minGap && s > 0) {
+      s = Math.max(0, e - minGap);
+    }
+    if (e - s < minGap) {
+      s = 0;
+      e = Math.min(d, minGap);
+    }
+  }
+  return { start: s, end: e };
+}
+
+/**
+ * Loop points passed to the audio engine: singing calls use stored values;
+ * patter always loops — when loopEndTime ≤ 0, uses full-file defaults from decode duration.
+ */
+export function effectiveAudioLoopPoints(
+  song: Song,
+  durationSeconds: number,
+): { start: number; end: number } {
+  const d = durationSeconds;
+  if (!isPatter(song)) {
+    return { start: song.loopStartTime, end: song.loopEndTime };
+  }
+  if (song.loopEndTime <= 0) {
+    return {
+      start: 0,
+      end: patterDefaultLoopEndSec(d),
+    };
+  }
+  return clampPatterLoopRegion(song.loopStartTime, song.loopEndTime, d);
 }
 
 /** True if the filename (lower-cased) has a recognized music extension. */

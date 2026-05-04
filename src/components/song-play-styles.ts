@@ -105,22 +105,6 @@ export const songPlayStyles = css`
       font-family: monospace;
     }
 
-    .loop-status {
-      font-size: 0.85rem;
-      padding: 4px 8px;
-      border-radius: 4px;
-      margin-top: 4px;
-    }
-
-    .loop-status.active {
-      color: var(--cb-success);
-      background: var(--cb-success-bg);
-    }
-
-    .loop-status.inactive {
-      color: var(--cb-fg-tertiary);
-    }
-
     .nudge {
       padding: 4px 8px;
       border: 1px solid var(--cb-border);

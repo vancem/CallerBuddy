@@ -27,7 +27,7 @@ import {
 } from "./services/audio-engine.js";
 import { detectBPM } from "./services/bpm-detector.js";
 import { defaultSettings, normalizeSettings, type Settings } from "./models/settings.js";
-import { type Song, nextOrderAdded } from "./models/song.js";
+import { type Song, nextOrderAdded, effectiveAudioLoopPoints } from "./models/song.js";
 import {
   daysSinceLastUsedMs,
   nextPlayWeight,
@@ -472,7 +472,8 @@ export class CallerBuddy {
       const data = await readBinaryFile(handle, song.musicFile);
       await this.audio.loadAudio(data);
       this.audio.setVolume(song.volume);
-      this.audio.setLoopPoints(song.loopStartTime, song.loopEndTime);
+      const { start, end } = effectiveAudioLoopPoints(song, this.audio.getDuration());
+      this.audio.setLoopPoints(start, end);
       this.audio.setPitch(song.pitch);
       this.audio.setTempo(song.deltaTempo, song.originalTempo);
     } catch (err) {

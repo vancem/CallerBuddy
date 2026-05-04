@@ -11,6 +11,10 @@ import {
   normalizeSongFromJson,
   maxOrderAdded,
   nextOrderAdded,
+  effectiveAudioLoopPoints,
+  patterDefaultLoopEndSec,
+  clampPatterLoopRegion,
+  PATTER_LOOP_TAIL_EPSILON_SEC,
   type Song,
 } from "./song.js";
 
@@ -111,6 +115,42 @@ describe("isSingingCall / isPatter", () => {
   it("isPatter returns true when song has no lyrics", () => {
     expect(isPatter(noLyrics)).toBe(true);
     expect(isPatter(withLyrics)).toBe(false);
+  });
+});
+
+describe("effectiveAudioLoopPoints / patterDefaultLoopEndSec / clampPatterLoopRegion", () => {
+  it("singing call passes through stored loop times", () => {
+    const singing = createSongFromFile("S.MP3", "S.html");
+    singing.loopStartTime = 1;
+    singing.loopEndTime = 0;
+    expect(effectiveAudioLoopPoints(singing, 100)).toEqual({ start: 1, end: 0 });
+  });
+
+  it("patter with loopEndTime 0 uses start 0 and end slightly before duration", () => {
+    const patter = createSongFromFile("P.MP3", "");
+    const r = effectiveAudioLoopPoints(patter, 100);
+    expect(r.start).toBe(0);
+    expect(r.end).toBe(100 - PATTER_LOOP_TAIL_EPSILON_SEC);
+  });
+
+  it("patterDefaultLoopEndSec matches implied end for normal durations", () => {
+    expect(patterDefaultLoopEndSec(100)).toBe(100 - PATTER_LOOP_TAIL_EPSILON_SEC);
+  });
+
+  it("patter with explicit positive loopEndTime is clamped to duration", () => {
+    const patter = createSongFromFile("P2.MP3", "");
+    patter.loopStartTime = 5;
+    patter.loopEndTime = 9999;
+    const r = effectiveAudioLoopPoints(patter, 60);
+    expect(r.end).toBe(60);
+    expect(r.start).toBe(5);
+  });
+
+  it("clampPatterLoopRegion keeps a minimal gap when start and end collide", () => {
+    const r = clampPatterLoopRegion(10, 10, 30);
+    expect(r.end - r.start).toBeGreaterThan(0);
+    expect(r.end).toBeLessThanOrEqual(30);
+    expect(r.start).toBeGreaterThanOrEqual(0);
   });
 });
 

@@ -34,12 +34,12 @@ export function renderPatterControls(ctx: PatterControlsCtx): TemplateResult {
       </h3>
       ${ctx.showLoopHelp ? html`
         <div class="ctx-help-panel">
-          Looping repeats a section of the music seamlessly so patter can
-          run as long as you need. Set <strong>Loop Start</strong> and
-          <strong>Loop End</strong> to define the region. Click
+          Patter always loops. By default the whole file repeats (slightly before
+          the very end for a clean jump). Set <strong>Loop Start</strong> and
+          <strong>Loop End</strong> to use a shorter region. Click
           <strong>Set</strong> to capture the current playback position,
           then fine-tune with the nudge buttons (&plusmn;10ms or &plusmn;100ms).
-          Looping activates when Loop End is greater than zero. Points are saved per song.
+          Points are saved per song.
         </div>` : nothing}
       <div class="loop-box" tabindex="0"
            title="Click to focus \u2014 ←/→ nudge \u00b110ms, Ctrl+←/→ nudge \u00b1100ms, Enter = Set"
@@ -82,9 +82,6 @@ export function renderPatterControls(ctx: PatterControlsCtx): TemplateResult {
         <button class="nudge" tabindex="-1" title="Nudge +100ms (Ctrl+\u2192)"
           @mousedown=${ctx.onLoopBtnMousedown}
           @click=${() => ctx.nudgeLoop("end", 0.1)}>\u25ba\u25ba</button>
-      </div>
-      <div class="loop-status ${ctx.loopEnd > 0 ? "active" : "inactive"}">
-        ${ctx.loopEnd > 0 ? "Looping active" : "Looping inactive (set Loop End to enable)"}
       </div>
 
       <hr />
