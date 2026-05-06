@@ -9,55 +9,70 @@ import { callerBuddy } from "./caller-buddy.js";
 import { log } from "./services/logger.js";
 import "./components/app-shell.js";
 
-// ── Android installed-PWA viewport fix (safety net) ──────────────────
-// On some Android devices (Samsung One UI in particular), the installed PWA
-// in non-fullscreen mode uses the landscape viewport width even in portrait.
-// The primary fix is `"display": "fullscreen"` in the manifest, which
-// bypasses the bug entirely.  This workaround is kept as a safety net for
-// edge cases where the user exits fullscreen or the manifest mode is
-// downgraded by the browser.
+// ── Mobile viewport-width fix (Samsung Android "tiny portrait" bug) ──────
+// On some Android devices (notably Samsung Galaxy A-series), the layout
+// viewport width is stuck at the landscape value (e.g. ~892 px) even when
+// the device is in portrait orientation.  The page then renders at landscape
+// width and is either scaled down (Chrome browser) or made horizontally
+// scrollable (installed PWA), making text and controls appear tiny.
+//
+// Why our previous fix didn't work: it used `window.innerWidth` /
+// `window.innerHeight` to detect orientation, but those are *the very values
+// the bug corrupts*.  Detection failed and the fix never triggered.
+//
+// New approach: use `screen.orientation.type` (driven by the device sensor,
+// not the viewport) to determine orientation, and replace
+// `width=device-width` with an explicit pixel width based on `screen.width`
+// /`screen.height`.  We keep the explicit width permanently (don't restore
+// `device-width`, which is the broken value).  Re-apply on orientation
+// changes.
 function applyViewportFix() {
-  const isInstalledPwa =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.matchMedia("(display-mode: fullscreen)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  if (!isInstalledPwa) return;
+  // Only on touch-primary devices.  Desktop/laptop use `device-width`
+  // correctly, and forcing a fixed width there could break window resizing.
+  const isTouchDevice = window.matchMedia(
+    "(hover: none) and (pointer: coarse)",
+  ).matches;
+  if (!isTouchDevice) return;
 
   const viewport = document.querySelector<HTMLMetaElement>(
     'meta[name="viewport"]',
   );
   if (!viewport) return;
 
-  function fixViewport() {
-    // screen.width always reflects the *short* edge on Android, regardless of
-    // orientation.  In portrait innerWidth should be close to screen.width; in
-    // landscape it should be close to screen.height.
-    const isPortrait = window.innerHeight > window.innerWidth;
-    const expectedWidth = isPortrait
-      ? Math.min(screen.width, screen.height)
-      : Math.max(screen.width, screen.height);
+  function detectIsPortrait(): boolean {
+    const t = screen.orientation?.type;
+    if (t) return t.startsWith("portrait");
+    return window.matchMedia("(orientation: portrait)").matches;
+  }
 
-    // If the viewport is more than 20% wider than expected, force a reset.
-    if (window.innerWidth > expectedWidth * 1.2) {
-      log.info(
-        `[viewport-fix] mismatch: innerWidth=${window.innerWidth}, expected≈${expectedWidth}. Forcing recalc.`,
-      );
-      const original = viewport!.content;
-      viewport!.content = `width=${expectedWidth}, initial-scale=1.0, viewport-fit=cover`;
-      requestAnimationFrame(() => {
-        viewport!.content = original;
-      });
+  function applyFix() {
+    const isPortrait = detectIsPortrait();
+    const shortEdge = Math.min(screen.width, screen.height);
+    const longEdge = Math.max(screen.width, screen.height);
+    const targetWidth = isPortrait ? shortEdge : longEdge;
+    const targetContent = `width=${targetWidth}, initial-scale=1.0, viewport-fit=cover`;
+
+    log.info(
+      `[viewport-fix] orient=${screen.orientation?.type ?? "?"} ` +
+        `target=${targetWidth} innerW=${window.innerWidth} ` +
+        `innerH=${window.innerHeight} screen=${screen.width}x${screen.height}`,
+    );
+
+    if (viewport!.content !== targetContent) {
+      viewport!.content = targetContent;
     }
   }
 
+  applyFix();
+
+  if (screen.orientation && "addEventListener" in screen.orientation) {
+    screen.orientation.addEventListener("change", () => {
+      setTimeout(applyFix, 100);
+    });
+  }
   window.addEventListener("orientationchange", () => {
-    setTimeout(fixViewport, 120);
+    setTimeout(applyFix, 100);
   });
-  window.addEventListener("resize", () => {
-    setTimeout(fixViewport, 80);
-  });
-  // Run once on startup after the first paint.
-  setTimeout(fixViewport, 50);
 }
 
 applyViewportFix();
@@ -67,8 +82,10 @@ log.info(
   `[viewport-diag] innerWidth=${window.innerWidth} innerHeight=${window.innerHeight} ` +
     `screen=${screen.width}x${screen.height} dpr=${devicePixelRatio} ` +
     `orientation=${screen.orientation?.type ?? "unknown"} ` +
+    `visualVP=${window.visualViewport?.width ?? "?"}x${window.visualViewport?.height ?? "?"} ` +
     `standalone=${window.matchMedia("(display-mode: standalone)").matches} ` +
-    `fullscreen=${window.matchMedia("(display-mode: fullscreen)").matches}`,
+    `fullscreen=${window.matchMedia("(display-mode: fullscreen)").matches} ` +
+    `touch=${window.matchMedia("(hover: none) and (pointer: coarse)").matches}`,
 );
 
 // Initialize the CallerBuddy application
