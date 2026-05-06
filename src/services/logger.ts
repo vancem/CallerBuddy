@@ -2,6 +2,10 @@
  * Lightweight logging wrapper around console methods.
  * Provides log levels (debug, info, warn, error) that can be filtered at runtime.
  *
+ * Also maintains an in-memory ring buffer of recent log lines so they can be
+ * displayed by an in-app log viewer (handy on phones where DevTools access
+ * is awkward).
+ *
  * See BACKLOG.md Design Decisions: "simple custom logging wrapper around console methods."
  */
 
@@ -32,18 +36,55 @@ export function getLogLevel(): LogLevel {
   return currentLevel;
 }
 
+// ── In-memory ring buffer for the in-app log viewer ──────────────────────
+const MAX_BUFFER = 300;
+const recentLogs: string[] = [];
+
+function formatArg(a: unknown): string {
+  if (a == null) return String(a);
+  if (typeof a === "string") return a;
+  if (a instanceof Error) return `${a.name}: ${a.message}`;
+  try {
+    return JSON.stringify(a);
+  } catch {
+    return String(a);
+  }
+}
+
+function pushBuffer(level: string, args: unknown[]): void {
+  const timestamp = new Date().toISOString().slice(11, 23); // HH:MM:SS.mmm
+  const line = `${timestamp} ${level} ${args.map(formatArg).join(" ")}`;
+  recentLogs.push(line);
+  if (recentLogs.length > MAX_BUFFER) {
+    recentLogs.splice(0, recentLogs.length - MAX_BUFFER);
+  }
+}
+
+/** Returns a copy of the recent log buffer (oldest first). */
+export function getRecentLogs(): string[] {
+  return recentLogs.slice();
+}
+
+export function clearRecentLogs(): void {
+  recentLogs.length = 0;
+}
+
 /** Namespaced logger. All messages are prefixed with [CB]. */
 export const log = {
   debug(...args: unknown[]): void {
+    pushBuffer("DBG", args);
     if (currentLevel <= LogLevel.Debug) console.debug("[CB]", ...args);
   },
   info(...args: unknown[]): void {
+    pushBuffer("INF", args);
     if (currentLevel <= LogLevel.Info) console.info("[CB]", ...args);
   },
   warn(...args: unknown[]): void {
+    pushBuffer("WRN", args);
     if (currentLevel <= LogLevel.Warn) console.warn("[CB]", ...args);
   },
   error(...args: unknown[]): void {
+    pushBuffer("ERR", args);
     if (currentLevel <= LogLevel.Error) console.error("[CB]", ...args);
   },
 };

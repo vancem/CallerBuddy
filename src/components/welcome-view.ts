@@ -106,9 +106,13 @@ export class WelcomeView extends LitElement {
     this.pickerError = "";
     try {
       this.loading = true;
-      log.info("reconnect: requesting permission on existing handle…");
+      log.info(
+        `reconnect: starting fsApi=${!!document.fullscreenElement} requesting permission on existing handle…`,
+      );
       await callerBuddy.setRoot(handle);
-      log.info("reconnect: setRoot completed successfully");
+      log.info(
+        `reconnect: setRoot done fsApi=${!!document.fullscreenElement}`,
+      );
     } catch (err) {
       log.error("reconnect: error:", err);
       this.pickerError =
@@ -133,12 +137,18 @@ export class WelcomeView extends LitElement {
 
     try {
       this.loading = true;
-      log.info("pickFolder: opening directory picker…");
+      log.info(
+        `pickFolder: starting fsApi=${!!document.fullscreenElement} opening directory picker…`,
+      );
       const handle = await window.showDirectoryPicker({ mode: "readwrite" });
       this.folderName = handle.name;
-      log.info(`pickFolder: user chose "${handle.name}", calling setRoot…`);
+      log.info(
+        `pickFolder: user chose "${handle.name}" fsApi=${!!document.fullscreenElement}, calling setRoot…`,
+      );
       await callerBuddy.setRoot(handle);
-      log.info("pickFolder: setRoot completed successfully");
+      log.info(
+        `pickFolder: setRoot done fsApi=${!!document.fullscreenElement}`,
+      );
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         log.info("pickFolder: user cancelled the picker");

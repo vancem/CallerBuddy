@@ -18,6 +18,7 @@ import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { StateEvents, TabType, type EditorTabData, type TabInfo } from "../services/app-state.js";
 import { APP_VERSION } from "../version.js";
+import { log, getRecentLogs, clearRecentLogs } from "../services/logger.js";
 
 // Side-effect imports to register custom elements
 import "./tab-bar.js";
@@ -31,6 +32,8 @@ import "./help-view.js";
 @customElement("app-shell")
 export class AppShell extends LitElement {
   @state() private showMenu = false;
+  @state() private showLogs = false;
+  @state() private logCopyStatus = "";
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   private _boundFsChange = () => this.onFullscreenChange();
@@ -68,9 +71,17 @@ export class AppShell extends LitElement {
       window.matchMedia("(hover: none) and (pointer: coarse)").matches &&
       (window.matchMedia("(display-mode: fullscreen)").matches ||
         window.matchMedia("(display-mode: standalone)").matches);
-    if (this._isTouchPwa && !this.isFullscreenApi()) {
+    const willRegister = this._isTouchPwa && !this.isFullscreenApi();
+    if (willRegister) {
       document.addEventListener("click", this._boundAutoFs, { capture: true, once: true });
     }
+    log.info(
+      `[fs] init touchPwa=${this._isTouchPwa} fsApi=${this.isFullscreenApi()} ` +
+        `mqStandalone=${window.matchMedia("(display-mode: standalone)").matches} ` +
+        `mqFullscreen=${window.matchMedia("(display-mode: fullscreen)").matches} ` +
+        `mqTouch=${window.matchMedia("(hover: none) and (pointer: coarse)").matches} ` +
+        `listener-registered=${willRegister}`,
+    );
   }
 
   disconnectedCallback() {
@@ -92,6 +103,7 @@ export class AppShell extends LitElement {
 
   /** Invoke the Fullscreen API on the first user gesture (touch PWA only). */
   private autoEnterFullscreen() {
+    log.info(`[fs] auto-enter click fired (alreadyFs=${this.isFullscreenApi()})`);
     if (this.isFullscreenApi()) return;
     this.requestFullscreenApi();
   }
@@ -99,6 +111,10 @@ export class AppShell extends LitElement {
   /** When fullscreen state changes, on touch PWAs re-enter fullscreen on
    *  the next tap — unless the user explicitly chose to close the app. */
   private onFullscreenChange() {
+    log.info(
+      `[fs] change -> ${this.isFullscreenApi() ? "IN" : "OUT"} ` +
+        `(touchPwa=${this._isTouchPwa} closing=${this._closingApp})`,
+    );
     this.requestUpdate();
     if (!this._isTouchPwa || this._closingApp) return;
     if (!this.isFullscreenApi()) {
@@ -122,7 +138,24 @@ export class AppShell extends LitElement {
     };
     const requestFS =
       el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
-    requestFS?.()?.catch?.(() => {});
+    log.info(
+      `[fs] requestFullscreen called (haveStandard=${!!el.requestFullscreen} ` +
+        `haveWebkit=${!!el.webkitRequestFullscreen})`,
+    );
+    const result = requestFS?.();
+    if (result && typeof result.then === "function") {
+      result.then(
+        () => log.info(`[fs] requestFullscreen resolved`),
+        (err: unknown) => {
+          const e = err as { name?: string; message?: string } | null;
+          log.warn(
+            `[fs] requestFullscreen rejected name=${e?.name} message=${e?.message}`,
+          );
+        },
+      );
+    } else {
+      log.info(`[fs] requestFullscreen returned non-promise (legacy webkit)`);
+    }
   }
 
   private exitFullscreenApi(): Promise<void> | undefined {
@@ -132,11 +165,29 @@ export class AppShell extends LitElement {
     const exitFS =
       document.exitFullscreen?.bind(document) ??
       doc.webkitExitFullscreen?.bind(document);
-    return exitFS?.()?.catch?.(() => {});
+    log.info(
+      `[fs] exitFullscreen called (haveStandard=${!!document.exitFullscreen} ` +
+        `haveWebkit=${!!doc.webkitExitFullscreen})`,
+    );
+    const result = exitFS?.();
+    if (result && typeof result.then === "function") {
+      return result.then(
+        () => log.info(`[fs] exitFullscreen resolved`),
+        (err: unknown) => {
+          const e = err as { name?: string; message?: string } | null;
+          log.warn(
+            `[fs] exitFullscreen rejected name=${e?.name} message=${e?.message}`,
+          );
+        },
+      );
+    }
+    log.info(`[fs] exitFullscreen returned non-promise (legacy webkit)`);
+    return undefined;
   }
 
   private toggleFullscreen() {
     this.showMenu = false;
+    log.info(`[fs] menu toggle (was ${this.isFullscreenApi() ? "IN" : "OUT"})`);
     if (this.isFullscreenApi()) {
       this.exitFullscreenApi();
     } else {
@@ -302,6 +353,7 @@ export class AppShell extends LitElement {
             : nothing}
           ${!activeTab ? this.renderEmpty() : nothing}
         </main>
+        ${this.showLogs ? this.renderLogModal() : nothing}
       </div>
     `;
   }
@@ -360,6 +412,10 @@ export class AppShell extends LitElement {
           title="Open help documentation with walkthroughs and keyboard shortcuts">
           Help
         </button>
+        <button class="menu-item" role="menuitem" @click=${this.onShowLogs}
+          title="Show recent diagnostic log lines">
+          Show Logs
+        </button>
         <button class="menu-item" role="menuitem" @click=${this.onClose}>
           Close
         </button>
@@ -369,6 +425,76 @@ export class AppShell extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private renderLogModal() {
+    const lines = getRecentLogs();
+    const text = lines.join("\n");
+    return html`
+      <div class="log-overlay" @click=${this.closeLogs}></div>
+      <div class="log-modal" role="dialog" aria-label="Recent logs"
+           @click=${(e: Event) => e.stopPropagation()}>
+        <header class="log-header">
+          <span class="log-title">Logs (${lines.length})</span>
+          <span class="log-status">${this.logCopyStatus}</span>
+          <button class="log-btn" @click=${this.copyLogs} title="Copy all logs to clipboard">
+            Copy
+          </button>
+          <button class="log-btn" @click=${this.clearLogs} title="Clear log buffer">
+            Clear
+          </button>
+          <button class="log-btn" @click=${this.closeLogs} title="Close log viewer">
+            Close
+          </button>
+        </header>
+        <pre class="log-body">${text || "(no logs yet)"}</pre>
+      </div>
+    `;
+  }
+
+  private onShowLogs() {
+    this.showMenu = false;
+    this.logCopyStatus = "";
+    this.showLogs = true;
+  }
+
+  private closeLogs() {
+    this.showLogs = false;
+  }
+
+  private async copyLogs() {
+    const text = getRecentLogs().join("\n");
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        this.logCopyStatus = "Copied!";
+      } else {
+        // Fallback for environments without async clipboard support.
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        this.logCopyStatus = "Copied!";
+      }
+    } catch {
+      this.logCopyStatus = "Copy failed";
+    }
+    setTimeout(() => {
+      this.logCopyStatus = "";
+    }, 2000);
+  }
+
+  private clearLogs() {
+    clearRecentLogs();
+    this.logCopyStatus = "Cleared";
+    this.requestUpdate();
+    setTimeout(() => {
+      this.logCopyStatus = "";
+    }, 1500);
   }
 
   // -- event handlers -------------------------------------------------------
@@ -590,6 +716,77 @@ export class AppShell extends LitElement {
       justify-content: center;
       height: 100%;
       color: var(--cb-fg-tertiary);
+    }
+
+    /* ── In-app log viewer ───────────────────────────────────────────── */
+    .log-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+    }
+
+    .log-modal {
+      position: fixed;
+      inset: 4% 4%;
+      display: flex;
+      flex-direction: column;
+      background: var(--cb-bg);
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border);
+      border-radius: 8px;
+      box-shadow: 0 8px 32px var(--cb-shadow);
+      z-index: 2001;
+      overflow: hidden;
+    }
+
+    .log-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--cb-tab-bar-bg);
+      border-bottom: 1px solid var(--cb-border);
+      flex-wrap: wrap;
+    }
+
+    .log-title {
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .log-status {
+      color: var(--cb-success);
+      font-size: 0.85rem;
+      min-width: 0;
+    }
+
+    .log-btn {
+      background: var(--cb-bg);
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border-strong);
+      border-radius: 4px;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .log-btn:hover {
+      background: var(--cb-hover);
+    }
+
+    .log-body {
+      flex: 1;
+      margin: 0;
+      padding: 12px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--cb-panel-bg);
     }
   `;
 }
