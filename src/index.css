@@ -112,8 +112,12 @@ body {
  * the root font-size by 20% scales every rem-based dimension — text,
  * padding, button sizes — in both portrait and landscape orientations,
  * while leaving desktop completely unchanged.
+ *
+ * Use `(pointer: coarse)` only — Samsung One UI WebAPKs can report
+ * `(hover: none)` as false on phones, so `(hover: none) and (pointer: coarse)`
+ * fails and users got 16px root + tiny scaled layout (see main.ts viewport notes).
  * ───────────────────────────────────────────────────────────────────── */
-@media (hover: none) and (pointer: coarse) {
+@media (pointer: coarse) {
   :root {
     font-size: 120%;
   }

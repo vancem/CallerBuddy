@@ -54,9 +54,12 @@ long comment at the top of `src/main.ts` and the header comment on
 - **Readable text without Fullscreen API:** On some Samsung/Android WebAPK
   installs, portrait layout used a stale landscape width (`innerWidth` ~980)
   while `screen` reported the real device (~360×780), shrinking the whole UI.
-  We fix this by driving `<meta name="viewport">` from `screen.orientation` and
-  explicit `width=<CSS px>` from the physical short/long edge — not from
-  `innerWidth`/`innerHeight`. See `applyViewportFix()` in `main.ts`.
+  We drive `<meta name="viewport">` from `screen.orientation` and explicit
+  `width=<CSS px>` from the physical short/long edge. Chrome sometimes **ignores**
+  the meta until a reflow; `applyViewportFix()` detects `innerWidth` still too
+  large and applies a `device-width` → explicit-width “sandwich”. Root font bump
+  on touch uses `(pointer: coarse)` in `index.css` (Samsung often lies on
+  `(hover: none)`). See `applyViewportFix()` in `main.ts`.
 
 - **Touch detection:** `(hover: none) and (pointer: coarse)` can fail on Samsung
   One UI PWAs because `(hover: none)` is false. Use `(pointer: coarse)` and/or

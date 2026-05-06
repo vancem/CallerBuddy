@@ -20,12 +20,14 @@
  * Use `screen.orientation.type` (sensor-driven) or `(orientation: portrait)`
  * rather than comparing inner dimensions.
  *
- * **`width=device-width` ignored**
- * Even with a correct viewport meta, the broken inner width can persist until
- * something forces a real layout change (e.g. Fullscreen API `requestFullscreen`
- * on some devices). We still set an explicit `meta viewport` width from
- * `screen` short/long edge — see `applyViewportFix()` — so readable UI does not
- * depend on fullscreen.
+ * **`width=device-width` / explicit width ignored until reflow**
+ * Setting `<meta name="viewport" content="width=360">` should fix the layout
+ * viewport, but Chrome WebAPK on some Samsung builds **keeps** `innerWidth` at
+ * the stale landscape width until something forces a full reflow (Fullscreen
+ * API, or our device-width → explicit-width “sandwich”). If `innerWidth` is
+ * still far above `min(screen.width,screen.height)` in portrait after the meta
+ * update, we run that sandwich. Root `font-size` bump uses `(pointer: coarse)`
+ * in `index.css` so it matches JS touch detection (Samsung hover MQ lies).
  *
  * **Touch detection media queries lie**
  * `(hover: none) and (pointer: coarse)` can be **false** on a pure-touch phone
@@ -60,9 +62,11 @@ import {
 } from "./services/env-log.js";
 import "./components/app-shell.js";
 
-// ── Mobile viewport meta fix — portrait readable text WITHOUT Fullscreen API ─
-// See file-top documentation block. Replaces width=device-width with an
-// explicit CSS-pixel width from screen edges when touch is detected reliably.
+// ── Mobile viewport meta fix — readable layout WITHOUT Fullscreen API ───────
+// See file-top documentation block. Sets explicit width from screen edges.
+// If Chrome still reports a huge innerWidth (stale landscape viewport),
+// forces a reflow via device-width → explicit sandwich (same trick fullscreen
+// accidentally triggered).
 function applyViewportFix() {
   const isTouchDevice =
     window.matchMedia("(pointer: coarse)").matches ||
@@ -74,17 +78,69 @@ function applyViewportFix() {
   );
   if (!viewport) return;
 
+  const DEVICE_WIDTH_META =
+    "width=device-width, initial-scale=1.0, viewport-fit=cover";
+
+  /** Expected layout viewport width for current orientation (~physical CSS px). */
+  function expectedLayoutWidthPx(): number {
+    const shortEdge = Math.min(screen.width, screen.height);
+    const longEdge = Math.max(screen.width, screen.height);
+    return detectIsPortrait() ? shortEdge : longEdge;
+  }
+
   function detectIsPortrait(): boolean {
     const t = screen.orientation?.type;
     if (t) return t.startsWith("portrait");
     return window.matchMedia("(orientation: portrait)").matches;
   }
 
-  function applyFix() {
-    const isPortrait = detectIsPortrait();
-    const shortEdge = Math.min(screen.width, screen.height);
-    const longEdge = Math.max(screen.width, screen.height);
-    const targetWidth = isPortrait ? shortEdge : longEdge;
+  /** Stale landscape viewport: innerWidth stays ~980 while screen short edge ~360. */
+  function isLayoutViewportWrong(): boolean {
+    const expected = expectedLayoutWidthPx();
+    const iw = window.innerWidth;
+    // Allow small deltas (fractional DPR, UI chrome). Wrong = still laid out “wide”.
+    return iw > expected * 1.22;
+  }
+
+  let sandwichAttempts = 0;
+
+  /** Samsung WebAPK sometimes ignores meta until layout is reset this way. */
+  function forceReflowSandwich(targetContent: string): void {
+    sandwichAttempts += 1;
+    log.warn(
+      `[viewport-fix] reflow sandwich attempt=${sandwichAttempts} ` +
+        `innerW=${window.innerWidth} expected≈${expectedLayoutWidthPx()}`,
+    );
+    viewport!.content = DEVICE_WIDTH_META;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        viewport!.content = targetContent;
+        setTimeout(() => {
+          logEnv("vp-fix-sandwich-post");
+          if (isLayoutViewportWrong() && sandwichAttempts < 2) {
+            forceReflowSandwich(targetContent);
+          }
+        }, 80);
+      });
+    });
+  }
+
+  function verifyOrSandwich(targetContent: string): void {
+    setTimeout(() => {
+      if (!isLayoutViewportWrong()) return;
+      if (sandwichAttempts >= 2) {
+        log.warn(
+          `[viewport-fix] still wrong after sandwiches innerW=${window.innerWidth}`,
+        );
+        return;
+      }
+      logEnv("vp-fix-verify-fail-pre");
+      forceReflowSandwich(targetContent);
+    }, 120);
+  }
+
+  function applyFix(): void {
+    const targetWidth = expectedLayoutWidthPx();
     const targetContent = `width=${targetWidth}, initial-scale=1.0, viewport-fit=cover`;
     const before = viewport!.content;
 
@@ -96,11 +152,13 @@ function applyViewportFix() {
         `willChange=${before !== targetContent}`,
     );
 
+    sandwichAttempts = 0;
     if (before !== targetContent) {
       logEnv("vp-fix-pre");
       viewport!.content = targetContent;
       setTimeout(() => logEnv("vp-fix-post"), 50);
     }
+    verifyOrSandwich(targetContent);
   }
 
   applyFix();
@@ -113,6 +171,22 @@ function applyViewportFix() {
   window.addEventListener("orientationchange", () => {
     setTimeout(applyFix, 100);
   });
+
+  // Exiting Fullscreen API changes chrome / inner dimensions — re-apply meta.
+  document.addEventListener("fullscreenchange", () => {
+    setTimeout(applyFix, 50);
+  });
+
+  let vvTimer: ReturnType<typeof setTimeout> | null = null;
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => {
+      if (vvTimer) clearTimeout(vvTimer);
+      vvTimer = setTimeout(() => {
+        vvTimer = null;
+        if (isLayoutViewportWrong()) applyFix();
+      }, 200);
+    });
+  }
 }
 
 applyViewportFix();
