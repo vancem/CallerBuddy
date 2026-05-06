@@ -81,8 +81,15 @@ export class AppShell extends LitElement {
     // fixes the Android viewport-width bug that makes portrait text tiny.
     // Since requestFullscreen() requires a user gesture, we register a
     // one-shot capture-phase click handler to invoke it on the first tap.
+    //
+    // Detection note: `(hover: none) and (pointer: coarse)` returns `false`
+    // on Samsung One UI 6 PWAs (the `hover: none` half lies), so we use
+    // `(pointer: coarse) || maxTouchPoints > 0` instead.  See env-log.
+    const isTouch =
+      window.matchMedia("(pointer: coarse)").matches ||
+      (navigator.maxTouchPoints ?? 0) > 0;
     this._isTouchPwa =
-      window.matchMedia("(hover: none) and (pointer: coarse)").matches &&
+      isTouch &&
       (window.matchMedia("(display-mode: fullscreen)").matches ||
         window.matchMedia("(display-mode: standalone)").matches);
     const willRegister = this._isTouchPwa && !this.isFullscreenApi();
@@ -93,7 +100,10 @@ export class AppShell extends LitElement {
       `[fs] init touchPwa=${this._isTouchPwa} fsApi=${this.isFullscreenApi()} ` +
         `mqStandalone=${window.matchMedia("(display-mode: standalone)").matches} ` +
         `mqFullscreen=${window.matchMedia("(display-mode: fullscreen)").matches} ` +
-        `mqTouch=${window.matchMedia("(hover: none) and (pointer: coarse)").matches} ` +
+        `mqPtrCoarse=${window.matchMedia("(pointer: coarse)").matches} ` +
+        `maxTouch=${navigator.maxTouchPoints ?? 0} ` +
+        `mqHoverNoneAndPtrCoarse=${window.matchMedia("(hover: none) and (pointer: coarse)").matches} ` +
+        `isTouch=${isTouch} ` +
         `listener-registered=${willRegister}`,
     );
   }

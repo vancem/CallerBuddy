@@ -34,9 +34,16 @@ import "./components/app-shell.js";
 function applyViewportFix() {
   // Only on touch-primary devices.  Desktop/laptop use `device-width`
   // correctly, and forcing a fixed width there could break window resizing.
-  const isTouchDevice = window.matchMedia(
-    "(hover: none) and (pointer: coarse)",
-  ).matches;
+  //
+  // Detection note: we previously used `(hover: none) and (pointer: coarse)`,
+  // but on Samsung One UI 6 PWAs the `(hover: none)` half evaluates to
+  // `false` even on a phone with no pointing device — so the combined query
+  // misfires and the fix never runs.  `(pointer: coarse)` and
+  // `navigator.maxTouchPoints` both report correctly there, so we use them
+  // (OR'd, belt-and-suspenders) instead.  See env-log output for evidence.
+  const isTouchDevice =
+    window.matchMedia("(pointer: coarse)").matches ||
+    (navigator.maxTouchPoints ?? 0) > 0;
   if (!isTouchDevice) return;
 
   const viewport = document.querySelector<HTMLMetaElement>(
