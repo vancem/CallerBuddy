@@ -7,6 +7,11 @@
 
 import { callerBuddy } from "./caller-buddy.js";
 import { log } from "./services/logger.js";
+import {
+  installEnvListeners,
+  logDeviceInfo,
+  logEnv,
+} from "./services/env-log.js";
 import "./components/app-shell.js";
 
 // ── Mobile viewport-width fix (Samsung Android "tiny portrait" bug) ──────
@@ -51,15 +56,22 @@ function applyViewportFix() {
     const longEdge = Math.max(screen.width, screen.height);
     const targetWidth = isPortrait ? shortEdge : longEdge;
     const targetContent = `width=${targetWidth}, initial-scale=1.0, viewport-fit=cover`;
+    const before = viewport!.content;
 
     log.info(
       `[viewport-fix] orient=${screen.orientation?.type ?? "?"} ` +
         `target=${targetWidth} innerW=${window.innerWidth} ` +
-        `innerH=${window.innerHeight} screen=${screen.width}x${screen.height}`,
+        `innerH=${window.innerHeight} screen=${screen.width}x${screen.height} ` +
+        `metaBefore="${before}" metaTarget="${targetContent}" ` +
+        `willChange=${before !== targetContent}`,
     );
 
-    if (viewport!.content !== targetContent) {
+    if (before !== targetContent) {
+      logEnv("vp-fix-pre");
       viewport!.content = targetContent;
+      // Browsers re-flow asynchronously; let the next paint complete before
+      // we measure the effect.
+      setTimeout(() => logEnv("vp-fix-post"), 50);
     }
   }
 
@@ -77,16 +89,14 @@ function applyViewportFix() {
 
 applyViewportFix();
 
-// ── Diagnostic viewport logging (temporary — remove once fix is verified) ──
-log.info(
-  `[viewport-diag] innerWidth=${window.innerWidth} innerHeight=${window.innerHeight} ` +
-    `screen=${screen.width}x${screen.height} dpr=${devicePixelRatio} ` +
-    `orientation=${screen.orientation?.type ?? "unknown"} ` +
-    `visualVP=${window.visualViewport?.width ?? "?"}x${window.visualViewport?.height ?? "?"} ` +
-    `standalone=${window.matchMedia("(display-mode: standalone)").matches} ` +
-    `fullscreen=${window.matchMedia("(display-mode: fullscreen)").matches} ` +
-    `touch=${window.matchMedia("(hover: none) and (pointer: coarse)").matches}`,
-);
+// ── Diagnostic logging ─────────────────────────────────────────────────────
+// One-time static device info, then a comprehensive environment snapshot,
+// then ongoing snapshots for every layout-affecting state change.  This is
+// deliberately not gated on touch/PWA detection — we've learned those gates
+// can lie, and silent gating means silent failure.
+logDeviceInfo();
+logEnv("startup");
+installEnvListeners();
 
 // Initialize the CallerBuddy application
 callerBuddy.init();

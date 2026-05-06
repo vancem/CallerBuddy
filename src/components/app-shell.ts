@@ -29,6 +29,20 @@ import "./song-play.js";
 import "./song-onboard.js";
 import "./help-view.js";
 
+/** Describe an event target compactly for logs (tag, id/class, text snippet). */
+function describeTarget(t: EventTarget | null): string {
+  const el = t as HTMLElement | null;
+  if (!el || !el.tagName) return "null";
+  const tag = el.tagName.toLowerCase();
+  const id = el.id ? `#${el.id}` : "";
+  const cls =
+    typeof el.className === "string" && el.className
+      ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".")
+      : "";
+  const txt = (el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 30);
+  return `${tag}${id}${cls}${txt ? ` "${txt}"` : ""}`;
+}
+
 @customElement("app-shell")
 export class AppShell extends LitElement {
   @state() private showMenu = false;
@@ -46,7 +60,7 @@ export class AppShell extends LitElement {
    *  Prevents auto-reenter from fighting the user's intent. */
   private _closingApp = false;
 
-  private _boundAutoFs = () => this.autoEnterFullscreen();
+  private _boundAutoFs = (e: Event) => this.autoEnterFullscreen(e);
 
   connectedCallback() {
     super.connectedCallback();
@@ -95,6 +109,7 @@ export class AppShell extends LitElement {
 
   /** Called when the browser back button (Android nav bar) is pressed. */
   private onPopstate() {
+    log.info(`[ui] back-button pressed`);
     // Re-push the sentinel so the trap stays active for the next press.
     history.pushState({ cbSentinel: true }, "");
     // Use in-app tab back navigation if available.
@@ -102,8 +117,11 @@ export class AppShell extends LitElement {
   }
 
   /** Invoke the Fullscreen API on the first user gesture (touch PWA only). */
-  private autoEnterFullscreen() {
-    log.info(`[fs] auto-enter click fired (alreadyFs=${this.isFullscreenApi()})`);
+  private autoEnterFullscreen(e?: Event) {
+    log.info(
+      `[fs] auto-enter click fired (alreadyFs=${this.isFullscreenApi()}) ` +
+        `target=${describeTarget(e?.target ?? null)}`,
+    );
     if (this.isFullscreenApi()) return;
     this.requestFullscreenApi();
   }
@@ -111,13 +129,17 @@ export class AppShell extends LitElement {
   /** When fullscreen state changes, on touch PWAs re-enter fullscreen on
    *  the next tap — unless the user explicitly chose to close the app. */
   private onFullscreenChange() {
+    const fsApi = this.isFullscreenApi();
+    const willReregister =
+      this._isTouchPwa && !this._closingApp && !fsApi;
     log.info(
-      `[fs] change -> ${this.isFullscreenApi() ? "IN" : "OUT"} ` +
-        `(touchPwa=${this._isTouchPwa} closing=${this._closingApp})`,
+      `[fs] change -> ${fsApi ? "IN" : "OUT"} ` +
+        `(touchPwa=${this._isTouchPwa} closing=${this._closingApp} ` +
+        `reregister=${willReregister})`,
     );
     this.requestUpdate();
     if (!this._isTouchPwa || this._closingApp) return;
-    if (!this.isFullscreenApi()) {
+    if (!fsApi) {
       document.addEventListener("click", this._boundAutoFs, { capture: true, once: true });
     }
   }
@@ -187,8 +209,13 @@ export class AppShell extends LitElement {
 
   private toggleFullscreen() {
     this.showMenu = false;
-    log.info(`[fs] menu toggle (was ${this.isFullscreenApi() ? "IN" : "OUT"})`);
-    if (this.isFullscreenApi()) {
+    const wasIn = this.isFullscreenApi();
+    log.info(
+      `[ui] menu: ${wasIn ? "In Window" : "Full Screen"} ` +
+        `(toggle, wasIn=${wasIn})`,
+    );
+    log.info(`[fs] menu toggle (was ${wasIn ? "IN" : "OUT"})`);
+    if (wasIn) {
       this.exitFullscreenApi();
     } else {
       this.requestFullscreenApi();
@@ -218,26 +245,31 @@ export class AppShell extends LitElement {
       (e.ctrlKey && e.key === ".") ||
       (e.ctrlKey && e.shiftKey && e.code === "Period");
     if (isBack) {
+      log.info(`[ui] key Ctrl+< (back)`);
       e.preventDefault();
       void this.handleGoBack();
       return;
     }
     if (isForward) {
+      log.info(`[ui] key Ctrl+> (forward)`);
       e.preventDefault();
       void this.handleGoForward();
       return;
     }
     if (e.ctrlKey && e.key === "]") {
+      log.info(`[ui] key Ctrl+] (next tab)`);
       e.preventDefault();
       void this.activateAdjacentTab(tabs, activeTabId, "next");
       return;
     }
     if (e.ctrlKey && e.key === "[") {
+      log.info(`[ui] key Ctrl+[ (prev tab)`);
       e.preventDefault();
       void this.activateAdjacentTab(tabs, activeTabId, "prev");
       return;
     }
     if (e.ctrlKey && e.key === "w") {
+      log.info(`[ui] key Ctrl+W (close tab)`);
       e.preventDefault();
       this.closeActiveTab();
       return;
@@ -453,16 +485,19 @@ export class AppShell extends LitElement {
   }
 
   private onShowLogs() {
+    log.info(`[ui] menu: Show Logs`);
     this.showMenu = false;
     this.logCopyStatus = "";
     this.showLogs = true;
   }
 
   private closeLogs() {
+    log.info(`[ui] logs: close`);
     this.showLogs = false;
   }
 
   private async copyLogs() {
+    log.info(`[ui] logs: copy`);
     const text = getRecentLogs().join("\n");
     try {
       if (navigator.clipboard?.writeText) {
@@ -489,6 +524,7 @@ export class AppShell extends LitElement {
   }
 
   private clearLogs() {
+    log.info(`[ui] logs: clear`);
     clearRecentLogs();
     this.logCopyStatus = "Cleared";
     this.requestUpdate();
@@ -501,6 +537,7 @@ export class AppShell extends LitElement {
 
   private async onTabActivate(e: CustomEvent<{ id: string }>) {
     const id = e.detail.id;
+    log.info(`[ui] tab-activate id=${id}`);
     const active = callerBuddy.state.getActiveTab();
     if (active?.type === TabType.SongPlay && id !== active.id) {
       const ok = await callerBuddy.runSongPlayUnsavedGuard();
@@ -510,6 +547,7 @@ export class AppShell extends LitElement {
   }
 
   private async onTabClose(e: CustomEvent<{ id: string }>) {
+    log.info(`[ui] tab-close id=${e.detail.id}`);
     const tab = callerBuddy.state.tabs.find((t) => t.id === e.detail.id);
     if (!tab) return;
     if (tab.type === TabType.SongPlay) {
@@ -522,13 +560,16 @@ export class AppShell extends LitElement {
 
   private toggleMenu() {
     this.showMenu = !this.showMenu;
+    log.info(`[ui] menu ${this.showMenu ? "open" : "close"} (hamburger)`);
   }
 
   private closeMenu() {
+    log.info(`[ui] menu close (overlay click)`);
     this.showMenu = false;
   }
 
   private async onWelcome() {
+    log.info(`[ui] menu: Set CallerBuddy folder`);
     this.showMenu = false;
     try {
       const handle = await window.showDirectoryPicker({ mode: "readwrite" });
@@ -539,6 +580,7 @@ export class AppShell extends LitElement {
   }
 
   private async onImportSongZip() {
+    log.info(`[ui] menu: Import Song from ZIP`);
     this.showMenu = false;
     if (!callerBuddy.state.rootHandle) {
       alert("Please set a CallerBuddy folder first.");
@@ -562,6 +604,7 @@ export class AppShell extends LitElement {
   }
 
   private async onImportSongFolder() {
+    log.info(`[ui] menu: Import Song from Folder`);
     this.showMenu = false;
     if (!callerBuddy.state.rootHandle) {
       alert("Please set a CallerBuddy folder first.");
@@ -576,17 +619,24 @@ export class AppShell extends LitElement {
   }
 
   private onHelp() {
+    log.info(`[ui] menu: Help`);
     this.showMenu = false;
     callerBuddy.state.openSingletonTab(TabType.Help, "Help");
   }
 
   private async onClose() {
+    log.info(`[ui] menu: Close`);
     this.showMenu = false;
+    log.info(
+      `[fs] onClose: setting _closingApp=true ` +
+        `(wasFs=${this.isFullscreenApi()} touchPwa=${this._isTouchPwa})`,
+    );
     this._closingApp = true;
     document.removeEventListener("click", this._boundAutoFs, true);
     if (this.isFullscreenApi()) {
       await this.exitFullscreenApi();
     }
+    log.info(`[fs] onClose: calling window.close()`);
     window.close();
   }
 

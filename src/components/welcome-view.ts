@@ -101,20 +101,24 @@ export class WelcomeView extends LitElement {
   }
 
   private async reconnect() {
+    log.info(`[ui] welcome: Reconnect to this folder`);
     const handle = callerBuddy.state.rootHandle;
     if (!handle) return;
     this.pickerError = "";
     try {
       this.loading = true;
       log.info(
-        `reconnect: starting fsApi=${!!document.fullscreenElement} requesting permission on existing handle…`,
+        `[ui] reconnect: starting fsApi=${!!document.fullscreenElement} requesting permission on existing handle…`,
       );
       await callerBuddy.setRoot(handle);
       log.info(
-        `reconnect: setRoot done fsApi=${!!document.fullscreenElement}`,
+        `[ui] reconnect: setRoot done fsApi=${!!document.fullscreenElement}`,
       );
     } catch (err) {
-      log.error("reconnect: error:", err);
+      log.error(
+        `[ui] reconnect: error fsApi=${!!document.fullscreenElement}:`,
+        err,
+      );
       this.pickerError =
         err instanceof Error ? err.message : "Could not reconnect.";
     } finally {
@@ -123,13 +127,18 @@ export class WelcomeView extends LitElement {
   }
 
   private openHelp() {
+    log.info(`[ui] welcome: View Help & Walkthroughs`);
     callerBuddy.state.openSingletonTab(TabType.Help, "Help");
   }
 
   private async pickFolder() {
+    log.info(
+      `[ui] welcome: ${this.folderName ? "Choose a different folder" : "Choose CallerBuddy folder"}`,
+    );
     this.pickerError = "";
 
     if (typeof window.showDirectoryPicker !== "function") {
+      log.warn(`[ui] pickFolder: showDirectoryPicker not supported`);
       this.pickerError =
         "Folder picker is not supported in this browser. Use Chrome or Edge.";
       return;
@@ -138,28 +147,31 @@ export class WelcomeView extends LitElement {
     try {
       this.loading = true;
       log.info(
-        `pickFolder: starting fsApi=${!!document.fullscreenElement} opening directory picker…`,
+        `[ui] pickFolder: starting fsApi=${!!document.fullscreenElement} opening directory picker…`,
       );
       const handle = await window.showDirectoryPicker({ mode: "readwrite" });
       this.folderName = handle.name;
       log.info(
-        `pickFolder: user chose "${handle.name}" fsApi=${!!document.fullscreenElement}, calling setRoot…`,
+        `[ui] pickFolder: user chose "${handle.name}" fsApi=${!!document.fullscreenElement}, calling setRoot…`,
       );
       await callerBuddy.setRoot(handle);
       log.info(
-        `pickFolder: setRoot done fsApi=${!!document.fullscreenElement}`,
+        `[ui] pickFolder: setRoot done fsApi=${!!document.fullscreenElement}`,
       );
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
-        log.info("pickFolder: user cancelled the picker");
+        log.info(`[ui] pickFolder: user cancelled the picker`);
         return;
       }
-      log.error("pickFolder: error during folder setup:", err);
+      log.error(
+        `[ui] pickFolder: error fsApi=${!!document.fullscreenElement}:`,
+        err,
+      );
       this.pickerError =
         err instanceof Error ? err.message : "Could not open folder.";
     } finally {
       this.loading = false;
-      log.info("pickFolder: loading set to false");
+      log.info(`[ui] pickFolder: loading=false`);
     }
   }
 
