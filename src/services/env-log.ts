@@ -9,6 +9,10 @@
  * misreporting on installed PWAs) where the documented APIs don't all behave
  * the way they're supposed to.  Having the full state at every relevant event
  * lets us catch which signal lied without another round-trip to the device.
+ *
+ * Domain knowledge (why innerWidth lies, touch MQ bugs, FS vs manifest): see
+ * the banner comment at the top of `src/main.ts` and BACKLOG.md § "Mobile
+ * viewport & fullscreen".
  */
 
 import { log } from "./logger.js";

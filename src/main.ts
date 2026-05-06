@@ -3,6 +3,52 @@
  *
  * Bootstraps the CallerBuddy singleton and mounts the root <app-shell>
  * component. The app-shell manages the tab-based UI.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * MOBILE LAYOUT — accumulated findings (Samsung Galaxy A-class, Chrome WebAPK)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * **Broken layout viewport on portrait**
+ * Some Android installs report `window.innerWidth` stuck at the *landscape*
+ * width (~980 CSS px) while `screen.width` / `screen.height` reflect the real
+ * portrait hardware (e.g. 360×780). The page then lays out as ~980px wide and
+ * Chrome scales it down (`visualViewport.scale` ≈ 0.37) → tiny text, landscape
+ * word-wrapping in portrait. Do **not** infer orientation from `innerWidth` /
+ * `innerHeight` — those may be the corrupted values.
+ *
+ * **Reliable orientation**
+ * Use `screen.orientation.type` (sensor-driven) or `(orientation: portrait)`
+ * rather than comparing inner dimensions.
+ *
+ * **`width=device-width` ignored**
+ * Even with a correct viewport meta, the broken inner width can persist until
+ * something forces a real layout change (e.g. Fullscreen API `requestFullscreen`
+ * on some devices). We still set an explicit `meta viewport` width from
+ * `screen` short/long edge — see `applyViewportFix()` — so readable UI does not
+ * depend on fullscreen.
+ *
+ * **Touch detection media queries lie**
+ * `(hover: none) and (pointer: coarse)` can be **false** on a pure-touch phone
+ * because `(hover: none)` is false on Samsung One UI WebAPKs. Prefer
+ * `(pointer: coarse)` and/or `navigator.maxTouchPoints > 0`.
+ *
+ * **Manifest fullscreen ≠ Fullscreen API**
+ * PWA manifest `"display": "fullscreen"` hides OS chrome but does **not** set
+ * `document.fullscreenElement`. The `(display-mode: fullscreen)` media query can
+ * still be true while the Fullscreen API is inactive — menu uses API state.
+ *
+ * **User gesture collisions**
+ * `requestFullscreen()` and `FileSystemDirectoryHandle.requestPermission()`
+ * both consume transient user activation. A global capture listener that calls
+ * fullscreen **before** button handlers breaks folder permission on the same
+ * tap. Use an explicit dialog whose primary button only calls fullscreen.
+ *
+ * **Fullscreen may exit**
+ * Permission dialogs and OS UI often exit API fullscreen; that is acceptable —
+ * viewport fix keeps text usable without forcing fullscreen again.
+ *
+ * Long-form notes: BACKLOG.md § "Mobile viewport & fullscreen (Android WebAPK)".
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import { callerBuddy } from "./caller-buddy.js";
@@ -14,33 +60,10 @@ import {
 } from "./services/env-log.js";
 import "./components/app-shell.js";
 
-// ── Mobile viewport-width fix (Samsung Android "tiny portrait" bug) ──────
-// On some Android devices (notably Samsung Galaxy A-series), the layout
-// viewport width is stuck at the landscape value (e.g. ~892 px) even when
-// the device is in portrait orientation.  The page then renders at landscape
-// width and is either scaled down (Chrome browser) or made horizontally
-// scrollable (installed PWA), making text and controls appear tiny.
-//
-// Why our previous fix didn't work: it used `window.innerWidth` /
-// `window.innerHeight` to detect orientation, but those are *the very values
-// the bug corrupts*.  Detection failed and the fix never triggered.
-//
-// New approach: use `screen.orientation.type` (driven by the device sensor,
-// not the viewport) to determine orientation, and replace
-// `width=device-width` with an explicit pixel width based on `screen.width`
-// /`screen.height`.  We keep the explicit width permanently (don't restore
-// `device-width`, which is the broken value).  Re-apply on orientation
-// changes.
+// ── Mobile viewport meta fix — portrait readable text WITHOUT Fullscreen API ─
+// See file-top documentation block. Replaces width=device-width with an
+// explicit CSS-pixel width from screen edges when touch is detected reliably.
 function applyViewportFix() {
-  // Only on touch-primary devices.  Desktop/laptop use `device-width`
-  // correctly, and forcing a fixed width there could break window resizing.
-  //
-  // Detection note: we previously used `(hover: none) and (pointer: coarse)`,
-  // but on Samsung One UI 6 PWAs the `(hover: none)` half evaluates to
-  // `false` even on a phone with no pointing device — so the combined query
-  // misfires and the fix never runs.  `(pointer: coarse)` and
-  // `navigator.maxTouchPoints` both report correctly there, so we use them
-  // (OR'd, belt-and-suspenders) instead.  See env-log output for evidence.
   const isTouchDevice =
     window.matchMedia("(pointer: coarse)").matches ||
     (navigator.maxTouchPoints ?? 0) > 0;
@@ -76,8 +99,6 @@ function applyViewportFix() {
     if (before !== targetContent) {
       logEnv("vp-fix-pre");
       viewport!.content = targetContent;
-      // Browsers re-flow asynchronously; let the next paint complete before
-      // we measure the effect.
       setTimeout(() => logEnv("vp-fix-post"), 50);
     }
   }
@@ -96,16 +117,11 @@ function applyViewportFix() {
 
 applyViewportFix();
 
-// ── Diagnostic logging ─────────────────────────────────────────────────────
-// One-time static device info, then a comprehensive environment snapshot,
-// then ongoing snapshots for every layout-affecting state change.  This is
-// deliberately not gated on touch/PWA detection — we've learned those gates
-// can lie, and silent gating means silent failure.
+// Optional diagnostics for mobile debugging — touches resize / fullscreen / VP.
 logDeviceInfo();
 logEnv("startup");
 installEnvListeners();
 
-// Initialize the CallerBuddy application
 callerBuddy.init();
 
 // Register service worker only in production (avoids caching issues in dev)
@@ -114,10 +130,6 @@ if (!import.meta.env.DEV && "serviceWorker" in navigator) {
     navigator.serviceWorker
       .register(import.meta.env.BASE_URL + "sw.js", { updateViaCache: "none" })
       .then((registration) => {
-        // When user returns to the tab, check for updates (helps mobile pick up new
-        // versions). A quick HEAD probe with a 1.5s timeout verifies real connectivity
-        // first — navigator.onLine is true whenever the radio is on, even with no
-        // cell reception, which would cause registration.update() to hang.
         document.addEventListener("visibilitychange", () => {
           if (document.visibilityState !== "visible" || !navigator.onLine) return;
           const ctrl = new AbortController();

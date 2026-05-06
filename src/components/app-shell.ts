@@ -11,6 +11,13 @@
  *  └─────────────────────────────────────────────────────┘
  *
  * See CallerBuddySpec.md §"Basic UI layout" for design rationale.
+ *
+ * ── Mobile fullscreen (Fullscreen API) ────────────────────────────────────
+ * Manifest `display: fullscreen` is NOT the same as `document.fullscreenElement`.
+ * We optionally call `requestFullscreen()` so the user gets a dedicated gesture
+ * for that API — see file-top comment in main.ts and BACKLOG.md § "Mobile
+ * viewport & fullscreen". We do NOT steal the first tap globally (that broke
+ * File System `requestPermission()`, which also requires a user gesture).
  */
 
 import { LitElement, css, html, nothing } from "lit";
@@ -29,38 +36,20 @@ import "./song-play.js";
 import "./song-onboard.js";
 import "./help-view.js";
 
-/** Describe an event target compactly for logs (tag, id/class, text snippet). */
-function describeTarget(t: EventTarget | null): string {
-  const el = t as HTMLElement | null;
-  if (!el || !el.tagName) return "null";
-  const tag = el.tagName.toLowerCase();
-  const id = el.id ? `#${el.id}` : "";
-  const cls =
-    typeof el.className === "string" && el.className
-      ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".")
-      : "";
-  const txt = (el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 30);
-  return `${tag}${id}${cls}${txt ? ` "${txt}"` : ""}`;
-}
+/** Records that the user answered the one-time startup fullscreen prompt. */
+const FS_STARTUP_PROMPT_KEY = "callerbuddy.fsStartupPrompt";
 
 @customElement("app-shell")
 export class AppShell extends LitElement {
   @state() private showMenu = false;
   @state() private showLogs = false;
   @state() private logCopyStatus = "";
+  /** One-time dialog on touch installed PWA: offers Fullscreen API (optional). */
+  @state() private showFullscreenStartup = false;
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   private _boundFsChange = () => this.onFullscreenChange();
   private _boundPopstate = () => this.onPopstate();
-
-  /** True on touch-primary installed PWAs (phones/tablets). Cached once. */
-  private _isTouchPwa = false;
-
-  /** Set to true when the app intentionally exits fullscreen (Close button).
-   *  Prevents auto-reenter from fighting the user's intent. */
-  private _closingApp = false;
-
-  private _boundAutoFs = (e: Event) => this.autoEnterFullscreen(e);
 
   connectedCallback() {
     super.connectedCallback();
@@ -76,35 +65,25 @@ export class AppShell extends LitElement {
     history.pushState({ cbSentinel: true }, "");
     window.addEventListener("popstate", this._boundPopstate);
 
-    // On touch-primary installed PWAs, the manifest "display: fullscreen"
-    // hides OS chrome but does NOT invoke the Fullscreen API.  Only the API
-    // fixes the Android viewport-width bug that makes portrait text tiny.
-    // Since requestFullscreen() requires a user gesture, we register a
-    // one-shot capture-phase click handler to invoke it on the first tap.
-    //
-    // Detection note: `(hover: none) and (pointer: coarse)` returns `false`
-    // on Samsung One UI 6 PWAs (the `hover: none` half lies), so we use
-    // `(pointer: coarse) || maxTouchPoints > 0` instead.  See env-log.
-    const isTouch =
-      window.matchMedia("(pointer: coarse)").matches ||
-      (navigator.maxTouchPoints ?? 0) > 0;
-    this._isTouchPwa =
-      isTouch &&
-      (window.matchMedia("(display-mode: fullscreen)").matches ||
-        window.matchMedia("(display-mode: standalone)").matches);
-    const willRegister = this._isTouchPwa && !this.isFullscreenApi();
-    if (willRegister) {
-      document.addEventListener("click", this._boundAutoFs, { capture: true, once: true });
+    let promptAlreadyAnswered = false;
+    let storageAvailable = true;
+    try {
+      promptAlreadyAnswered = !!localStorage.getItem(FS_STARTUP_PROMPT_KEY);
+    } catch {
+      storageAvailable = false;
+    }
+    if (
+      storageAvailable &&
+      !promptAlreadyAnswered &&
+      this.isTouchInstalledPwa() &&
+      !this.isFullscreenApi()
+    ) {
+      this.showFullscreenStartup = true;
     }
     log.info(
-      `[fs] init touchPwa=${this._isTouchPwa} fsApi=${this.isFullscreenApi()} ` +
-        `mqStandalone=${window.matchMedia("(display-mode: standalone)").matches} ` +
-        `mqFullscreen=${window.matchMedia("(display-mode: fullscreen)").matches} ` +
-        `mqPtrCoarse=${window.matchMedia("(pointer: coarse)").matches} ` +
-        `maxTouch=${navigator.maxTouchPoints ?? 0} ` +
-        `mqHoverNoneAndPtrCoarse=${window.matchMedia("(hover: none) and (pointer: coarse)").matches} ` +
-        `isTouch=${isTouch} ` +
-        `listener-registered=${willRegister}`,
+      `[fs] init fsApi=${this.isFullscreenApi()} ` +
+        `touchInstalledPwa=${this.isTouchInstalledPwa()} ` +
+        `fsStartupPrompt=${this.showFullscreenStartup}`,
     );
   }
 
@@ -113,8 +92,19 @@ export class AppShell extends LitElement {
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.removeEventListener("keydown", this._boundKeydown);
     document.removeEventListener("fullscreenchange", this._boundFsChange);
-    document.removeEventListener("click", this._boundAutoFs, true);
     window.removeEventListener("popstate", this._boundPopstate);
+  }
+
+  /** Touch device + installed PWA (standalone or manifest fullscreen). */
+  private isTouchInstalledPwa(): boolean {
+    const isTouch =
+      window.matchMedia("(pointer: coarse)").matches ||
+      (navigator.maxTouchPoints ?? 0) > 0;
+    return (
+      isTouch &&
+      (window.matchMedia("(display-mode: fullscreen)").matches ||
+        window.matchMedia("(display-mode: standalone)").matches)
+    );
   }
 
   /** Called when the browser back button (Android nav bar) is pressed. */
@@ -126,32 +116,31 @@ export class AppShell extends LitElement {
     void this.handleGoBack();
   }
 
-  /** Invoke the Fullscreen API on the first user gesture (touch PWA only). */
-  private autoEnterFullscreen(e?: Event) {
-    log.info(
-      `[fs] auto-enter click fired (alreadyFs=${this.isFullscreenApi()}) ` +
-        `target=${describeTarget(e?.target ?? null)}`,
-    );
-    if (this.isFullscreenApi()) return;
+  private onFullscreenStartupYes() {
+    log.info(`[ui] fs-startup: Enter full screen`);
+    try {
+      localStorage.setItem(FS_STARTUP_PROMPT_KEY, "entered");
+    } catch {
+      /* ignore */
+    }
+    this.showFullscreenStartup = false;
     this.requestFullscreenApi();
   }
 
-  /** When fullscreen state changes, on touch PWAs re-enter fullscreen on
-   *  the next tap — unless the user explicitly chose to close the app. */
-  private onFullscreenChange() {
-    const fsApi = this.isFullscreenApi();
-    const willReregister =
-      this._isTouchPwa && !this._closingApp && !fsApi;
-    log.info(
-      `[fs] change -> ${fsApi ? "IN" : "OUT"} ` +
-        `(touchPwa=${this._isTouchPwa} closing=${this._closingApp} ` +
-        `reregister=${willReregister})`,
-    );
-    this.requestUpdate();
-    if (!this._isTouchPwa || this._closingApp) return;
-    if (!fsApi) {
-      document.addEventListener("click", this._boundAutoFs, { capture: true, once: true });
+  private onFullscreenStartupNo() {
+    log.info(`[ui] fs-startup: Not now`);
+    try {
+      localStorage.setItem(FS_STARTUP_PROMPT_KEY, "skipped");
+    } catch {
+      /* ignore */
     }
+    this.showFullscreenStartup = false;
+  }
+
+  /** Refresh menu label ("Full Screen" vs "In Window"). OS may exit FS anytime. */
+  private onFullscreenChange() {
+    log.info(`[fs] change -> ${this.isFullscreenApi() ? "IN" : "OUT"}`);
+    this.requestUpdate();
   }
 
   /** Whether the Fullscreen API is currently active (distinct from the
@@ -395,7 +384,49 @@ export class AppShell extends LitElement {
             : nothing}
           ${!activeTab ? this.renderEmpty() : nothing}
         </main>
+        ${this.showFullscreenStartup ? this.renderFullscreenStartup() : nothing}
         ${this.showLogs ? this.renderLogModal() : nothing}
+      </div>
+    `;
+  }
+
+  /** Optional Fullscreen API — see file header. Uses plain buttons so text stays readable (viewport fix in main.ts) without requiring FS first. */
+  private renderFullscreenStartup() {
+    return html`
+      <div
+        class="fs-startup-overlay"
+        @click=${this.onFullscreenStartupNo}
+      ></div>
+      <div
+        class="fs-startup-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fs-startup-title"
+        @click=${(e: Event) => e.stopPropagation()}
+      >
+        <h2 id="fs-startup-title" class="fs-startup-title">Use full screen?</h2>
+        <p class="fs-startup-body">
+          Full screen uses the largest area and hides extra browser UI when the
+          device allows it. CallerBuddy keeps normal text size either way. You
+          can switch later from the menu (Full Screen / In Window).
+        </p>
+        <div class="fs-startup-actions">
+          <button
+            type="button"
+            class="fs-startup-primary"
+            autofocus
+            @click=${this.onFullscreenStartupYes}
+          >
+            Enter full screen
+          </button>
+          <button
+            type="button"
+            class="fs-startup-secondary"
+            @click=${this.onFullscreenStartupNo}
+          >
+            Not now
+          </button>
+        </div>
       </div>
     `;
   }
@@ -637,16 +668,9 @@ export class AppShell extends LitElement {
   private async onClose() {
     log.info(`[ui] menu: Close`);
     this.showMenu = false;
-    log.info(
-      `[fs] onClose: setting _closingApp=true ` +
-        `(wasFs=${this.isFullscreenApi()} touchPwa=${this._isTouchPwa})`,
-    );
-    this._closingApp = true;
-    document.removeEventListener("click", this._boundAutoFs, true);
     if (this.isFullscreenApi()) {
       await this.exitFullscreenApi();
     }
-    log.info(`[fs] onClose: calling window.close()`);
     window.close();
   }
 
@@ -776,6 +800,74 @@ export class AppShell extends LitElement {
       justify-content: center;
       height: 100%;
       color: var(--cb-fg-tertiary);
+    }
+
+    /* ── Startup fullscreen prompt (above tabs & menu) ───────────────── */
+    .fs-startup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 2100;
+    }
+
+    .fs-startup-modal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(92vw, 22rem);
+      max-height: min(85vh, 24rem);
+      overflow: auto;
+      box-sizing: border-box;
+      padding: 1.25rem 1.35rem;
+      background: var(--cb-bg);
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border);
+      border-radius: 10px;
+      box-shadow: 0 12px 40px var(--cb-shadow);
+      z-index: 2101;
+    }
+
+    .fs-startup-title {
+      margin: 0 0 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .fs-startup-body {
+      margin: 0 0 1.1rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--cb-fg);
+    }
+
+    .fs-startup-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .fs-startup-primary {
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 0.65em 1em;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
+    }
+
+    .fs-startup-secondary {
+      border-radius: 8px;
+      padding: 0.55em 1em;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      background: transparent;
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border-strong);
     }
 
     /* ── In-app log viewer ───────────────────────────────────────────── */

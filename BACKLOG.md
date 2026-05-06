@@ -47,6 +47,36 @@ Please also see CallerBuddySpec.md for the specification of user behavior.
 As important design decision are made, they are logged here, optionally with a
 rationale.
 
+**Mobile viewport & fullscreen (Android WebAPK).** Keep this aligned with the
+long comment at the top of `src/main.ts` and the header comment on
+`app-shell.ts` (startup fullscreen dialog).
+
+- **Readable text without Fullscreen API:** On some Samsung/Android WebAPK
+  installs, portrait layout used a stale landscape width (`innerWidth` ~980)
+  while `screen` reported the real device (~360×780), shrinking the whole UI.
+  We fix this by driving `<meta name="viewport">` from `screen.orientation` and
+  explicit `width=<CSS px>` from the physical short/long edge — not from
+  `innerWidth`/`innerHeight`. See `applyViewportFix()` in `main.ts`.
+
+- **Touch detection:** `(hover: none) and (pointer: coarse)` can fail on Samsung
+  One UI PWAs because `(hover: none)` is false. Use `(pointer: coarse)` and/or
+  `navigator.maxTouchPoints > 0` for touch gating.
+
+- **Manifest fullscreen ≠ Fullscreen API:** Manifest `"display": "fullscreen"`
+  hides OS chrome but does **not** set `document.fullscreenElement`. Optional
+  “real” fullscreen uses `requestFullscreen()` only from an explicit control
+  (startup dialog primary button or menu), never from a global capture listener.
+
+- **User gestures:** `requestFullscreen()` and File System `requestPermission()`
+  both require transient activation; stealing the first tap for fullscreen broke
+  folder reconnect. The startup dialog isolates fullscreen to its own button.
+
+- **Fullscreen may exit:** Permission sheets often exit API fullscreen; we do
+  not auto-re-enter. Viewport fix keeps UI usable; menu toggles fullscreen.
+
+- **Diagnostics:** `src/services/env-log.ts` logs `[env …]` snapshots on resize,
+  orientation, fullscreen, visibility — useful when APIs disagree with reality.
+
 - CallerBuddy will be a PWA application.
   - This is because PWA apps give us the cross platform reach that we need we
     avoid the need to generate many binaries for the different platforms.
