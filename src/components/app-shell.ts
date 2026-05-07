@@ -41,6 +41,14 @@ import "./help-view.js";
 const FS_STARTUP_PROMPT_KEY = "callerbuddy.fsStartupPrompt";
 /** Avoid nagging if the user dismisses the resume fullscreen prompt. */
 const FS_RESUME_DISMISS_TS_KEY = "callerbuddy.fsResumeDismissTs";
+/**
+ * Session-only fullscreen intent.
+ *
+ * We intentionally do NOT persist "I want fullscreen" across app restarts because
+ * re-entering fullscreen requires a user gesture and can be confusing on launch.
+ * The app can still *offer* fullscreen right before opening the playlist editor.
+ */
+const FS_SESSION_INTENT_KEY = "callerbuddy.fsSessionIntent";
 
 @customElement("app-shell")
 export class AppShell extends LitElement {
@@ -77,6 +85,16 @@ export class AppShell extends LitElement {
     history.replaceState({ cbSentinel: true }, "");
     history.pushState({ cbSentinel: true }, "");
     window.addEventListener("popstate", this._boundPopstate);
+
+    // Legacy cleanup: older builds persisted fullscreen intent in localStorage,
+    // which caused an immediate "resume fullscreen?" prompt on next launch.
+    // We now treat fullscreen intent as session-only, so clear persisted flags.
+    try {
+      localStorage.removeItem(FS_STARTUP_PROMPT_KEY);
+      localStorage.removeItem(FS_RESUME_DISMISS_TS_KEY);
+    } catch {
+      /* ignore */
+    }
 
     log.info(
       `[fs] init fsApi=${this.isFullscreenApi()} ` +
@@ -135,7 +153,7 @@ export class AppShell extends LitElement {
   /** Whether the user preference implies we "should" be in Fullscreen API. */
   private prefersFullscreenApi(): boolean {
     try {
-      return localStorage.getItem(FS_STARTUP_PROMPT_KEY) === "entered";
+      return sessionStorage.getItem(FS_SESSION_INTENT_KEY) === "1";
     } catch {
       return false;
     }
@@ -238,7 +256,7 @@ export class AppShell extends LitElement {
   private onEditorFullscreenGateYes() {
     log.info(`[ui] fs-editor-gate: Yes — enter full screen`);
     try {
-      localStorage.setItem(FS_STARTUP_PROMPT_KEY, "entered");
+      sessionStorage.setItem(FS_SESSION_INTENT_KEY, "1");
     } catch {
       /* ignore */
     }
@@ -293,14 +311,14 @@ export class AppShell extends LitElement {
     log.info(`[fs] menu toggle (was ${wasIn ? "IN" : "OUT"})`);
     if (wasIn) {
       try {
-        localStorage.setItem(FS_STARTUP_PROMPT_KEY, "skipped");
+        sessionStorage.removeItem(FS_SESSION_INTENT_KEY);
       } catch {
         /* ignore */
       }
       this.exitFullscreenApi();
     } else {
       try {
-        localStorage.setItem(FS_STARTUP_PROMPT_KEY, "entered");
+        sessionStorage.setItem(FS_SESSION_INTENT_KEY, "1");
       } catch {
         /* ignore */
       }
