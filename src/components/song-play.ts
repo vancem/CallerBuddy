@@ -39,7 +39,6 @@ import { DEFAULT_LYRICS_STYLE } from "../lyrics-default-style.js";
 import {
   extractStyleBlock,
   extractBodyContent,
-  rewriteBodySelectors,
   wrapLyricsHtml,
 } from "../utils/lyrics-html.js";
 import { tempoRatioFromSong } from "../utils/play-history.js";
@@ -55,10 +54,11 @@ import "./lyrics-editor.js";
  * selectors to `.lyrics-content`, and returns a fragment ready for injection.
  */
 function prepareLyricsHtml(raw: string): string {
-  const cssText = extractStyleBlock(raw);
-  const rewritten = rewriteBodySelectors(cssText);
   const body = extractBodyContent(raw);
-  return (rewritten ? `<style>${rewritten}</style>` : "") + body;
+  // CallerBuddy owns lyric styling at runtime. The lyric file may include a
+  // <style> block so that opening the HTML directly in a browser looks good,
+  // but in-app we treat lyrics as semantic markup only (h1/h2/p/.info/etc).
+  return body;
 }
 
 function generateLyricsTemplate(song: Song): string {
@@ -665,15 +665,10 @@ export class SongPlay extends LitElement {
   // -- Lyrics editor --------------------------------------------------------
 
   private renderLyricsEditor() {
-    const cssText = this.lyrics
-      ? extractStyleBlock(this.lyrics)
-      : DEFAULT_LYRICS_STYLE;
-    const rewrittenCss = rewriteBodySelectors(cssText);
-
     return html`
       <lyrics-editor
         .bodyHtml=${this.lyrics ? extractBodyContent(this.lyrics) : ""}
-        .editorCss=${rewrittenCss}
+        .editorCss=${""}
         .showSaveExit=${true}
         @lyrics-input=${this.onLyricsEditorInput}
         @lyrics-save=${() => void this.onSaveLyrics()}

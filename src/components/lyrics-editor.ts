@@ -264,7 +264,7 @@ export class LyricsEditor extends LitElement {
     .lyrics-content {
       background: lightyellow;
       font-family: ${unsafeCSS(LYRICS_UI_FONT_STACK)};
-      font-size: ${unsafeCSS(LYRICS_BODY_FONT_SIZE)};
+      font-size: var(--cb-lyrics-font-size, ${unsafeCSS(LYRICS_BODY_FONT_SIZE)});
       line-height: 140%;
       color: black;
       /* Injected lyric CSS can set body margin (rewritten to .lyrics-content). */

@@ -27,6 +27,7 @@ import { StateEvents, TabType, type EditorTabData, type TabInfo } from "../servi
 import { APP_VERSION } from "../version.js";
 import { log, getRecentLogs, clearRecentLogs } from "../services/logger.js";
 import { isPhoneLikeTouchDevice } from "../utils/device-traits.js";
+import { bumpLyricsScale, getLyricsScale } from "../utils/lyrics-scale.js";
 
 // Side-effect imports to register custom elements
 import "./tab-bar.js";
@@ -634,6 +635,8 @@ export class AppShell extends LitElement {
   }
 
   private renderMenu() {
+    const lyricsScale = getLyricsScale();
+    const lyricsPct = Math.round(lyricsScale * 100);
     return html`
       <div class="menu-overlay" @click=${this.closeMenu}></div>
       <div class="menu" role="menu">
@@ -648,6 +651,22 @@ export class AppShell extends LitElement {
         </button>
         <button class="menu-item" role="menuitem" @click=${this.toggleFullscreen}>
           ${this.isFullscreenApi() ? "Exit FullScreen" : "Full Screen"}
+        </button>
+        <button
+          class="menu-item"
+          role="menuitem"
+          title="Increase lyrics text size by 10% (persists)."
+          @click=${this.onLyricsLarger}
+        >
+          Lyrics larger (${lyricsPct}%)
+        </button>
+        <button
+          class="menu-item"
+          role="menuitem"
+          title="Decrease lyrics text size by 10% (persists)."
+          @click=${this.onLyricsSmaller}
+        >
+          Lyrics smaller (${lyricsPct}%)
         </button>
         <hr />
         <button class="menu-item" role="menuitem" @click=${this.onHelp}
@@ -667,6 +686,18 @@ export class AppShell extends LitElement {
       </div>
     `;
   }
+
+  private onLyricsLarger = () => {
+    const next = bumpLyricsScale(1.1);
+    log.info(`[ui] menu: Lyrics larger scale=${next.toFixed(3)}`);
+    this.showMenu = false;
+  };
+
+  private onLyricsSmaller = () => {
+    const next = bumpLyricsScale(0.9);
+    log.info(`[ui] menu: Lyrics smaller scale=${next.toFixed(3)}`);
+    this.showMenu = false;
+  };
 
   private renderLogModal() {
     const lines = getRecentLogs();

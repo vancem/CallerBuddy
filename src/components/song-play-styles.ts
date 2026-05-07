@@ -42,13 +42,35 @@ export const songPlayStyles = css`
       margin: 0 !important;
     }
 
-    /* :where() gives these defaults zero specificity so authored HTML styles
-       (e.g. background: lightyellow from a lyrics file) can override them. */
-    :where(.lyrics-content) {
-      font-size: 0.8rem;
-      line-height: 1.7;
-      background: var(--cb-bg);
-      color: var(--cb-fg);
+    /* CallerBuddy owns lyric styling at runtime (HTML is semantic markup only). */
+    .lyrics-content {
+      background: lightyellow;
+      font-family: Roboto, Arial, sans-serif;
+      font-size: var(--cb-lyrics-font-size, 13pt);
+      line-height: 140%;
+      color: black;
+    }
+
+    .lyrics-content h1 {
+      font-size: 1.25em;
+      display: inline;
+    }
+
+    .lyrics-content .info {
+      color: blue;
+      font-size: 0.75em;
+      font-weight: normal;
+    }
+
+    .lyrics-content h2 {
+      color: red;
+      font-size: 1.125em;
+      font-weight: normal;
+      margin: 0.6em 0 0;
+    }
+
+    .lyrics-content p {
+      margin: 0 0 0.4em;
     }
 
     .lyrics-content.lyrics-plain {

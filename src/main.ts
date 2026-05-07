@@ -109,6 +109,7 @@ import {
   logEnv,
 } from "./services/env-log.js";
 import "./components/app-shell.js";
+import { initLyricsScale } from "./utils/lyrics-scale.js";
 
 // ── Mobile viewport: meta + optional `html { zoom }` on stuck WebAPK layouts ─
 // See file-top documentation block. We still set meta (correct `vpMeta` for
@@ -350,6 +351,7 @@ function applyViewportFix() {
 }
 
 applyViewportFix();
+initLyricsScale();
 
 // Optional diagnostics for mobile debugging — touches resize / fullscreen / VP.
 logDeviceInfo();
