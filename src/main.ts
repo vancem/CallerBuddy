@@ -53,7 +53,7 @@
  * `max-width: min(100vw, var(--cb-max-layout-px))` so the UI fits the **physical**
  * width even when **`100vw`/innerWidth lie** (~980). Separately, **`zoom` on
  * `<html>`** is capped **by orientation** (`VIEWPORT_ZOOM_HARD_CAP_PORTRAIT` /
- * `LANDSCAPE`): portrait needs ~1.9× when `visualViewport.scale`~0.37; landscape
+ * `LANDSCAPE`): portrait needs ~2.3×+ (damped) when `visualViewport.scale`~0.37; landscape
  * stays mild. Shell `max-width` prevents the old 980px-row clip. Zoom uses
  * **`1/visualViewport.scale`** (or inner/expected), damped, biased under, then
  * capped. **`html.cb-layout-zoom`** resets touch root font to 100% while zoom is
@@ -115,10 +115,11 @@ import "./components/app-shell.js";
 /**
  * `zoom` on `<html>` **grows** paint in Blink. **`app-shell` `max-width`** clamps
  * the flex UI to the physical edge so we can use a **higher** zoom in **portrait**
- * where `visualViewport.scale` ~0.37 needs ~2.7× correction — a single global
- * cap of ~1.14 left everything still microscopic. Landscape needs milder zoom.
+ * where `visualViewport.scale` ~0.37 needs ~2.7× raw (~2.28 damped+biased) —
+ * caps near ~1.9 still starved correction (`hitCap`, `[viewport-math]`).
+ * Landscape stays milder.
  */
-const VIEWPORT_ZOOM_HARD_CAP_PORTRAIT = 1.88;
+const VIEWPORT_ZOOM_HARD_CAP_PORTRAIT = 2.4;
 const VIEWPORT_ZOOM_HARD_CAP_LANDSCAPE = 1.18;
 /** Full `1/visualViewport.scale` overshoots next to touch `font-size` bump — dampen. */
 const VIEWPORT_ZOOM_DAMPING = 0.88;

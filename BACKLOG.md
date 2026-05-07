@@ -63,7 +63,7 @@ long comment at the top of `src/main.ts` and the header comment on
   orientation (capped, damped — full undo overshoots next to touch `font-size:
   120%`). Class **`cb-layout-zoom`** resets root font to 100% while zoom is
   active.   An extra **`UNDER_BIAS`** (< 1) nudges zoom **slightly low** so clipping
-  is rarer than mild undersize on unknown devices.   **`VIEWPORT_ZOOM_HARD_CAP_PORTRAIT`** (~1.88) /
+  is rarer than mild undersize on unknown devices.   **`VIEWPORT_ZOOM_HARD_CAP_PORTRAIT`** (~2.4; must cover damped `preCapZ` when scale~0.37, see `[viewport-math]`) /
   **`VIEWPORT_ZOOM_HARD_CAP_LANDSCAPE`** (~1.18) keep zoom orientation-aware; shell
   `max-width` prevents wide-row clipping (Blink).
   **`--cb-max-layout-px`** on `:root` plus **`app-shell` `max-width`** keep the
