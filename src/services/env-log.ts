@@ -13,6 +13,10 @@
  * Domain knowledge (why innerWidth lies, touch MQ bugs, FS vs manifest): see
  * the banner comment at the top of `src/main.ts` and BACKLOG.md § "Mobile
  * viewport & fullscreen".
+ *
+ * **[viewport-math]** lines from `main.ts` bundle physical screen, bogus inner,
+ * vv.scale, ideal zoom, applied zoom, cap hit, and heuristic perceived scale —
+ * use those first when tuning Samsung/WebAPK sizing.
  */
 
 import { log } from "./logger.js";

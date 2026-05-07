@@ -63,8 +63,9 @@ long comment at the top of `src/main.ts` and the header comment on
   orientation (capped, damped — full undo overshoots next to touch `font-size:
   120%`). Class **`cb-layout-zoom`** resets root font to 100% while zoom is
   active.   An extra **`UNDER_BIAS`** (< 1) nudges zoom **slightly low** so clipping
-  is rarer than mild undersize on unknown devices. **`VIEWPORT_ZOOM_HARD_CAP`**
-  (~1.14) prevents `html` zoom from expanding layout past the screen (Blink).
+  is rarer than mild undersize on unknown devices.   **`VIEWPORT_ZOOM_HARD_CAP_PORTRAIT`** (~1.88) /
+  **`VIEWPORT_ZOOM_HARD_CAP_LANDSCAPE`** (~1.18) keep zoom orientation-aware; shell
+  `max-width` prevents wide-row clipping (Blink).
   **`--cb-max-layout-px`** on `:root` plus **`app-shell` `max-width`** keep the
   shell within the physical edge when `100vw` is wrong. On phones where
   `innerWidth` already matches the screen edge, **no zoom runs**—only meta updates.
@@ -92,6 +93,10 @@ long comment at the top of `src/main.ts` and the header comment on
 
 - **Diagnostics:** `src/services/env-log.ts` logs `[env …]` snapshots on resize,
   orientation, fullscreen, visibility — useful when APIs disagree with reality.
+  **`[viewport-math]`** (debounced, from `main.ts`) is the single line to read for
+  sizing: physical `screen` / `outer`, bogus `inner`, `vv.scale`, ideal `1/scale`,
+  `preCapZ` vs **applied** html zoom, **`hitCap`**, and heuristic **`gapFrom1`**
+  (positive ⇒ still too small vs natural 1.0).
 
 - CallerBuddy will be a PWA application.
   - This is because PWA apps give us the cross platform reach that we need we

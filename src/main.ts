@@ -51,9 +51,10 @@
  * stack. When meta does nothing measurable, we set **`--cb-max-layout-px`** on
  * `:root` from **`screen` + orientation** and cap **`<app-shell>`** with
  * `max-width: min(100vw, var(--cb-max-layout-px))` so the UI fits the **physical**
- * width even when **`100vw`/innerWidth lie** (~980). Separately, **mild `zoom` on
- * `<html>`** is allowed only up to **`VIEWPORT_ZOOM_HARD_CAP`** (~1.14): larger
- * zoom **widens** Blink layout and clips the right edge (hamburger). Zoom uses
+ * width even when **`100vw`/innerWidth lie** (~980). Separately, **`zoom` on
+ * `<html>`** is capped **by orientation** (`VIEWPORT_ZOOM_HARD_CAP_PORTRAIT` /
+ * `LANDSCAPE`): portrait needs ~1.9× when `visualViewport.scale`~0.37; landscape
+ * stays mild. Shell `max-width` prevents the old 980px-row clip. Zoom uses
  * **`1/visualViewport.scale`** (or inner/expected), damped, biased under, then
  * capped. **`html.cb-layout-zoom`** resets touch root font to 100% while zoom is
  * on. Zoom/class removed when `innerWidth` matches.
@@ -91,9 +92,8 @@
  * - **`html { zoom }`:** Blink-focused; WebKit often honors it for layout. If a
  *   browser ignores `zoom`, worst case is unchanged oversmall UI until Fullscreen
  *   or a browser fix — we don’t remove meta or touch font elsewhere.
- * - **Bias + cap:** Zoom is damped, **`UNDER_BIAS`**d, then **`VIEWPORT_ZOOM_HARD_CAP`**
- *   so Blink cannot blow past the screen; **`--cb-max-layout-px`** clips `<app-shell>`
- *   to the physical edge when `vw` lies.
+ * - **Bias + cap:** Zoom is damped, **`UNDER_BIAS`**d, then **portrait vs landscape
+ *   caps**; **`--cb-max-layout-px`** clips `<app-shell>` to the physical edge when `vw` lies.
  *
  * Long-form notes: BACKLOG.md § "Mobile viewport & fullscreen (Android WebAPK)".
  * ═══════════════════════════════════════════════════════════════════════════
@@ -113,15 +113,20 @@ import "./components/app-shell.js";
 // tools and the day Chrome fixes the bug). When `innerWidth` stays far above
 // the physical edge, only zoom reliably corrects apparent size in practice.
 /**
- * `zoom` on `<html>` **grows** layout size in Blink; a stuck-wide innerWidth
- * (~980) × zoom>1 overflows the real screen and clips the right edge (hamburger).
- * Cap zoom low; rely on `--cb-max-layout-px` + app-shell `max-width` for structure.
+ * `zoom` on `<html>` **grows** paint in Blink. **`app-shell` `max-width`** clamps
+ * the flex UI to the physical edge so we can use a **higher** zoom in **portrait**
+ * where `visualViewport.scale` ~0.37 needs ~2.7× correction — a single global
+ * cap of ~1.14 left everything still microscopic. Landscape needs milder zoom.
  */
-const VIEWPORT_ZOOM_HARD_CAP = 1.14;
+const VIEWPORT_ZOOM_HARD_CAP_PORTRAIT = 1.88;
+const VIEWPORT_ZOOM_HARD_CAP_LANDSCAPE = 1.18;
 /** Full `1/visualViewport.scale` overshoots next to touch `font-size` bump — dampen. */
 const VIEWPORT_ZOOM_DAMPING = 0.88;
-/** Prefer slightly small vs clipping on unknown devices. */
-const VIEWPORT_ZOOM_UNDER_BIAS = 0.93;
+/** Prefer slightly small vs clipping; portrait raw correction is large — keep near 1. */
+const VIEWPORT_ZOOM_UNDER_BIAS = 0.95;
+
+/** Debounce: syncZoomCompensation runs several times per frame batch — one log. */
+let viewportMathLogTimer: ReturnType<typeof setTimeout> | null = null;
 
 function applyViewportFix() {
   const isTouchDevice =
@@ -159,6 +164,85 @@ function applyViewportFix() {
    * signal as the “why portrait looks tiny” explanation. Fallback: `innerW /
    * expectedEdge`. Removed when layout matches expected edge.
    */
+  /**
+   * One debounced line with everything needed to predict perceived text size vs
+   * this device: physical `screen` / `outer`, bogus `inner`, `visualViewport`,
+   * ideal 1/scale, damped target, cap, and heuristic `scale×htmlZoom` (~1.0 good).
+   */
+  function scheduleViewportMathSnapshot(): void {
+    if (viewportMathLogTimer) clearTimeout(viewportMathLogTimer);
+    viewportMathLogTimer = setTimeout(() => {
+      viewportMathLogTimer = null;
+      const portrait = detectIsPortrait();
+      const expected = expectedLayoutWidthPx();
+      const iw = window.innerWidth;
+      const ih = window.innerHeight;
+      const sw = screen.width;
+      const sh = screen.height;
+      const shortE = Math.min(sw, sh);
+      const longE = Math.max(sw, sh);
+      const vv = window.visualViewport;
+      const scale = vv?.scale;
+      const ratio = iw / expected;
+      const zParsed = parseFloat(
+        document.documentElement.style.zoom || "1",
+      );
+      const z = Number.isFinite(zParsed) ? zParsed : 1;
+
+      if (ratio <= 1.12) {
+        log.info(
+          `[viewport-math] state=OK screen=${sw}x${sh} outer=${window.outerWidth}x${window.outerHeight} ` +
+            `inner=${iw}x${ih} expectedW=${expected} vv.scale=${scale?.toFixed(3) ?? "?"} htmlZoom=${z.toFixed(2)}`,
+        );
+        return;
+      }
+
+      const rawFromScale =
+        scale != null && scale > 0 && scale < 0.999
+          ? Math.min(1 / scale, 8)
+          : null;
+      const rawFromRatio = Math.min(ratio, 8);
+      const raw = rawFromScale ?? rawFromRatio;
+      const cap = portrait
+        ? VIEWPORT_ZOOM_HARD_CAP_PORTRAIT
+        : VIEWPORT_ZOOM_HARD_CAP_LANDSCAPE;
+      const preCapZ = Math.max(
+        raw * VIEWPORT_ZOOM_DAMPING * VIEWPORT_ZOOM_UNDER_BIAS,
+        1.001,
+      );
+      const hitCap = z < preCapZ - 0.004;
+      const idealNeutralize = scale != null && scale > 0 ? 1 / scale : null;
+      const approxPerceived =
+        scale != null && scale > 0 ? scale * z : null;
+      const gapFrom1 =
+        approxPerceived != null ? 1 - approxPerceived : null;
+
+      const vpMeta =
+        document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
+          ?.content ?? "?";
+
+      log.info(
+        `[viewport-math] ` +
+          `deviceScreen=${sw}x${sh} short=${shortE} long=${longE} dpr=${devicePixelRatio} ` +
+          `outer=${window.outerWidth}x${window.outerHeight} inner=${iw}x${ih} ` +
+          `docClient=${document.documentElement.clientWidth}x${document.documentElement.clientHeight} ` +
+          `orient=${screen.orientation?.type ?? "?"} portrait=${portrait} ` +
+          `vpMeta="${vpMeta}" ` +
+          `expectedW=${expected} layoutMisfit=${ratio.toFixed(2)}×(inner/expected) ` +
+          `vv={w:${vv?.width?.toFixed(0) ?? "?"},h:${vv?.height?.toFixed(0) ?? "?"},scale:${scale?.toFixed(3) ?? "?"}} ` +
+          `idealHtmlZoom≈${idealNeutralize?.toFixed(2) ?? "?"} (=1/vv.scale if shrink only) ` +
+          `raw=${raw.toFixed(2)} preCapZ=${preCapZ.toFixed(2)} appliedHtmlZoom=${z.toFixed(2)} cap=${cap} hitCap=${hitCap} ` +
+          `approxPerceivedScale≈${approxPerceived?.toFixed(3) ?? "?"} (=vv.scale×htmlZoom heuristic; target 1.0 natural) ` +
+          `gapFrom1=${gapFrom1?.toFixed(3) ?? "?"} (positive≈tooSmall negative≈tooBig vs target 1.0)`,
+      );
+      if (hitCap && approxPerceived != null && approxPerceived < 0.92) {
+        log.warn(
+          `[viewport-math] CAP starved correction: need cap≥${preCapZ.toFixed(2)} for ~full neutralize, or raise HARD_CAP_${portrait ? "PORTRAIT" : "LANDSCAPE"} (now ${cap})`,
+        );
+      }
+    }, 420);
+  }
+
   function syncZoomCompensation(): void {
     const expected = expectedLayoutWidthPx();
     const iw = window.innerWidth;
@@ -166,6 +250,7 @@ function applyViewportFix() {
     if (ratio <= 1.12) {
       document.documentElement.style.removeProperty("zoom");
       document.documentElement.classList.remove("cb-layout-zoom");
+      scheduleViewportMathSnapshot();
       return;
     }
     const vv = window.visualViewport;
@@ -176,22 +261,26 @@ function applyViewportFix() {
         : null;
     const rawFromRatio = Math.min(ratio, 8);
     const raw = rawFromScale ?? rawFromRatio;
+    const cap = detectIsPortrait()
+      ? VIEWPORT_ZOOM_HARD_CAP_PORTRAIT
+      : VIEWPORT_ZOOM_HARD_CAP_LANDSCAPE;
     const z = Math.min(
       Math.max(
         raw * VIEWPORT_ZOOM_DAMPING * VIEWPORT_ZOOM_UNDER_BIAS,
         1.001,
       ),
-      VIEWPORT_ZOOM_HARD_CAP,
+      cap,
     );
     document.documentElement.classList.add("cb-layout-zoom");
     document.documentElement.style.zoom = String(z);
-    log.warn(
-      `[viewport-fix] html zoom=${z.toFixed(2)} cap=${VIEWPORT_ZOOM_HARD_CAP} (raw=${raw.toFixed(2)} damp=${VIEWPORT_ZOOM_DAMPING} under=${VIEWPORT_ZOOM_UNDER_BIAS}) innerW=${iw} expected≈${expected}` +
+    log.info(
+      `[viewport-fix] html zoom=${z.toFixed(2)} cap=${cap} portrait=${detectIsPortrait()} (raw=${raw.toFixed(2)} damp=${VIEWPORT_ZOOM_DAMPING} under=${VIEWPORT_ZOOM_UNDER_BIAS}) innerW=${iw} expected≈${expected}` +
         (rawFromScale != null && scale != null
           ? ` visualViewport.scale=${scale.toFixed(3)}`
           : ` (inner/expected; scale unavailable or ~1)`) +
         ` — meta did not fix layout viewport`,
     );
+    scheduleViewportMathSnapshot();
   }
 
   /** Matches physical edge so `<app-shell>` can `max-width` despite bogus `100vw`. */
