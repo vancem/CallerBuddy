@@ -9,6 +9,9 @@ export const DEFAULT_BREAK_TIMER_MINUTES = 5;
 /** Default width in px for the playlist panel (shared by editor and play views). */
 export const DEFAULT_PLAYLIST_PANEL_WIDTH = 280;
 
+/** Default height in px for the playlist panel in portrait (editor only). */
+export const DEFAULT_PLAYLIST_PANEL_HEIGHT = 240;
+
 export interface Settings {
   /** Break timer default duration in minutes (decimal allowed). Default 5. */
   breakTimerMinutes: number;
@@ -16,6 +19,8 @@ export interface Settings {
   patterTimerMinutes: number;
   /** Width in px of the playlist panel (resizable). Default 280. */
   playlistPanelWidth: number;
+  /** Height in px of the playlist panel when stacked vertically (portrait). Default 240. */
+  playlistPanelHeight: number;
   /** Relative musicFile paths for the persisted playlist (from CallerBuddyRoot). */
   playlistPaths: string[];
   /**
@@ -31,6 +36,7 @@ export function defaultSettings(): Settings {
     breakTimerMinutes: DEFAULT_BREAK_TIMER_MINUTES,
     patterTimerMinutes: 5,
     playlistPanelWidth: DEFAULT_PLAYLIST_PANEL_WIDTH,
+    playlistPanelHeight: DEFAULT_PLAYLIST_PANEL_HEIGHT,
     playlistPaths: [],
     playlistPlayedPaths: [],
   };
@@ -73,6 +79,12 @@ export function normalizeSettings(raw: unknown): Settings {
     breakTimerMinutes: pickNum("breakTimerMinutes", defaults.breakTimerMinutes, 0, 60),
     patterTimerMinutes: pickNum("patterTimerMinutes", defaults.patterTimerMinutes, 0.5, 15),
     playlistPanelWidth: pickNum("playlistPanelWidth", defaults.playlistPanelWidth, 100, 1000),
+    playlistPanelHeight: pickNum(
+      "playlistPanelHeight",
+      defaults.playlistPanelHeight,
+      100,
+      2000,
+    ),
     playlistPaths,
     playlistPlayedPaths,
   };

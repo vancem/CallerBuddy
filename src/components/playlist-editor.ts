@@ -26,7 +26,10 @@ import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { PlaylistReorderController } from "../controllers/playlist-reorder-controller.js";
 import { PanelResizeController } from "../controllers/panel-resize-controller.js";
-import { DEFAULT_PLAYLIST_PANEL_WIDTH } from "../models/settings.js";
+import {
+  DEFAULT_PLAYLIST_PANEL_HEIGHT,
+  DEFAULT_PLAYLIST_PANEL_WIDTH,
+} from "../models/settings.js";
 import { StateEvents } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import type { Song } from "../models/song.js";
@@ -115,12 +118,25 @@ export class PlaylistEditor extends LitElement {
   /** True while the initial (or navigated) folder is being scanned. */
   @state() private loading = false;
 
-  private resizer = new PanelResizeController(this, DEFAULT_PLAYLIST_PANEL_WIDTH);
+  private resizerX = new PanelResizeController(this, DEFAULT_PLAYLIST_PANEL_WIDTH, {
+    axis: "x",
+    min: 180,
+    max: 500,
+    settingKey: "playlistPanelWidth",
+  });
+  private resizerY = new PanelResizeController(this, DEFAULT_PLAYLIST_PANEL_HEIGHT, {
+    axis: "y",
+    min: 120,
+    max: 1200,
+    settingKey: "playlistPanelHeight",
+  });
 
   connectedCallback() {
     super.connectedCallback();
-    this.resizer.width =
+    this.resizerX.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
+    this.resizerY.size =
+      callerBuddy.state.settings.playlistPanelHeight ?? DEFAULT_PLAYLIST_PANEL_HEIGHT;
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
     callerBuddy.state.addEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
@@ -136,8 +152,10 @@ export class PlaylistEditor extends LitElement {
   }
 
   private onSettingsChanged = () => {
-    this.resizer.width =
+    this.resizerX.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
+    this.resizerY.size =
+      callerBuddy.state.settings.playlistPanelHeight ?? DEFAULT_PLAYLIST_PANEL_HEIGHT;
     this.requestUpdate();
   };
 
@@ -285,11 +303,15 @@ export class PlaylistEditor extends LitElement {
     const songs = this.getFilteredSongs();
     const playlist = callerBuddy.state.playlist;
 
+    const isPortrait = window.matchMedia("(max-aspect-ratio: 6/5)").matches;
+    const playlistPanelStyle = isPortrait
+      ? `height: ${this.resizerY.size}px`
+      : `width: ${this.resizerX.width}px`;
 
     return html`
       <div class="editor" @click=${this.closeContextMenu}>
         <!-- Left: Playlist -->
-        <aside class="playlist-panel" style="width: ${this.resizer.width}px">
+        <aside class="playlist-panel" style="${playlistPanelStyle}">
           <h2>Playlist</h2>
           ${playlist.length === 0
             ? html`<div
@@ -371,7 +393,8 @@ export class PlaylistEditor extends LitElement {
         <div
           class="resizer"
           title="Drag to resize playlist"
-          @mousedown=${(e: MouseEvent) => this.resizer.onMouseDown(e)}
+          @mousedown=${(e: MouseEvent) =>
+            isPortrait ? this.resizerY.onMouseDown(e) : this.resizerX.onMouseDown(e)}
         ></div>
 
         <!-- Right: Song browser -->
@@ -1624,8 +1647,8 @@ export class PlaylistEditor extends LitElement {
       .playlist-panel {
         width: auto !important;
         min-width: 0;
-        /* 1/3 of the vertical space; playlist list scrolls within. */
-        flex: 1 1 0;
+        /* Fixed height via inline style; playlist list scrolls within. */
+        flex: 0 0 auto;
         min-height: 0;
         border-right: none;
         border-bottom: 1px solid var(--cb-border);
@@ -1638,7 +1661,11 @@ export class PlaylistEditor extends LitElement {
       }
 
       .resizer {
-        display: none;
+        width: 100%;
+        height: 6px;
+        cursor: row-resize;
+        border-left: none;
+        border-top: 1px solid var(--cb-border);
       }
 
       .browser-toolbar {

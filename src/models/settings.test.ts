@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   defaultSettings,
   DEFAULT_BREAK_TIMER_MINUTES,
+  DEFAULT_PLAYLIST_PANEL_HEIGHT,
   DEFAULT_PLAYLIST_PANEL_WIDTH,
   normalizeSettings,
 } from "./settings.js";
@@ -12,6 +13,7 @@ describe("defaultSettings", () => {
     expect(s.breakTimerMinutes).toBe(DEFAULT_BREAK_TIMER_MINUTES);
     expect(s.patterTimerMinutes).toBe(5);
     expect(s.playlistPanelWidth).toBe(DEFAULT_PLAYLIST_PANEL_WIDTH);
+    expect(s.playlistPanelHeight).toBe(DEFAULT_PLAYLIST_PANEL_HEIGHT);
     expect(s.playlistPaths).toEqual([]);
     expect(s.playlistPlayedPaths).toEqual([]);
   });

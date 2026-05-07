@@ -69,6 +69,7 @@ describe("AppState", () => {
         breakTimerMinutes: 10,
         patterTimerMinutes: 7,
         playlistPanelWidth: 300,
+        playlistPanelHeight: 240,
         playlistPaths: [],
         playlistPlayedPaths: [],
       });
