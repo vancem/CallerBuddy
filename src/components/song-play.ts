@@ -113,6 +113,16 @@ export class SongPlay extends LitElement {
   @state() private showAdjustHelp = false;
   @state() private showPatterTimerHelp = false;
 
+  // Phone portrait split: controls (top) vs lyrics (bottom)
+  @state() private mobileControlsSplitPct = 1 / 3;
+  private draggingMobileSplit = false;
+  private mobileSplitPointerId: number | null = null;
+
+  // Landscape / wide split: lyrics (left) vs controls (right)
+  @state() private desktopControlsWidthPx = 320;
+  private draggingDesktopSplit = false;
+  private desktopSplitPointerId: number | null = null;
+
   private clockInterval: number | null = null;
   private elapsedInterval: number | null = null;
 
@@ -156,6 +166,25 @@ export class SongPlay extends LitElement {
 
     document.addEventListener("keydown", this._boundKeydown);
     window.addEventListener("blur", this._boundWindowBlur);
+    window.addEventListener("resize", this._boundWindowResize);
+
+    const saved = window.localStorage.getItem("cbSongPlayMobileControlsSplitPct");
+    if (saved) {
+      const n = Number(saved);
+      if (Number.isFinite(n)) {
+        this.mobileControlsSplitPct = Math.max(0.2, Math.min(0.75, n));
+      }
+    }
+
+    const savedDesktop = window.localStorage.getItem(
+      "cbSongPlayDesktopControlsWidthPx",
+    );
+    if (savedDesktop) {
+      const n = Number(savedDesktop);
+      if (Number.isFinite(n)) {
+        this.desktopControlsWidthPx = Math.max(240, Math.min(520, n));
+      }
+    }
 
     // Listen for time updates from audio engine
     callerBuddy.audio.onTimeUpdate((t) => {
@@ -186,6 +215,7 @@ export class SongPlay extends LitElement {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this._boundKeydown);
     window.removeEventListener("blur", this._boundWindowBlur);
+    window.removeEventListener("resize", this._boundWindowResize);
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     if (this.elapsedInterval !== null) clearInterval(this.elapsedInterval);
     this.stopPatterTimer();
@@ -199,11 +229,27 @@ export class SongPlay extends LitElement {
   /** Focus the controls panel after first render so keyboard shortcuts work. */
   protected firstUpdated() {
     this.focusControlsPanel();
+    this.applyMobileSplitLayoutVars();
+    this.applyDesktopSplitLayoutVars();
   }
 
   protected updated(changed: Map<PropertyKey, unknown>) {
     if (changed.has("editing") && this.editing) {
       requestAnimationFrame(() => this.syncLyricsEditorBaselineFromDom());
+    }
+    if (changed.has("mobileControlsSplitPct")) {
+      this.applyMobileSplitLayoutVars();
+      window.localStorage.setItem(
+        "cbSongPlayMobileControlsSplitPct",
+        String(this.mobileControlsSplitPct),
+      );
+    }
+    if (changed.has("desktopControlsWidthPx")) {
+      this.applyDesktopSplitLayoutVars();
+      window.localStorage.setItem(
+        "cbSongPlayDesktopControlsWidthPx",
+        String(this.desktopControlsWidthPx),
+      );
     }
   }
 
@@ -222,6 +268,45 @@ export class SongPlay extends LitElement {
     if (this.editing) return;
     void callerBuddy.closeSongPlay();
   };
+
+  private _boundWindowResize = () => {
+    this.applyMobileSplitLayoutVars();
+    this.applyDesktopSplitLayoutVars();
+  };
+
+  private isNarrowLayout(): boolean {
+    return window.matchMedia("(max-width: 700px)").matches;
+  }
+
+  private applyMobileSplitLayoutVars() {
+    if (!this.isNarrowLayout()) return;
+    const root = this.shadowRoot?.querySelector(".song-play") as HTMLElement | null;
+    if (!root) return;
+
+    const slider = this.shadowRoot?.querySelector(".slider-panel") as HTMLElement | null;
+    const sliderH = slider ? slider.getBoundingClientRect().height : 0;
+    const splitterH = 10; // keep in sync with CSS --cb-song-splitter-h
+    const totalH = root.getBoundingClientRect().height;
+    const available = Math.max(0, totalH - sliderH - splitterH);
+
+    const pct = Math.max(0.2, Math.min(0.75, this.mobileControlsSplitPct));
+    const controlsPx = Math.round(available * pct);
+    root.style.setProperty("--cb-song-controls-h", `${controlsPx}px`);
+  }
+
+  private applyDesktopSplitLayoutVars() {
+    if (this.isNarrowLayout()) return;
+    const root = this.shadowRoot?.querySelector(".song-play") as HTMLElement | null;
+    if (!root) return;
+
+    const splitterW = 10; // keep in sync with CSS --cb-song-vsplitter-w
+    const totalW = root.getBoundingClientRect().width;
+    // Keep a sane minimum left area for lyrics; clamp controls width accordingly.
+    const minLyricsW = 260;
+    const maxControls = Math.max(240, Math.min(520, totalW - splitterW - minLyricsW));
+    const w = Math.max(240, Math.min(maxControls, this.desktopControlsWidthPx));
+    root.style.setProperty("--cb-song-controls-w", `${Math.round(w)}px`);
+  }
 
   /**
    * True when shortcuts should yield to native typing or widget behavior.
@@ -411,6 +496,17 @@ export class SongPlay extends LitElement {
               })}
         </div>
 
+        <div
+          class="desktop-splitter"
+          role="separator"
+          aria-label="Resize lyrics and controls"
+          aria-orientation="vertical"
+          @pointerdown=${this.onDesktopSplitterPointerDown}
+          @pointermove=${this.onDesktopSplitterPointerMove}
+          @pointerup=${this.onDesktopSplitterPointerUp}
+          @pointercancel=${this.onDesktopSplitterPointerUp}
+        ></div>
+
         <!-- Right panel: controls and info (focus anchor so shortcuts work) -->
         <div class="right-panel" tabindex="-1">
           ${renderTransport({
@@ -424,6 +520,17 @@ export class SongPlay extends LitElement {
           ${this.renderTimeInfo()}
           ${this.renderPlayExtrasRow()}
         </div>
+
+        <div
+          class="mobile-splitter"
+          role="separator"
+          aria-label="Resize controls and lyrics"
+          aria-orientation="horizontal"
+          @pointerdown=${this.onMobileSplitterPointerDown}
+          @pointermove=${this.onMobileSplitterPointerMove}
+          @pointerup=${this.onMobileSplitterPointerUp}
+          @pointercancel=${this.onMobileSplitterPointerUp}
+        ></div>
 
         <!-- Bottom: progress slider -->
         <div class="slider-panel">
@@ -446,6 +553,95 @@ export class SongPlay extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private onMobileSplitterPointerDown(e: PointerEvent) {
+    if (!this.isNarrowLayout()) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    this.draggingMobileSplit = true;
+    this.mobileSplitPointerId = e.pointerId;
+    this.onMobileSplitterPointerMove(e);
+  }
+
+  private onMobileSplitterPointerMove(e: PointerEvent) {
+    if (!this.draggingMobileSplit) return;
+    if (
+      this.mobileSplitPointerId !== null &&
+      e.pointerId !== this.mobileSplitPointerId
+    ) {
+      return;
+    }
+    e.preventDefault();
+    if (!this.isNarrowLayout()) return;
+
+    const root = this.shadowRoot?.querySelector(".song-play") as HTMLElement | null;
+    if (!root) return;
+    const slider = this.shadowRoot?.querySelector(".slider-panel") as HTMLElement | null;
+
+    const rootRect = root.getBoundingClientRect();
+    const sliderH = slider ? slider.getBoundingClientRect().height : 0;
+    const splitterH = 10; // keep in sync with CSS --cb-song-splitter-h
+    const available = Math.max(1, rootRect.height - sliderH - splitterH);
+
+    // y is the desired bottom edge of the controls pane.
+    const y = Math.max(0, Math.min(available, e.clientY - rootRect.top));
+    const pct = y / available;
+    this.mobileControlsSplitPct = Math.max(0.2, Math.min(0.75, pct));
+  }
+
+  private onMobileSplitterPointerUp(e: PointerEvent) {
+    if (!this.draggingMobileSplit) return;
+    if (
+      this.mobileSplitPointerId !== null &&
+      e.pointerId !== this.mobileSplitPointerId
+    ) {
+      return;
+    }
+    this.draggingMobileSplit = false;
+    this.mobileSplitPointerId = null;
+  }
+
+  private onDesktopSplitterPointerDown(e: PointerEvent) {
+    if (this.isNarrowLayout()) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    this.draggingDesktopSplit = true;
+    this.desktopSplitPointerId = e.pointerId;
+    this.onDesktopSplitterPointerMove(e);
+  }
+
+  private onDesktopSplitterPointerMove(e: PointerEvent) {
+    if (!this.draggingDesktopSplit) return;
+    if (
+      this.desktopSplitPointerId !== null &&
+      e.pointerId !== this.desktopSplitPointerId
+    ) {
+      return;
+    }
+    e.preventDefault();
+    if (this.isNarrowLayout()) return;
+
+    const root = this.shadowRoot?.querySelector(".song-play") as HTMLElement | null;
+    if (!root) return;
+    const rect = root.getBoundingClientRect();
+
+    const splitterW = 10; // keep in sync with CSS --cb-song-vsplitter-w
+    const x = Math.max(0, Math.min(rect.width - splitterW, e.clientX - rect.left));
+    const controlsW = Math.max(0, rect.width - splitterW - x);
+    this.desktopControlsWidthPx = Math.max(240, Math.min(520, controlsW));
+  }
+
+  private onDesktopSplitterPointerUp(e: PointerEvent) {
+    if (!this.draggingDesktopSplit) return;
+    if (
+      this.desktopSplitPointerId !== null &&
+      e.pointerId !== this.desktopSplitPointerId
+    ) {
+      return;
+    }
+    this.draggingDesktopSplit = false;
+    this.desktopSplitPointerId = null;
   }
 
   // -- Lyrics ---------------------------------------------------------------

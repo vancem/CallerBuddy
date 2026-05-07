@@ -11,8 +11,14 @@ export const songPlayStyles = css`
     }
 
     .song-play {
+      --cb-song-splitter-h: 10px;
+      --cb-song-vsplitter-w: 10px;
+      /* Controls (right-panel) height in narrow layout; set from song-play.ts */
+      --cb-song-controls-h: 33%;
+      /* Controls (right-panel) width in wide layout; set from song-play.ts */
+      --cb-song-controls-w: 320px;
       display: grid;
-      grid-template-columns: 1fr 320px;
+      grid-template-columns: 1fr var(--cb-song-vsplitter-w) var(--cb-song-controls-w);
       grid-template-rows: 1fr auto;
       height: 100%;
     }
@@ -23,7 +29,8 @@ export const songPlayStyles = css`
       grid-column: 1;
       grid-row: 1;
       overflow-y: auto;
-      border-right: 1px solid var(--cb-border);
+      border-right: none;
+      min-width: 0;
     }
 
     .lyrics-content {
@@ -233,13 +240,45 @@ export const songPlayStyles = css`
     /* -- Right panel: controls and info ------------------------------------ */
 
     .right-panel {
-      grid-column: 2;
+      grid-column: 3;
       grid-row: 1;
       padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 20px;
       overflow-y: auto;
+      min-width: 0;
+    }
+
+    .desktop-splitter {
+      grid-column: 2;
+      grid-row: 1;
+      /* Make the hit target wider than the visible line (touch-friendly).
+         The extra width can overflow into adjacent grid columns. */
+      width: calc(var(--cb-song-vsplitter-w) + 24px);
+      margin-left: -12px;
+      margin-right: -12px;
+      padding: 0 12px;
+      box-sizing: border-box;
+      height: 100%;
+      position: relative;
+      z-index: 3;
+      background:
+        linear-gradient(
+          to right,
+          transparent,
+          var(--cb-border) 45%,
+          var(--cb-border) 55%,
+          transparent
+        );
+      background-clip: content-box;
+      cursor: col-resize;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .mobile-splitter {
+      display: none;
     }
 
     /* -- Transport controls ------------------------------------------------ */
@@ -530,7 +569,7 @@ export const songPlayStyles = css`
     @media (max-width: 700px) {
       .song-play {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr auto;
+        grid-template-rows: var(--cb-song-controls-h) var(--cb-song-splitter-h) 1fr auto;
       }
 
       .right-panel {
@@ -538,19 +577,39 @@ export const songPlayStyles = css`
         grid-row: 1;
         padding: 10px;
         gap: 12px;
-        overflow-y: visible;
+        overflow-y: auto;
+      }
+
+      .desktop-splitter {
+        display: none;
+      }
+
+      .mobile-splitter {
+        display: block;
+        grid-column: 1;
+        grid-row: 2;
+        height: var(--cb-song-splitter-h);
+        background: linear-gradient(
+          to bottom,
+          transparent,
+          var(--cb-border) 45%,
+          var(--cb-border) 55%,
+          transparent
+        );
+        cursor: row-resize;
+        touch-action: none;
       }
 
       .left-panel {
         grid-column: 1;
-        grid-row: 2;
+        grid-row: 3;
         border-right: none;
         border-top: 1px solid var(--cb-border);
       }
 
       .slider-panel {
         grid-column: 1;
-        grid-row: 3;
+        grid-row: 4;
       }
 
       .transport {
