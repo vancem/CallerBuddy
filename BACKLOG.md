@@ -55,11 +55,17 @@ long comment at the top of `src/main.ts` and the header comment on
   installs, portrait layout used a stale landscape width (`innerWidth` ~980)
   while `screen` reported the real device (~360×780), shrinking the whole UI.
   We drive `<meta name="viewport">` from `screen.orientation` and explicit
-  `width=<CSS px>` from the physical short/long edge. Chrome sometimes **ignores**
-  the meta until a reflow; `applyViewportFix()` detects `innerWidth` still too
-  large and applies a `device-width` → explicit-width “sandwich”. Root font bump
-  on touch uses `(pointer: coarse)` in `index.css` (Samsung often lies on
-  `(hover: none)`). See `applyViewportFix()` in `main.ts`.
+  `width=<CSS px>` from the physical short/long edge. On some Chrome WebAPKs the
+  meta **updates in the DOM** but **`innerWidth` stays wrong** (~980); a reflow
+  sandwich did not help in testing. In that case `applyViewportFix()` applies
+  **`zoom` on `<html>`** using **`1 / visualViewport.scale`** when shrink-to-fit
+  is reported (primary), else `innerWidth / expectedEdge` from `screen` +
+  orientation (capped). Zoom is cleared when `innerWidth` finally matches.
+  **Landscape often looks acceptable while portrait looks tiny** because the same
+  wrong layout width is scaled to fit a wide window (mild scale) vs a narrow one
+  (severe)—not because landscape is “correct”. Root font bump uses
+  `(pointer: coarse)` in `index.css` (Samsung often lies on `(hover: none)`). See
+  `applyViewportFix()` and the banner comment in `main.ts`.
 
 - **Touch detection:** `(hover: none) and (pointer: coarse)` can fail on Samsung
   One UI PWAs because `(hover: none)` is false. Use `(pointer: coarse)` and/or

@@ -20,14 +20,42 @@
  * Use `screen.orientation.type` (sensor-driven) or `(orientation: portrait)`
  * rather than comparing inner dimensions.
  *
- * **`width=device-width` / explicit width ignored until reflow**
- * Setting `<meta name="viewport" content="width=360">` should fix the layout
- * viewport, but Chrome WebAPK on some Samsung builds **keeps** `innerWidth` at
- * the stale landscape width until something forces a full reflow (Fullscreen
- * API, or our device-width → explicit-width “sandwich”). If `innerWidth` is
- * still far above `min(screen.width,screen.height)` in portrait after the meta
- * update, we run that sandwich. Root `font-size` bump uses `(pointer: coarse)`
- * in `index.css` so it matches JS touch detection (Samsung hover MQ lies).
+ * **Why landscape often “looks fine” (it is not actually fixed)**
+ * The layout viewport can stay **the same wrong width (~980 CSS px)** in both
+ * orientations. The browser then **scales the page to fit the window**
+ * (`visualViewport.scale` < 1). In **landscape** the window is **wide** (~780px
+ * along the long edge), so fitting ~980 needs only a **mild** scale (~0.77 in
+ * your logs). In **portrait** the window is **narrow** (~360px), so the same
+ * 980px layout is crushed to **~0.37** → tiny UI. Starting in landscape can also
+ * hit an initialization path where `innerWidth` is closer to the long edge, but
+ * the underlying bug is the same: **trust `screen` + `visualViewport.scale`,
+ * not “landscape = OK”.**
+ *
+ * **Accurate signals (use these for decisions)**
+ * - Physical / orientation: `screen.width`, `screen.height`, `screen.orientation.type`
+ * - How much the page is visually shrunk: **`visualViewport.scale`** (and `width`/`height`)
+ * - Chrome window in CSS px: `window.outerWidth`, `window.outerHeight`
+ * - **Unreliable here:** `window.innerWidth` / `innerHeight` as “true” viewport size
+ *
+ * **Trivial standards fix:** correct `<meta name="viewport">` **should** suffice.
+ * On this WebAPK it often **does not** change layout; there is no smaller “proper”
+ * web API to force layout viewport recalculation. Workarounds: Fullscreen API, or
+ * compensating zoom derived from **`1 / visualViewport.scale`** (undo shrink the
+ * browser already applied — see `syncZoomCompensation`).
+ *
+ * **`width=device-width` / explicit width often ignored for layout**
+ * The `<meta name="viewport">` string updates in the DOM (`vpMeta="width=360"`)
+ * but Chrome WebAPK on some Samsung builds **still reports** `innerWidth`≈980
+ * (stale landscape layout viewport) with `visualViewport.scale`<1 — meta alone
+ * does not fix layout. A Fullscreen API transition **does** fix it on this
+ * stack. When meta does nothing measurable, we fall back to **`zoom` on
+ * `<html>`** — ideally **`1 / visualViewport.scale`** (neutralize measured
+ * shrink); else **`innerWidth / expectedEdge`** (`expectedEdge` from `screen` +
+ * orientation). Zoom is removed when `innerWidth` matches the edge (e.g. after
+ * fullscreen). Non-standard but effective in Blink WebViews here.
+ *
+ * Root `font-size` bump uses `(pointer: coarse)` in `index.css` so it matches JS
+ * touch detection (Samsung `(hover: none)` MQ lies).
  *
  * **Touch detection media queries lie**
  * `(hover: none) and (pointer: coarse)` can be **false** on a pure-touch phone
@@ -62,11 +90,12 @@ import {
 } from "./services/env-log.js";
 import "./components/app-shell.js";
 
-// ── Mobile viewport meta fix — readable layout WITHOUT Fullscreen API ───────
-// See file-top documentation block. Sets explicit width from screen edges.
-// If Chrome still reports a huge innerWidth (stale landscape viewport),
-// forces a reflow via device-width → explicit sandwich (same trick fullscreen
-// accidentally triggered).
+// ── Mobile viewport: meta + optional `html { zoom }` on stuck WebAPK layouts ─
+// See file-top documentation block. We still set meta (correct `vpMeta` for
+// tools and the day Chrome fixes the bug). When `innerWidth` stays far above
+// the physical edge, only zoom reliably corrects apparent size in practice.
+const VIEWPORT_ZOOM_MAX = 4;
+
 function applyViewportFix() {
   const isTouchDevice =
     window.matchMedia("(pointer: coarse)").matches ||
@@ -78,10 +107,6 @@ function applyViewportFix() {
   );
   if (!viewport) return;
 
-  const DEVICE_WIDTH_META =
-    "width=device-width, initial-scale=1.0, viewport-fit=cover";
-
-  /** Expected layout viewport width for current orientation (~physical CSS px). */
   function expectedLayoutWidthPx(): number {
     const shortEdge = Math.min(screen.width, screen.height);
     const longEdge = Math.max(screen.width, screen.height);
@@ -94,49 +119,43 @@ function applyViewportFix() {
     return window.matchMedia("(orientation: portrait)").matches;
   }
 
-  /** Stale landscape viewport: innerWidth stays ~980 while screen short edge ~360. */
-  function isLayoutViewportWrong(): boolean {
+  /** WebAPK may keep a huge layout innerWidth; compare to what the device edge implies. */
+  function needsZoomCompensation(): boolean {
+    const expected = expectedLayoutWidthPx();
+    return window.innerWidth > expected * 1.12;
+  }
+
+  /**
+   * When `<meta viewport>` does not change `innerWidth` (observed: vpMeta=360
+   * but innerW=980), undo the browser’s shrink-to-fit using the **measured**
+   * `visualViewport.scale` when present (`zoom ≈ 1/scale`). That uses the same
+   * signal as the “why portrait looks tiny” explanation. Fallback: `innerW /
+   * expectedEdge`. Removed when layout matches expected edge.
+   */
+  function syncZoomCompensation(): void {
     const expected = expectedLayoutWidthPx();
     const iw = window.innerWidth;
-    // Allow small deltas (fractional DPR, UI chrome). Wrong = still laid out “wide”.
-    return iw > expected * 1.22;
-  }
-
-  let sandwichAttempts = 0;
-
-  /** Samsung WebAPK sometimes ignores meta until layout is reset this way. */
-  function forceReflowSandwich(targetContent: string): void {
-    sandwichAttempts += 1;
+    const ratio = iw / expected;
+    if (ratio <= 1.12) {
+      document.documentElement.style.removeProperty("zoom");
+      return;
+    }
+    const vv = window.visualViewport;
+    const scale = vv?.scale;
+    const zFromScale =
+      scale != null && scale > 0 && scale < 0.999
+        ? Math.min(1 / scale, VIEWPORT_ZOOM_MAX)
+        : null;
+    const zFromRatio = Math.min(ratio, VIEWPORT_ZOOM_MAX);
+    const z = zFromScale ?? zFromRatio;
+    document.documentElement.style.zoom = String(z);
     log.warn(
-      `[viewport-fix] reflow sandwich attempt=${sandwichAttempts} ` +
-        `innerW=${window.innerWidth} expected≈${expectedLayoutWidthPx()}`,
+      `[viewport-fix] html zoom=${z.toFixed(2)} innerW=${iw} expected≈${expected}` +
+        (zFromScale != null && scale != null
+          ? ` (from visualViewport.scale=${scale.toFixed(3)} → 1/scale)`
+          : ` (from inner/expected; scale unavailable or ~1)`) +
+        ` — meta did not fix layout viewport`,
     );
-    viewport!.content = DEVICE_WIDTH_META;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        viewport!.content = targetContent;
-        setTimeout(() => {
-          logEnv("vp-fix-sandwich-post");
-          if (isLayoutViewportWrong() && sandwichAttempts < 2) {
-            forceReflowSandwich(targetContent);
-          }
-        }, 80);
-      });
-    });
-  }
-
-  function verifyOrSandwich(targetContent: string): void {
-    setTimeout(() => {
-      if (!isLayoutViewportWrong()) return;
-      if (sandwichAttempts >= 2) {
-        log.warn(
-          `[viewport-fix] still wrong after sandwiches innerW=${window.innerWidth}`,
-        );
-        return;
-      }
-      logEnv("vp-fix-verify-fail-pre");
-      forceReflowSandwich(targetContent);
-    }, 120);
   }
 
   function applyFix(): void {
@@ -152,13 +171,17 @@ function applyViewportFix() {
         `willChange=${before !== targetContent}`,
     );
 
-    sandwichAttempts = 0;
     if (before !== targetContent) {
       logEnv("vp-fix-pre");
       viewport!.content = targetContent;
       setTimeout(() => logEnv("vp-fix-post"), 50);
     }
-    verifyOrSandwich(targetContent);
+    // Meta may not move innerWidth; zoom runs after paint catches up.
+    requestAnimationFrame(() => {
+      syncZoomCompensation();
+      setTimeout(syncZoomCompensation, 100);
+      setTimeout(syncZoomCompensation, 350);
+    });
   }
 
   applyFix();
@@ -172,7 +195,6 @@ function applyViewportFix() {
     setTimeout(applyFix, 100);
   });
 
-  // Exiting Fullscreen API changes chrome / inner dimensions — re-apply meta.
   document.addEventListener("fullscreenchange", () => {
     setTimeout(applyFix, 50);
   });
@@ -183,7 +205,7 @@ function applyViewportFix() {
       if (vvTimer) clearTimeout(vvTimer);
       vvTimer = setTimeout(() => {
         vvTimer = null;
-        if (isLayoutViewportWrong()) applyFix();
+        if (needsZoomCompensation()) syncZoomCompensation();
       }, 200);
     });
   }
