@@ -26,7 +26,7 @@ export interface Song {
    * New entries use {@link nextOrderAdded} so each addition increments (per folder list).
    */
   orderAdded: number;
-  /** ISO timestamp of last time the song counted as played (see play history rules). Empty if never */
+  /** ISO timestamp of last time the song played (see play history rules). Empty if never */
   lastUsed: string;
   /**
    * Internal weight for play-frequency decay (28-day half-life). Persisted;

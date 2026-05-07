@@ -493,7 +493,7 @@ export class PlaylistEditor extends LitElement {
                       </th>
                       <th
                         class="sortable last-col-head"
-                        title="Days since this song was last counted as played (practice sessions do not count)."
+                        title="Days since this song was last played (practice sessions do not count)."
                         @click=${() => this.toggleSort("lastUsedDays")}
                       >
                         Last ${this.sortIndicator("lastUsedDays")}
