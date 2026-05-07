@@ -25,7 +25,7 @@ export const LYRICS_INFO_SIZE = "0.75em"; // 13pt × 0.75 = 9.75pt
 
 export const DEFAULT_LYRICS_STYLE = [
   `  body { background: lightyellow; font-family: ${LYRICS_UI_FONT_STACK};`,
-  `         font-size: ${LYRICS_BODY_FONT_SIZE}; line-height: 140%; color: black; margin: 1em; }`,
+  `         font-size: ${LYRICS_BODY_FONT_SIZE}; line-height: 140%; color: black; margin: 0; }`,
   `  h1 { font-size: ${LYRICS_H1_SIZE}; display: inline; }`,
   `  .info { color: blue; font-size: ${LYRICS_INFO_SIZE}; font-weight: normal; }`,
   `  h2 { color: red; font-size: ${LYRICS_H2_SIZE}; font-weight: normal; margin: 0.6em 0 0; }`,

@@ -37,6 +37,9 @@ export const songPlayStyles = css`
       width: 100%;
       box-sizing: border-box;
       padding: 16px;
+      /* Authored lyric CSS rewrites body selectors to .lyrics-content and may set margin;
+         margin is transparent and shows the panel — flush to edges in the player. */
+      margin: 0 !important;
     }
 
     /* :where() gives these defaults zero specificity so authored HTML styles
