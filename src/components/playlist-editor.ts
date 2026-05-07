@@ -478,7 +478,7 @@ export class PlaylistEditor extends LitElement {
                       <th class="play-cell" title="Play this song now in the player"></th>
                       <th class="add-cell" title="Add this song to the playlist"></th>
                       <th
-                        class="sortable"
+                        class="sortable title-col-head"
                         title="Song title, taken from the audio filename."
                         @click=${() => this.toggleSort("title")}
                       >
@@ -548,7 +548,9 @@ export class PlaylistEditor extends LitElement {
                               @click=${() => void this.addToPlaylist(song)}
                             >+</button>
                           </td>
-                          <td>${song.title}</td>
+                          <td class="title-cell">
+                            <span class="title-ellipsis" title=${song.title}>${song.title}</span>
+                          </td>
                           ${this.renderRankCell(song)}
                           <td
                             class="last-cell"
@@ -1370,6 +1372,13 @@ export class PlaylistEditor extends LitElement {
       white-space: nowrap;
     }
 
+    .title-ellipsis {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .song-table th {
       position: sticky;
       top: 0;
@@ -1682,6 +1691,13 @@ export class PlaylistEditor extends LitElement {
       .song-table th,
       .song-table td {
         padding: 6px 6px;
+      }
+
+      /* Mobile: cap Title width so other columns remain usable. */
+      .song-table th.title-col-head,
+      .song-table td.title-cell {
+        width: 30ch;
+        max-width: 30ch;
       }
     }
   `;
