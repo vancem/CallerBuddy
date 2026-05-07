@@ -401,6 +401,8 @@ long comment at the top of `src/main.ts` and the header comment on
   text filter is implemented. Per-column dropdown filters would match the spec.
 - [] The playlist editor should show the number of items in the playlist and
   total estimated duration.
+- [] LOW: Remove in-app debug logging UI/system (currently `Show Logs` modal) once
+  the app is stable; rely on browser devtools / exported diagnostics instead.
 
 ## Bugs
 

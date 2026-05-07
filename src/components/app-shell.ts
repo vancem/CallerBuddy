@@ -148,7 +148,7 @@ export class AppShell extends LitElement {
     this.showFullscreenStartup = false;
   }
 
-  /** Refresh menu label ("Full Screen" vs "In Window"). OS may exit FS anytime. */
+  /** Refresh menu label ("Full Screen" vs "Exit FullScreen"). OS may exit FS anytime. */
   private onFullscreenChange() {
     log.info(`[fs] change -> ${this.isFullscreenApi() ? "IN" : "OUT"}`);
     this.requestUpdate();
@@ -266,7 +266,7 @@ export class AppShell extends LitElement {
     this.showMenu = false;
     const wasIn = this.isFullscreenApi();
     log.info(
-      `[ui] menu: ${wasIn ? "In Window" : "Full Screen"} ` +
+      `[ui] menu: ${wasIn ? "Exit FullScreen" : "Full Screen"} ` +
         `(toggle, wasIn=${wasIn})`,
     );
     log.info(`[fs] menu toggle (was ${wasIn ? "IN" : "OUT"})`);
@@ -467,7 +467,7 @@ export class AppShell extends LitElement {
         <p class="fs-startup-body">
           Full screen uses the largest area and hides extra browser UI when the
           device allows it. CallerBuddy keeps normal text size either way. You
-          can switch later from the menu (Full Screen / In Window).
+          can switch later from the menu (Full Screen / Exit FullScreen).
         </p>
         <div class="fs-startup-actions">
           <button
@@ -580,20 +580,19 @@ export class AppShell extends LitElement {
           Import Song from Folder…
         </button>
         <button class="menu-item" role="menuitem" @click=${this.toggleFullscreen}>
-          ${this.isFullscreenApi() ? "In Window" : "Full Screen"}
+          ${this.isFullscreenApi() ? "Exit FullScreen" : "Full Screen"}
         </button>
         <hr />
         <button class="menu-item" role="menuitem" @click=${this.onHelp}
           title="Open help documentation with walkthroughs and keyboard shortcuts">
           Help
         </button>
+        <!--
         <button class="menu-item" role="menuitem" @click=${this.onShowLogs}
           title="Show recent diagnostic log lines">
           Show Logs
         </button>
-        <button class="menu-item" role="menuitem" @click=${this.onClose}>
-          Close
-        </button>
+        -->
         <hr />
         <div class="menu-item version" role="menuitem">
           CallerBuddy v${APP_VERSION}
@@ -765,15 +764,6 @@ export class AppShell extends LitElement {
     log.info(`[ui] menu: Help`);
     this.showMenu = false;
     callerBuddy.state.openSingletonTab(TabType.Help, "Help");
-  }
-
-  private async onClose() {
-    log.info(`[ui] menu: Close`);
-    this.showMenu = false;
-    if (this.isFullscreenApi()) {
-      await this.exitFullscreenApi();
-    }
-    window.close();
   }
 
   static styles = css`
