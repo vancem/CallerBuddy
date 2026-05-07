@@ -176,22 +176,30 @@ export class WelcomeView extends LitElement {
   }
 
   static styles = css`
+    /*
+     * Layout algorithm (CallerBuddy welcome):
+     * 1. Gutter — max(12px, min(4vw, 24px), safe-area) each side: meets ~16px-class
+     *    practice without growing huge gutters on landscape phones.
+     * 2. Measure — min(100%, max(36rem, min(72ch, 48rem))): never wider than parent;
+     *    cap line length for body copy (~72ch) with floor ~36rem for buttons/layout.
+     * 3. Center with margin-inline: auto when the cap is narrower than the shell.
+     * No breakpoint that switches to a fixed 560px column (that wasted space in landscape).
+     */
     :host {
       display: block;
       box-sizing: border-box;
       width: 100%;
-      /* Narrow viewports: edge-to-edge content with minimal horizontal inset (OS chrome
-       * only). Wider: readable measure + generous padding. */
-      margin: 0;
-      padding: 1.25rem clamp(10px, 3vw, 18px);
-      max-width: none;
+      max-width: min(100%, max(36rem, min(72ch, 48rem)));
+      margin-inline: auto;
+      margin-block: 0;
+      padding-block: 1.25rem;
+      padding-left: max(12px, min(4vw, 24px), env(safe-area-inset-left, 0px));
+      padding-right: max(12px, min(4vw, 24px), env(safe-area-inset-right, 0px));
     }
 
-    @media (min-width: 600px) {
+    @media (min-width: 48rem) {
       :host {
-        max-width: 560px;
-        margin: 0 auto;
-        padding: 2rem;
+        padding-block: 1.5rem;
       }
     }
 
