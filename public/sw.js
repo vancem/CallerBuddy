@@ -1,5 +1,5 @@
-/* built: 2026-05-07T20:46:16.141Z */
-const CACHE_NAME = "callerbuddy-v0.1.0-pre.46-84c847a2-dirty";
+/* built: 2026-05-07T23:38:10.683Z */
+const CACHE_NAME = "callerbuddy-v0.1.0-pre.47-ad66c4af-dirty";
 const PRECACHE_URLS = ["","index.html"];
 
 self.addEventListener("install", (event) => {

@@ -673,12 +673,10 @@ export class AppShell extends LitElement {
           title="Open help documentation with walkthroughs and keyboard shortcuts">
           Help
         </button>
-        <!--
         <button class="menu-item" role="menuitem" @click=${this.onShowLogs}
           title="Show recent diagnostic log lines">
           Show Logs
         </button>
-        -->
         <hr />
         <div class="menu-item version" role="menuitem">
           CallerBuddy v${APP_VERSION}
