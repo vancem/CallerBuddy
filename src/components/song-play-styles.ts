@@ -42,7 +42,7 @@ export const songPlayStyles = css`
     /* :where() gives these defaults zero specificity so authored HTML styles
        (e.g. background: lightyellow from a lyrics file) can override them. */
     :where(.lyrics-content) {
-      font-size: 1rem;
+      font-size: 0.8rem;
       line-height: 1.7;
       background: var(--cb-bg);
       color: var(--cb-fg);
