@@ -1692,8 +1692,10 @@ export class PlaylistEditor extends LitElement {
       .song-table td {
         padding: 6px 6px;
       }
+    }
 
-      /* Mobile: cap Title width so other columns remain usable. */
+    /* Phone: cap Title width so other columns remain usable (portrait + landscape). */
+    @media (max-width: 700px) {
       .song-table th.title-col-head,
       .song-table td.title-cell {
         width: 30ch;
