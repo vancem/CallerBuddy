@@ -1367,7 +1367,7 @@ export class PlaylistEditor extends LitElement {
 
     .song-table th,
     .song-table td {
-      padding: 6px 10px;
+      padding: 5px 10px;
       text-align: left;
       white-space: nowrap;
     }
@@ -1499,7 +1499,7 @@ export class PlaylistEditor extends LitElement {
     .categories-cell.editing,
     .rank-cell.editing {
       /* Match .song-table td padding so the cell box does not shrink/grow when editing. */
-      padding: 6px 10px;
+      padding: 5px 10px;
       vertical-align: middle;
     }
 
@@ -1543,7 +1543,7 @@ export class PlaylistEditor extends LitElement {
       width: auto;
       min-width: 2rem;
       text-align: center;
-      padding: 6px 3px 6px 8px;
+      padding: 5px 2px 5px 4px;
     }
 
     .song-table th.add-cell,
@@ -1551,7 +1551,12 @@ export class PlaylistEditor extends LitElement {
       width: auto;
       min-width: 2rem;
       text-align: center;
-      padding: 6px 8px 6px 3px;
+      padding: 5px 4px 5px 2px;
+    }
+
+    .song-table th.title-col-head,
+    .song-table td.title-cell {
+      padding-left: 4px;
     }
 
     .table-empty {
@@ -1690,16 +1695,26 @@ export class PlaylistEditor extends LitElement {
 
       .song-table th,
       .song-table td {
-        padding: 6px 6px;
+        padding: 5px 6px;
       }
     }
 
     /* Phone: cap Title width so other columns remain usable (portrait + landscape). */
-    @media (max-width: 700px) {
+    @media (pointer: coarse) and (max-width: 700px) {
       .song-table th.title-col-head,
       .song-table td.title-cell {
-        width: 30ch;
-        max-width: 30ch;
+        width: 27ch;
+        max-width: 27ch;
+      }
+    }
+
+    /* Some installed-phone stacks report a bogus large "innerWidth" in landscape.
+       Height is still phone-like, so use it to keep the title cap consistent. */
+    @media (pointer: coarse) and (max-height: 520px) {
+      .song-table th.title-col-head,
+      .song-table td.title-cell {
+        width: 27ch;
+        max-width: 27ch;
       }
     }
   `;
