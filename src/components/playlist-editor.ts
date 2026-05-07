@@ -481,20 +481,6 @@ export class PlaylistEditor extends LitElement {
                       </th>
                       <th
                         class="sortable"
-                        title="Publisher label and catalog number from the filename (e.g. RYL 607)."
-                        @click=${() => this.toggleSort("label")}
-                      >
-                        Label ${this.sortIndicator("label")}
-                      </th>
-                      <th
-                        class="sortable"
-                        title="Category tags for this song: words or phrases separated by semicolons (e.g. Christmas; Patriotic; Plus)."
-                        @click=${() => this.toggleSort("categories")}
-                      >
-                        Categories ${this.sortIndicator("categories")}
-                      </th>
-                      <th
-                        class="sortable"
                         title="Your preference from 0 to 100: 100 is excellent, 50 is average, 0 means avoid using this song."
                         @click=${() => this.toggleSort("rank")}
                       >
@@ -513,6 +499,20 @@ export class PlaylistEditor extends LitElement {
                         @click=${() => this.toggleSort("playedDisplay")}
                       >
                         Played ${this.sortIndicator("playedDisplay")}
+                      </th>
+                      <th
+                        class="sortable"
+                        title="Category tags for this song: words or phrases separated by semicolons (e.g. Christmas; Patriotic; Plus)."
+                        @click=${() => this.toggleSort("categories")}
+                      >
+                        Categories ${this.sortIndicator("categories")}
+                      </th>
+                      <th
+                        class="sortable"
+                        title="Publisher label and catalog number from the filename (e.g. RYL 607)."
+                        @click=${() => this.toggleSort("label")}
+                      >
+                        Label ${this.sortIndicator("label")}
                       </th>
                       <th title="Singing call (has lyrics) or patter (no lyrics file).">Type</th>
                     </tr>
@@ -544,8 +544,6 @@ export class PlaylistEditor extends LitElement {
                             >+</button>
                           </td>
                           <td>${song.title}</td>
-                          <td class="label-cell">${song.label}</td>
-                          ${this.renderCategoriesCell(song)}
                           ${this.renderRankCell(song)}
                           <td
                             class="last-cell"
@@ -559,6 +557,8 @@ export class PlaylistEditor extends LitElement {
                           >
                             ${this.formatPlayedDisplay(song)}
                           </td>
+                          ${this.renderCategoriesCell(song)}
+                          <td class="label-cell">${song.label}</td>
                           <td class="type-cell">
                             <span
                               class="${isSingingCall(song) ? "singing" : "patter"}"
