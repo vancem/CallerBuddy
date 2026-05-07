@@ -1624,10 +1624,17 @@ export class PlaylistEditor extends LitElement {
       .playlist-panel {
         width: auto !important;
         min-width: 0;
-        max-height: 35vh;
-        max-height: 35dvh;
+        /* 1/3 of the vertical space; playlist list scrolls within. */
+        flex: 1 1 0;
+        min-height: 0;
         border-right: none;
         border-bottom: 1px solid var(--cb-border);
+      }
+
+      .browser-panel {
+        /* 2/3 of the vertical space; song list keeps its own scroll. */
+        flex: 2 1 0;
+        min-height: 0;
       }
 
       .resizer {
