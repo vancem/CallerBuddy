@@ -11,7 +11,7 @@ describe("defaultSettings", () => {
   it("returns correct default values", () => {
     const s = defaultSettings();
     expect(s.breakTimerMinutes).toBe(DEFAULT_BREAK_TIMER_MINUTES);
-    expect(s.patterTimerMinutes).toBe(5);
+    expect(s.patterTimerMinutes).toBe(6);
     expect(s.playlistPanelWidth).toBe(DEFAULT_PLAYLIST_PANEL_WIDTH);
     expect(s.playlistPanelHeight).toBe(DEFAULT_PLAYLIST_PANEL_HEIGHT);
     expect(s.playlistPaths).toEqual([]);

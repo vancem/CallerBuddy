@@ -102,7 +102,7 @@ export class SongPlay extends LitElement {
 
   // Patter timer
   @state() private patterTimerEnabled = true;
-  @state() private patterMinutes = 5;
+  @state() private patterMinutes = 6;
   @state() private patterCountdown = 0;
   @state() private patterTimerRunning = false;
   private patterInterval: number | null = null;
@@ -1124,7 +1124,7 @@ export class SongPlay extends LitElement {
   }
 
   private onPatterMinutesChange(e: Event) {
-    this.patterMinutes = Number((e.target as HTMLInputElement).value) || 5;
+    this.patterMinutes = Number((e.target as HTMLInputElement).value) || 6;
     this.resetPatterTimer();
     if (this.patterTimerEnabled && this.playing && this.song && isPatter(this.song)) {
       this.startPatterTimer();

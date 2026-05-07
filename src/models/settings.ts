@@ -34,7 +34,7 @@ export interface Settings {
 export function defaultSettings(): Settings {
   return {
     breakTimerMinutes: DEFAULT_BREAK_TIMER_MINUTES,
-    patterTimerMinutes: 5,
+    patterTimerMinutes: 6,
     playlistPanelWidth: DEFAULT_PLAYLIST_PANEL_WIDTH,
     playlistPanelHeight: DEFAULT_PLAYLIST_PANEL_HEIGHT,
     playlistPaths: [],
