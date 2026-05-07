@@ -178,9 +178,21 @@ export class WelcomeView extends LitElement {
   static styles = css`
     :host {
       display: block;
-      max-width: 560px;
-      margin: 0 auto;
-      padding: 2rem;
+      box-sizing: border-box;
+      width: 100%;
+      /* Narrow viewports: edge-to-edge content with minimal horizontal inset (OS chrome
+       * only). Wider: readable measure + generous padding. */
+      margin: 0;
+      padding: 1.25rem clamp(10px, 3vw, 18px);
+      max-width: none;
+    }
+
+    @media (min-width: 600px) {
+      :host {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
     }
 
     .welcome {

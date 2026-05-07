@@ -92,8 +92,10 @@
  * - **`html { zoom }`:** Blink-focused; WebKit often honors it for layout. If a
  *   browser ignores `zoom`, worst case is unchanged oversmall UI until Fullscreen
  *   or a browser fix — we don’t remove meta or touch font elsewhere.
- * - **Bias + cap:** Zoom is damped, **`UNDER_BIAS`**d, then **portrait vs landscape
- *   caps**; **`--cb-max-layout-px`** clips `<app-shell>` to the physical edge when `vw` lies.
+ * - **Bias + cap:** Zoom is **`UNDER_BIAS`** (~2% under full × raw for horizontal fit), optionally damped,
+ *   then **portrait vs landscape caps**; **`--cb-max-layout-px`** clips `<app-shell>` when `vw` lies.
+ *   Uniform `zoom` cannot trim H vs V separately — vertical loss to OS chrome is expected
+ *   (~10% portrait / ~15% landscape tolerance vs ideal height is acceptable).
  *
  * Long-form notes: BACKLOG.md § "Mobile viewport & fullscreen (Android WebAPK)".
  * ═══════════════════════════════════════════════════════════════════════════
@@ -115,16 +117,17 @@ import "./components/app-shell.js";
 /**
  * `zoom` on `<html>` **grows** paint in Blink. **`app-shell` `max-width`** clamps
  * the flex UI to the physical edge so we can use a **higher** zoom in **portrait**
- * where `visualViewport.scale` ~0.37 needs ~2.7× raw (~2.28 damped+biased) —
- * caps near ~1.9 still starved correction (`hitCap`, `[viewport-math]`).
- * Landscape stays milder.
+ * where `visualViewport.scale` ~0.37 needs ~2.7× raw — damp×under **0.98** → ~**2%** undershoot
+ * vs full neutralize for **width** (policy). Vertical dimension may diverge more (OS chrome);
+ * see banner “Bias + cap”. Raise **cap** if `preCapZ` hits it.
  */
-const VIEWPORT_ZOOM_HARD_CAP_PORTRAIT = 2.4;
-const VIEWPORT_ZOOM_HARD_CAP_LANDSCAPE = 1.18;
-/** Full `1/visualViewport.scale` overshoots next to touch `font-size` bump — dampen. */
-const VIEWPORT_ZOOM_DAMPING = 0.88;
-/** Prefer slightly small vs clipping; portrait raw correction is large — keep near 1. */
-const VIEWPORT_ZOOM_UNDER_BIAS = 0.95;
+const VIEWPORT_ZOOM_HARD_CAP_PORTRAIT = 2.75;
+/** Broken landscape layout (`innerW` > long edge) still needs room for raw×0.98 (often ~1.25–1.35). */
+const VIEWPORT_ZOOM_HARD_CAP_LANDSCAPE = 1.42;
+/** Leave at 1 unless we need to soften both axes together. */
+const VIEWPORT_ZOOM_DAMPING = 1;
+/** With DAMPING=1: target `vv.scale×htmlZoom ≈ 0.98` (~2% horizontal undershoot vs `1/scale`). */
+const VIEWPORT_ZOOM_UNDER_BIAS = 0.98;
 
 /** Debounce: syncZoomCompensation runs several times per frame batch — one log. */
 let viewportMathLogTimer: ReturnType<typeof setTimeout> | null = null;
@@ -168,7 +171,7 @@ function applyViewportFix() {
   /**
    * One debounced line with everything needed to predict perceived text size vs
    * this device: physical `screen` / `outer`, bogus `inner`, `visualViewport`,
-   * ideal 1/scale, damped target, cap, and heuristic `scale×htmlZoom` (~1.0 good).
+   * ideal 1/scale, damped target, cap, and heuristic `scale×htmlZoom` (~0.98 target).
    */
   function scheduleViewportMathSnapshot(): void {
     if (viewportMathLogTimer) clearTimeout(viewportMathLogTimer);
@@ -222,6 +225,8 @@ function applyViewportFix() {
         document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
           ?.content ?? "?";
 
+      const dampUnder =
+        VIEWPORT_ZOOM_DAMPING * VIEWPORT_ZOOM_UNDER_BIAS;
       log.info(
         `[viewport-math] ` +
           `deviceScreen=${sw}x${sh} short=${shortE} long=${longE} dpr=${devicePixelRatio} ` +
@@ -232,11 +237,11 @@ function applyViewportFix() {
           `expectedW=${expected} layoutMisfit=${ratio.toFixed(2)}×(inner/expected) ` +
           `vv={w:${vv?.width?.toFixed(0) ?? "?"},h:${vv?.height?.toFixed(0) ?? "?"},scale:${scale?.toFixed(3) ?? "?"}} ` +
           `idealHtmlZoom≈${idealNeutralize?.toFixed(2) ?? "?"} (=1/vv.scale if shrink only) ` +
-          `raw=${raw.toFixed(2)} preCapZ=${preCapZ.toFixed(2)} appliedHtmlZoom=${z.toFixed(2)} cap=${cap} hitCap=${hitCap} ` +
-          `approxPerceivedScale≈${approxPerceived?.toFixed(3) ?? "?"} (=vv.scale×htmlZoom heuristic; target 1.0 natural) ` +
-          `gapFrom1=${gapFrom1?.toFixed(3) ?? "?"} (positive≈tooSmall negative≈tooBig vs target 1.0)`,
+          `damp×under=${dampUnder.toFixed(3)} raw=${raw.toFixed(2)} preCapZ=${preCapZ.toFixed(2)} appliedHtmlZoom=${z.toFixed(2)} cap=${cap} hitCap=${hitCap} ` +
+          `approxPerceivedScale≈${approxPerceived?.toFixed(3) ?? "?"} (=vv.scale×htmlZoom; ~=scale×raw×dampUnder; target ~0.98) ` +
+          `gapFrom1=${gapFrom1?.toFixed(3) ?? "?"} (target ~0.02; larger ⇒ width soft; check padding)`,
       );
-      if (hitCap && approxPerceived != null && approxPerceived < 0.92) {
+      if (hitCap && approxPerceived != null && approxPerceived < 0.96) {
         log.warn(
           `[viewport-math] CAP starved correction: need cap≥${preCapZ.toFixed(2)} for ~full neutralize, or raise HARD_CAP_${portrait ? "PORTRAIT" : "LANDSCAPE"} (now ${cap})`,
         );
