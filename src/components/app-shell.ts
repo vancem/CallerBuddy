@@ -68,6 +68,8 @@ export class AppShell extends LitElement {
   private _boundEditorFsGate = (e: Event) => this.onEditorFullscreenGate(e);
   private _boundAppReengaged = () => this.onAppReengaged();
   private _resumeCheckTimer: number | null = null;
+  /** TEMP: Now Playing → copy logs — remove after log extraction. */
+  private _boundTempLogsCopy = () => void this.copyLogs();
 
   connectedCallback() {
     super.connectedCallback();
@@ -78,6 +80,7 @@ export class AppShell extends LitElement {
     window.addEventListener("focus", this._boundAppReengaged);
     window.addEventListener("pageshow", this._boundAppReengaged);
     document.addEventListener("visibilitychange", this._boundAppReengaged);
+    window.addEventListener("cb-temp-logs-copy", this._boundTempLogsCopy);
 
     // Trap the Android back button (and browser back) so it doesn't
     // navigate away from the PWA. We keep a sentinel history entry on
@@ -114,6 +117,7 @@ export class AppShell extends LitElement {
     window.removeEventListener("focus", this._boundAppReengaged);
     window.removeEventListener("pageshow", this._boundAppReengaged);
     document.removeEventListener("visibilitychange", this._boundAppReengaged);
+    window.removeEventListener("cb-temp-logs-copy", this._boundTempLogsCopy);
     if (this._resumeCheckTimer !== null) {
       window.clearTimeout(this._resumeCheckTimer);
       this._resumeCheckTimer = null;

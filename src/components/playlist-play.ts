@@ -317,14 +317,24 @@ export class PlaylistPlay extends LitElement {
                     : formatCountdown(Math.round(this.breakMinutes * 60))}
                 </span>
               </div>
-              <button
-                type="button"
-                class="close-tab-btn"
-                title="Close Now Playing (Esc)"
-                @click=${this.onCloseNowPlayingTab}
-              >
-                Close
-              </button>
+              <div class="now-playing-actions-temp" title="TEMP: remove after log extraction">
+                <button
+                  type="button"
+                  class="close-tab-btn"
+                  title="Copy all logs to clipboard"
+                  @click=${this.tempDispatchCopyLogs}
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  class="close-tab-btn"
+                  title="Close Now Playing (Esc)"
+                  @click=${this.onCloseNowPlayingTab}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
 
@@ -387,6 +397,11 @@ export class PlaylistPlay extends LitElement {
   private onCloseNowPlayingTab() {
     const tab = callerBuddy.state.tabs.find((t) => t.type === TabType.PlaylistPlay);
     if (tab) callerBuddy.state.closeTab(tab.id);
+  }
+
+  /** TEMP: copy logs — remove after log extraction. */
+  private tempDispatchCopyLogs() {
+    window.dispatchEvent(new Event("cb-temp-logs-copy"));
   }
 
   // -- Break timer ----------------------------------------------------------
@@ -794,6 +809,20 @@ export class PlaylistPlay extends LitElement {
       background: var(--cb-input-bg);
       color: var(--cb-fg);
       cursor: pointer;
+    }
+
+    /* TEMP: Now Playing copy-logs — remove after log extraction */
+    .now-playing-actions-temp {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .now-playing-actions-temp .close-tab-btn {
+      margin-top: 0;
+      align-self: center;
     }
 
     .close-tab-btn:hover {
