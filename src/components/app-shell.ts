@@ -47,8 +47,6 @@ export class AppShell extends LitElement {
   @state() private showMenu = false;
   @state() private showLogs = false;
   @state() private logCopyStatus = "";
-  /** One-time dialog on touch installed PWA: offers Fullscreen API (optional). */
-  @state() private showFullscreenStartup = false;
   /** Before playlist editor on phone: offer Fullscreen API (Yes biased). */
   @state() private showEditorFullscreenPrompt = false;
   /** If we "should be fullscreen" but OS kicked us out, prompt to re-enter. */
@@ -80,25 +78,10 @@ export class AppShell extends LitElement {
     history.pushState({ cbSentinel: true }, "");
     window.addEventListener("popstate", this._boundPopstate);
 
-    let promptAlreadyAnswered = false;
-    let storageAvailable = true;
-    try {
-      promptAlreadyAnswered = !!localStorage.getItem(FS_STARTUP_PROMPT_KEY);
-    } catch {
-      storageAvailable = false;
-    }
-    if (
-      storageAvailable &&
-      !promptAlreadyAnswered &&
-      this.isTouchInstalledPwa() &&
-      !this.isFullscreenApi()
-    ) {
-      this.showFullscreenStartup = true;
-    }
     log.info(
       `[fs] init fsApi=${this.isFullscreenApi()} ` +
         `touchInstalledPwa=${this.isTouchInstalledPwa()} ` +
-        `fsStartupPrompt=${this.showFullscreenStartup}`,
+        `startupPrompt=disabled`,
     );
   }
 
@@ -143,27 +126,6 @@ export class AppShell extends LitElement {
     void this.handleGoBack();
   }
 
-  private onFullscreenStartupYes() {
-    log.info(`[ui] fs-startup: Enter full screen`);
-    try {
-      localStorage.setItem(FS_STARTUP_PROMPT_KEY, "entered");
-    } catch {
-      /* ignore */
-    }
-    this.showFullscreenStartup = false;
-    this.requestFullscreenApi();
-  }
-
-  private onFullscreenStartupNo() {
-    log.info(`[ui] fs-startup: Not now`);
-    try {
-      localStorage.setItem(FS_STARTUP_PROMPT_KEY, "skipped");
-    } catch {
-      /* ignore */
-    }
-    this.showFullscreenStartup = false;
-  }
-
   /** Refresh menu label ("Full Screen" vs "Exit FullScreen"). OS may exit FS anytime. */
   private onFullscreenChange() {
     log.info(`[fs] change -> ${this.isFullscreenApi() ? "IN" : "OUT"}`);
@@ -199,7 +161,7 @@ export class AppShell extends LitElement {
     if (this.isFullscreenApi()) return;
 
     // Avoid stacking prompts.
-    if (this.showFullscreenStartup || this.showEditorFullscreenPrompt) return;
+    if (this.showEditorFullscreenPrompt) return;
 
     // If the user just dismissed this, don't nag immediately.
     const now = Date.now();
@@ -261,13 +223,6 @@ export class AppShell extends LitElement {
     const resolve = ce.detail?.resolve;
     if (typeof resolve !== "function") return;
     if (!isPhoneLikeTouchDevice()) {
-      resolve();
-      return;
-    }
-    if (this.showFullscreenStartup) {
-      log.info(
-        `[fs] editor-gate: skipped (startup fullscreen prompt visible; use that first)`,
-      );
       resolve();
       return;
     }
@@ -516,7 +471,6 @@ export class AppShell extends LitElement {
             : nothing}
           ${!activeTab ? this.renderEmpty() : nothing}
         </main>
-        ${this.showFullscreenStartup ? this.renderFullscreenStartup() : nothing}
         ${this.showEditorFullscreenPrompt
           ? this.renderEditorFullscreenGate()
           : nothing}
@@ -524,47 +478,6 @@ export class AppShell extends LitElement {
           ? this.renderFullscreenResumePrompt()
           : nothing}
         ${this.showLogs ? this.renderLogModal() : nothing}
-      </div>
-    `;
-  }
-
-  /** Optional Fullscreen API — see file header. Uses plain buttons so text stays readable (viewport fix in main.ts) without requiring FS first. */
-  private renderFullscreenStartup() {
-    return html`
-      <div
-        class="fs-startup-overlay"
-        @click=${this.onFullscreenStartupNo}
-      ></div>
-      <div
-        class="fs-startup-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="fs-startup-title"
-        @click=${(e: Event) => e.stopPropagation()}
-      >
-        <h2 id="fs-startup-title" class="fs-startup-title">Use full screen?</h2>
-        <p class="fs-startup-body">
-          Full screen uses the largest area and hides extra browser UI when the
-          device allows it. CallerBuddy keeps normal text size either way. You
-          can switch later from the menu (Full Screen / Exit FullScreen).
-        </p>
-        <div class="fs-startup-actions">
-          <button
-            type="button"
-            class="fs-startup-primary"
-            autofocus
-            @click=${this.onFullscreenStartupYes}
-          >
-            Enter full screen
-          </button>
-          <button
-            type="button"
-            class="fs-startup-secondary"
-            @click=${this.onFullscreenStartupNo}
-          >
-            Not now
-          </button>
-        </div>
       </div>
     `;
   }
