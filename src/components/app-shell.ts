@@ -39,6 +39,8 @@ import "./help-view.js";
 
 /** Records that the user answered the one-time startup fullscreen prompt. */
 const FS_STARTUP_PROMPT_KEY = "callerbuddy.fsStartupPrompt";
+/** Avoid nagging if the user dismisses the resume fullscreen prompt. */
+const FS_RESUME_DISMISS_TS_KEY = "callerbuddy.fsResumeDismissTs";
 
 @customElement("app-shell")
 export class AppShell extends LitElement {
@@ -49,12 +51,16 @@ export class AppShell extends LitElement {
   @state() private showFullscreenStartup = false;
   /** Before playlist editor on phone: offer Fullscreen API (Yes biased). */
   @state() private showEditorFullscreenPrompt = false;
+  /** If we "should be fullscreen" but OS kicked us out, prompt to re-enter. */
+  @state() private showFullscreenResumePrompt = false;
   private _editorFsGateResolve: (() => void) | null = null;
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   private _boundFsChange = () => this.onFullscreenChange();
   private _boundPopstate = () => this.onPopstate();
   private _boundEditorFsGate = (e: Event) => this.onEditorFullscreenGate(e);
+  private _boundAppReengaged = () => this.onAppReengaged();
+  private _resumeCheckTimer: number | null = null;
 
   connectedCallback() {
     super.connectedCallback();
@@ -62,6 +68,9 @@ export class AppShell extends LitElement {
     document.addEventListener("keydown", this._boundKeydown);
     document.addEventListener("fullscreenchange", this._boundFsChange);
     window.addEventListener("cb-editor-fullscreen-gate", this._boundEditorFsGate);
+    window.addEventListener("focus", this._boundAppReengaged);
+    window.addEventListener("pageshow", this._boundAppReengaged);
+    document.addEventListener("visibilitychange", this._boundAppReengaged);
 
     // Trap the Android back button (and browser back) so it doesn't
     // navigate away from the PWA. We keep a sentinel history entry on
@@ -100,6 +109,13 @@ export class AppShell extends LitElement {
     document.removeEventListener("fullscreenchange", this._boundFsChange);
     window.removeEventListener("cb-editor-fullscreen-gate", this._boundEditorFsGate);
     window.removeEventListener("popstate", this._boundPopstate);
+    window.removeEventListener("focus", this._boundAppReengaged);
+    window.removeEventListener("pageshow", this._boundAppReengaged);
+    document.removeEventListener("visibilitychange", this._boundAppReengaged);
+    if (this._resumeCheckTimer !== null) {
+      window.clearTimeout(this._resumeCheckTimer);
+      this._resumeCheckTimer = null;
+    }
     if (this._editorFsGateResolve) {
       this._editorFsGateResolve();
       this._editorFsGateResolve = null;
@@ -151,6 +167,51 @@ export class AppShell extends LitElement {
   /** Refresh menu label ("Full Screen" vs "Exit FullScreen"). OS may exit FS anytime. */
   private onFullscreenChange() {
     log.info(`[fs] change -> ${this.isFullscreenApi() ? "IN" : "OUT"}`);
+    this.requestUpdate();
+  }
+
+  /** Whether the user preference implies we "should" be in Fullscreen API. */
+  private prefersFullscreenApi(): boolean {
+    try {
+      return localStorage.getItem(FS_STARTUP_PROMPT_KEY) === "entered";
+    } catch {
+      return false;
+    }
+  }
+
+  /** Called when returning from lock/app switch/navigation away. */
+  private onAppReengaged() {
+    // Ignore transitions while hidden; we only care when coming back.
+    if (document.visibilityState && document.visibilityState !== "visible") return;
+
+    // Debounce: focus + visibilitychange often fire together.
+    if (this._resumeCheckTimer !== null) window.clearTimeout(this._resumeCheckTimer);
+    this._resumeCheckTimer = window.setTimeout(() => {
+      this._resumeCheckTimer = null;
+      this.maybePromptResumeFullscreen();
+    }, 50);
+  }
+
+  private maybePromptResumeFullscreen() {
+    // Keep it narrow: only do this on phone-class touch devices running installed PWA.
+    if (!this.isTouchInstalledPwa() || !isPhoneLikeTouchDevice()) return;
+    if (!this.prefersFullscreenApi()) return;
+    if (this.isFullscreenApi()) return;
+
+    // Avoid stacking prompts.
+    if (this.showFullscreenStartup || this.showEditorFullscreenPrompt) return;
+
+    // If the user just dismissed this, don't nag immediately.
+    const now = Date.now();
+    try {
+      const last = Number(localStorage.getItem(FS_RESUME_DISMISS_TS_KEY) ?? "0");
+      if (Number.isFinite(last) && now - last < 2 * 60_000) return;
+    } catch {
+      /* ignore */
+    }
+
+    log.info(`[fs] reengaged: expected fullscreen, currently OUT -> prompt`);
+    this.showFullscreenResumePrompt = true;
     this.requestUpdate();
   }
 
@@ -221,6 +282,11 @@ export class AppShell extends LitElement {
 
   private onEditorFullscreenGateYes() {
     log.info(`[ui] fs-editor-gate: Yes — enter full screen`);
+    try {
+      localStorage.setItem(FS_STARTUP_PROMPT_KEY, "entered");
+    } catch {
+      /* ignore */
+    }
     this.showEditorFullscreenPrompt = false;
     const resolve = this._editorFsGateResolve;
     this._editorFsGateResolve = null;
@@ -271,8 +337,18 @@ export class AppShell extends LitElement {
     );
     log.info(`[fs] menu toggle (was ${wasIn ? "IN" : "OUT"})`);
     if (wasIn) {
+      try {
+        localStorage.setItem(FS_STARTUP_PROMPT_KEY, "skipped");
+      } catch {
+        /* ignore */
+      }
       this.exitFullscreenApi();
     } else {
+      try {
+        localStorage.setItem(FS_STARTUP_PROMPT_KEY, "entered");
+      } catch {
+        /* ignore */
+      }
       this.requestFullscreenApi();
     }
   }
@@ -444,6 +520,9 @@ export class AppShell extends LitElement {
         ${this.showEditorFullscreenPrompt
           ? this.renderEditorFullscreenGate()
           : nothing}
+        ${this.showFullscreenResumePrompt
+          ? this.renderFullscreenResumePrompt()
+          : nothing}
         ${this.showLogs ? this.renderLogModal() : nothing}
       </div>
     `;
@@ -525,6 +604,63 @@ export class AppShell extends LitElement {
             type="button"
             class="fs-startup-secondary fs-editor-gate-no"
             @click=${this.onEditorFullscreenGateNo}
+          >
+            Not now
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private onFullscreenResumeYes() {
+    log.info(`[ui] fs-resume: Enter full screen`);
+    this.showFullscreenResumePrompt = false;
+    this.requestFullscreenApi();
+  }
+
+  private onFullscreenResumeNo() {
+    log.info(`[ui] fs-resume: Not now`);
+    this.showFullscreenResumePrompt = false;
+    try {
+      localStorage.setItem(FS_RESUME_DISMISS_TS_KEY, String(Date.now()));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private renderFullscreenResumePrompt() {
+    return html`
+      <div
+        class="fs-startup-overlay fs-resume-overlay"
+        @click=${this.onFullscreenResumeNo}
+      ></div>
+      <div
+        class="fs-startup-modal fs-resume-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fs-resume-title"
+        @click=${(e: Event) => e.stopPropagation()}
+      >
+        <h2 id="fs-resume-title" class="fs-startup-title">
+          Full screen ended
+        </h2>
+        <p class="fs-startup-body">
+          Your device left full screen while CallerBuddy was in the background.
+          Re-enter full screen?
+        </p>
+        <div class="fs-startup-actions">
+          <button
+            type="button"
+            class="fs-startup-primary"
+            autofocus
+            @click=${this.onFullscreenResumeYes}
+          >
+            Re-enter full screen
+          </button>
+          <button
+            type="button"
+            class="fs-startup-secondary"
+            @click=${this.onFullscreenResumeNo}
           >
             Not now
           </button>
@@ -993,6 +1129,14 @@ export class AppShell extends LitElement {
       padding: 0.45em 0.85em;
       border-style: dashed;
       opacity: 0.92;
+    }
+
+    .fs-resume-overlay {
+      z-index: 2140;
+    }
+
+    .fs-resume-modal {
+      z-index: 2141;
     }
 
     /* ── In-app log viewer ───────────────────────────────────────────── */
