@@ -16,7 +16,7 @@ jobs:
       id-token: write
     concurrency:
       group: pages
-      cancel-in-progress: false
+      cancel-in-progress: true
     env:
       # GitHub Pages serves project sites at /<repo-name>/
       BASE_PATH: ${{ github.event.repository.name }}
