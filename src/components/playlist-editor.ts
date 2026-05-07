@@ -393,6 +393,11 @@ export class PlaylistEditor extends LitElement {
         <div
           class="resizer"
           title="Drag to resize playlist"
+          @pointerdown=${(e: PointerEvent) => {
+            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            if (isPortrait) this.resizerY.onPointerDown(e);
+            else this.resizerX.onPointerDown(e);
+          }}
           @mousedown=${(e: MouseEvent) =>
             isPortrait ? this.resizerY.onMouseDown(e) : this.resizerX.onMouseDown(e)}
         ></div>
@@ -1057,6 +1062,7 @@ export class PlaylistEditor extends LitElement {
       cursor: col-resize;
       background: transparent;
       border-left: 1px solid var(--cb-border);
+      touch-action: none;
     }
 
     .resizer:hover {
@@ -1666,6 +1672,7 @@ export class PlaylistEditor extends LitElement {
         cursor: row-resize;
         border-left: none;
         border-top: 1px solid var(--cb-border);
+        touch-action: none;
       }
 
       .browser-toolbar {

@@ -259,6 +259,10 @@ export class PlaylistPlay extends LitElement {
         <div
           class="resizer"
           title="Drag to resize playlist"
+          @pointerdown=${(e: PointerEvent) => {
+            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            this.resizer.onPointerDown(e);
+          }}
           @mousedown=${(e: MouseEvent) => this.resizer.onMouseDown(e)}
         ></div>
 
@@ -524,6 +528,7 @@ export class PlaylistPlay extends LitElement {
       cursor: col-resize;
       background: transparent;
       border-left: 1px solid var(--cb-border);
+      touch-action: none;
     }
 
     .resizer:hover {

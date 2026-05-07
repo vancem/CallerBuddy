@@ -35,6 +35,10 @@ export class PanelResizeController implements ReactiveController {
   private startWidth = 0;
   private boundMousemove = (e: MouseEvent) => this.onMouseMove(e);
   private boundMouseup = () => this.onMouseUp();
+  private activePointerId: number | null = null;
+  private boundPointerMove = (e: PointerEvent) => this.onPointerMove(e);
+  private boundPointerUp = (e: PointerEvent) => this.onPointerUp(e);
+  private boundPointerCancel = (e: PointerEvent) => this.onPointerCancel(e);
 
   constructor(host: ReactiveControllerHost, initialSize: number, opts?: PanelResizeOptions) {
     this.host = host;
@@ -74,9 +78,50 @@ export class PanelResizeController implements ReactiveController {
     void callerBuddy.updateSetting(this.settingKey, this.size);
   }
 
+  onPointerDown(e: PointerEvent): void {
+    // Pointer events are required for touch devices (Android/iOS).
+    // We listen on document so we keep receiving moves even if capture fails.
+    e.preventDefault();
+    this.activePointerId = e.pointerId;
+    this.startX = e.clientX;
+    this.startY = e.clientY;
+    this.startWidth = this.size;
+    document.addEventListener("pointermove", this.boundPointerMove, { passive: false });
+    document.addEventListener("pointerup", this.boundPointerUp, { passive: false });
+    document.addEventListener("pointercancel", this.boundPointerCancel, { passive: false });
+    document.body.style.cursor = this.axis === "x" ? "col-resize" : "row-resize";
+    document.body.style.userSelect = "none";
+  }
+
+  private onPointerMove(e: PointerEvent): void {
+    if (this.activePointerId === null || e.pointerId !== this.activePointerId) return;
+    e.preventDefault();
+    const delta = this.axis === "x" ? e.clientX - this.startX : e.clientY - this.startY;
+    this.size = Math.round(Math.max(this.min, Math.min(this.max, this.startWidth + delta)));
+    this.host.requestUpdate();
+  }
+
+  private onPointerUp(e: PointerEvent): void {
+    if (this.activePointerId === null || e.pointerId !== this.activePointerId) return;
+    e.preventDefault();
+    this.activePointerId = null;
+    this.stop();
+    void callerBuddy.updateSetting(this.settingKey, this.size);
+  }
+
+  private onPointerCancel(e: PointerEvent): void {
+    if (this.activePointerId === null || e.pointerId !== this.activePointerId) return;
+    e.preventDefault();
+    this.activePointerId = null;
+    this.stop();
+  }
+
   stop(): void {
     document.removeEventListener("mousemove", this.boundMousemove);
     document.removeEventListener("mouseup", this.boundMouseup);
+    document.removeEventListener("pointermove", this.boundPointerMove);
+    document.removeEventListener("pointerup", this.boundPointerUp);
+    document.removeEventListener("pointercancel", this.boundPointerCancel);
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
   }
