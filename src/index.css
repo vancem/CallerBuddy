@@ -20,6 +20,9 @@
  */
 
 :root {
+  /* Physical layout width for current orientation — set from JS on touch (main.ts). */
+  --cb-max-layout-px: 100vw;
+
   /* ── Accent primitives (from CallerBuddy.svg: rgb(25,25,140) ≈ hsl 240 70%) ── */
   --cb-hue: 240;
   --cb-sat: 70%;

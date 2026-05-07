@@ -48,14 +48,15 @@
  * but Chrome WebAPK on some Samsung builds **still reports** `innerWidth`≈980
  * (stale landscape layout viewport) with `visualViewport.scale`<1 — meta alone
  * does not fix layout. A Fullscreen API transition **does** fix it on this
- * stack. When meta does nothing measurable, we fall back to **`zoom` on
- * `<html>`** — ideally **`1 / visualViewport.scale`** (neutralize measured
- * shrink); else **`innerWidth / expectedEdge`** (`expectedEdge` from `screen` +
- * orientation). Apply **damping** — full undo × **`VIEWPORT_ZOOM_DAMPING`** —
- * because zoom stacks with **`index.css` touch `font-size: 120%`** on `:root`;
- * while zoom is on we add **`html.cb-layout-zoom`** so root stays **100%** and
- * rem does not double-scale. Zoom/class removed when `innerWidth` matches.
- * Non-standard but effective in Blink WebViews here.
+ * stack. When meta does nothing measurable, we set **`--cb-max-layout-px`** on
+ * `:root` from **`screen` + orientation** and cap **`<app-shell>`** with
+ * `max-width: min(100vw, var(--cb-max-layout-px))` so the UI fits the **physical**
+ * width even when **`100vw`/innerWidth lie** (~980). Separately, **mild `zoom` on
+ * `<html>`** is allowed only up to **`VIEWPORT_ZOOM_HARD_CAP`** (~1.14): larger
+ * zoom **widens** Blink layout and clips the right edge (hamburger). Zoom uses
+ * **`1/visualViewport.scale`** (or inner/expected), damped, biased under, then
+ * capped. **`html.cb-layout-zoom`** resets touch root font to 100% while zoom is
+ * on. Zoom/class removed when `innerWidth` matches.
  *
  * Root `font-size` bump uses `(pointer: coarse)` in `index.css` so it matches JS
  * touch detection (Samsung `(hover: none)` MQ lies).
@@ -90,8 +91,9 @@
  * - **`html { zoom }`:** Blink-focused; WebKit often honors it for layout. If a
  *   browser ignores `zoom`, worst case is unchanged oversmall UI until Fullscreen
  *   or a browser fix — we don’t remove meta or touch font elsewhere.
- * - **Bias:** Final zoom is **slightly under** full correction (`UNDER_BIAS`) so
- *   text errs **small** rather than clipped — safer across unknown DPR/chrome/insets.
+ * - **Bias + cap:** Zoom is damped, **`UNDER_BIAS`**d, then **`VIEWPORT_ZOOM_HARD_CAP`**
+ *   so Blink cannot blow past the screen; **`--cb-max-layout-px`** clips `<app-shell>`
+ *   to the physical edge when `vw` lies.
  *
  * Long-form notes: BACKLOG.md § "Mobile viewport & fullscreen (Android WebAPK)".
  * ═══════════════════════════════════════════════════════════════════════════
@@ -110,10 +112,15 @@ import "./components/app-shell.js";
 // See file-top documentation block. We still set meta (correct `vpMeta` for
 // tools and the day Chrome fixes the bug). When `innerWidth` stays far above
 // the physical edge, only zoom reliably corrects apparent size in practice.
-const VIEWPORT_ZOOM_MAX = 4;
-/** Full `1/visualViewport.scale` (or inner/expected) overshoots: zoom × touch root `font-size` compounds. */
+/**
+ * `zoom` on `<html>` **grows** layout size in Blink; a stuck-wide innerWidth
+ * (~980) × zoom>1 overflows the real screen and clips the right edge (hamburger).
+ * Cap zoom low; rely on `--cb-max-layout-px` + app-shell `max-width` for structure.
+ */
+const VIEWPORT_ZOOM_HARD_CAP = 1.14;
+/** Full `1/visualViewport.scale` overshoots next to touch `font-size` bump — dampen. */
 const VIEWPORT_ZOOM_DAMPING = 0.88;
-/** Multiply effective zoom by this (<1): prefer slightly small UI over horizontal clipping on varied phones. */
+/** Prefer slightly small vs clipping on unknown devices. */
 const VIEWPORT_ZOOM_UNDER_BIAS = 0.93;
 
 function applyViewportFix() {
@@ -165,21 +172,21 @@ function applyViewportFix() {
     const scale = vv?.scale;
     const rawFromScale =
       scale != null && scale > 0 && scale < 0.999
-        ? Math.min(1 / scale, VIEWPORT_ZOOM_MAX)
+        ? Math.min(1 / scale, 8)
         : null;
-    const rawFromRatio = Math.min(ratio, VIEWPORT_ZOOM_MAX);
+    const rawFromRatio = Math.min(ratio, 8);
     const raw = rawFromScale ?? rawFromRatio;
     const z = Math.min(
       Math.max(
         raw * VIEWPORT_ZOOM_DAMPING * VIEWPORT_ZOOM_UNDER_BIAS,
         1.001,
       ),
-      VIEWPORT_ZOOM_MAX,
+      VIEWPORT_ZOOM_HARD_CAP,
     );
     document.documentElement.classList.add("cb-layout-zoom");
     document.documentElement.style.zoom = String(z);
     log.warn(
-      `[viewport-fix] html zoom=${z.toFixed(2)} (raw=${raw.toFixed(2)} damp=${VIEWPORT_ZOOM_DAMPING} under=${VIEWPORT_ZOOM_UNDER_BIAS}) innerW=${iw} expected≈${expected}` +
+      `[viewport-fix] html zoom=${z.toFixed(2)} cap=${VIEWPORT_ZOOM_HARD_CAP} (raw=${raw.toFixed(2)} damp=${VIEWPORT_ZOOM_DAMPING} under=${VIEWPORT_ZOOM_UNDER_BIAS}) innerW=${iw} expected≈${expected}` +
         (rawFromScale != null && scale != null
           ? ` visualViewport.scale=${scale.toFixed(3)}`
           : ` (inner/expected; scale unavailable or ~1)`) +
@@ -187,7 +194,14 @@ function applyViewportFix() {
     );
   }
 
+  /** Matches physical edge so `<app-shell>` can `max-width` despite bogus `100vw`. */
+  function syncRootMaxLayoutPx(): void {
+    const px = expectedLayoutWidthPx();
+    document.documentElement.style.setProperty("--cb-max-layout-px", `${px}px`);
+  }
+
   function applyFix(): void {
+    syncRootMaxLayoutPx();
     const targetWidth = expectedLayoutWidthPx();
     const targetContent = `width=${targetWidth}, initial-scale=1.0, viewport-fit=cover`;
     const before = viewport!.content;

@@ -679,7 +679,13 @@ export class AppShell extends LitElement {
       display: block;
       height: 100vh;
       height: 100dvh;
-      width: 100vw;
+      /* Buggy WebAPK: layout vw follows stuck innerWidth (~980). Cap to physical
+       * edge from screen + orientation (--cb-max-layout-px in main.ts) so the
+       * shell, tab bar, and menu stay on-screen; center when the canvas is wider. */
+      width: 100%;
+      max-width: min(100vw, var(--cb-max-layout-px, 100vw));
+      margin-inline: auto;
+      box-sizing: border-box;
       overflow: hidden;
     }
 
