@@ -51,8 +51,11 @@
  * stack. When meta does nothing measurable, we fall back to **`zoom` on
  * `<html>`** — ideally **`1 / visualViewport.scale`** (neutralize measured
  * shrink); else **`innerWidth / expectedEdge`** (`expectedEdge` from `screen` +
- * orientation). Zoom is removed when `innerWidth` matches the edge (e.g. after
- * fullscreen). Non-standard but effective in Blink WebViews here.
+ * orientation). Apply **damping** — full undo × **`VIEWPORT_ZOOM_DAMPING`** —
+ * because zoom stacks with **`index.css` touch `font-size: 120%`** on `:root`;
+ * while zoom is on we add **`html.cb-layout-zoom`** so root stays **100%** and
+ * rem does not double-scale. Zoom/class removed when `innerWidth` matches.
+ * Non-standard but effective in Blink WebViews here.
  *
  * Root `font-size` bump uses `(pointer: coarse)` in `index.css` so it matches JS
  * touch detection (Samsung `(hover: none)` MQ lies).
@@ -77,6 +80,19 @@
  * Permission dialogs and OS UI often exit API fullscreen; that is acceptable —
  * viewport fix keeps text usable without forcing fullscreen again.
  *
+ * **Other phones (portability)**
+ * - **Healthy viewport:** On most devices `innerWidth` is already near the
+ *   physical edge → `ratio ≤ 1.12` → **no `zoom`** is applied; only `<meta
+ *   viewport>` updates. No regression for “normal” phones.
+ * - **Broken viewport:** Same logic helps **any** Blink/WebView stack where meta
+ *   is ignored and `innerWidth` stays large (confirmed Samsung WebAPK; others
+ *   possible). Uses **`visualViewport.scale`** when available (standard API).
+ * - **`html { zoom }`:** Blink-focused; WebKit often honors it for layout. If a
+ *   browser ignores `zoom`, worst case is unchanged oversmall UI until Fullscreen
+ *   or a browser fix — we don’t remove meta or touch font elsewhere.
+ * - **Bias:** Final zoom is **slightly under** full correction (`UNDER_BIAS`) so
+ *   text errs **small** rather than clipped — safer across unknown DPR/chrome/insets.
+ *
  * Long-form notes: BACKLOG.md § "Mobile viewport & fullscreen (Android WebAPK)".
  * ═══════════════════════════════════════════════════════════════════════════
  */
@@ -95,6 +111,10 @@ import "./components/app-shell.js";
 // tools and the day Chrome fixes the bug). When `innerWidth` stays far above
 // the physical edge, only zoom reliably corrects apparent size in practice.
 const VIEWPORT_ZOOM_MAX = 4;
+/** Full `1/visualViewport.scale` (or inner/expected) overshoots: zoom × touch root `font-size` compounds. */
+const VIEWPORT_ZOOM_DAMPING = 0.88;
+/** Multiply effective zoom by this (<1): prefer slightly small UI over horizontal clipping on varied phones. */
+const VIEWPORT_ZOOM_UNDER_BIAS = 0.93;
 
 function applyViewportFix() {
   const isTouchDevice =
@@ -138,22 +158,31 @@ function applyViewportFix() {
     const ratio = iw / expected;
     if (ratio <= 1.12) {
       document.documentElement.style.removeProperty("zoom");
+      document.documentElement.classList.remove("cb-layout-zoom");
       return;
     }
     const vv = window.visualViewport;
     const scale = vv?.scale;
-    const zFromScale =
+    const rawFromScale =
       scale != null && scale > 0 && scale < 0.999
         ? Math.min(1 / scale, VIEWPORT_ZOOM_MAX)
         : null;
-    const zFromRatio = Math.min(ratio, VIEWPORT_ZOOM_MAX);
-    const z = zFromScale ?? zFromRatio;
+    const rawFromRatio = Math.min(ratio, VIEWPORT_ZOOM_MAX);
+    const raw = rawFromScale ?? rawFromRatio;
+    const z = Math.min(
+      Math.max(
+        raw * VIEWPORT_ZOOM_DAMPING * VIEWPORT_ZOOM_UNDER_BIAS,
+        1.001,
+      ),
+      VIEWPORT_ZOOM_MAX,
+    );
+    document.documentElement.classList.add("cb-layout-zoom");
     document.documentElement.style.zoom = String(z);
     log.warn(
-      `[viewport-fix] html zoom=${z.toFixed(2)} innerW=${iw} expected≈${expected}` +
-        (zFromScale != null && scale != null
-          ? ` (from visualViewport.scale=${scale.toFixed(3)} → 1/scale)`
-          : ` (from inner/expected; scale unavailable or ~1)`) +
+      `[viewport-fix] html zoom=${z.toFixed(2)} (raw=${raw.toFixed(2)} damp=${VIEWPORT_ZOOM_DAMPING} under=${VIEWPORT_ZOOM_UNDER_BIAS}) innerW=${iw} expected≈${expected}` +
+        (rawFromScale != null && scale != null
+          ? ` visualViewport.scale=${scale.toFixed(3)}`
+          : ` (inner/expected; scale unavailable or ~1)`) +
         ` — meta did not fix layout viewport`,
     );
   }

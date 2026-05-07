@@ -60,7 +60,11 @@ long comment at the top of `src/main.ts` and the header comment on
   sandwich did not help in testing. In that case `applyViewportFix()` applies
   **`zoom` on `<html>`** using **`1 / visualViewport.scale`** when shrink-to-fit
   is reported (primary), else `innerWidth / expectedEdge` from `screen` +
-  orientation (capped). Zoom is cleared when `innerWidth` finally matches.
+  orientation (capped, damped — full undo overshoots next to touch `font-size:
+  120%`). Class **`cb-layout-zoom`** resets root font to 100% while zoom is
+  active. An extra **`UNDER_BIAS`** (< 1) nudges zoom **slightly low** so clipping
+  is rarer than mild undersize on unknown devices. On phones where `innerWidth`
+  already matches the screen edge, **no zoom runs**—only meta updates.
   **Landscape often looks acceptable while portrait looks tiny** because the same
   wrong layout width is scaled to fit a wide window (mild scale) vs a narrow one
   (severe)—not because landscape is “correct”. Root font bump uses

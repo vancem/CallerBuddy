@@ -121,4 +121,13 @@ body {
   :root {
     font-size: 120%;
   }
+
+  /*
+   * WebAPK viewport workaround sets html { zoom } in main.ts when innerWidth is
+   * stuck (see banner comment there). Zoom scales the whole subtree; keeping
+   * 120% root font-size at the same time overshoots — text and taps become huge.
+   */
+  html.cb-layout-zoom {
+    font-size: 100%;
+  }
 }
