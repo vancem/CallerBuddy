@@ -20,9 +20,6 @@
  */
 
 :root {
-  /* Physical layout width for current orientation — set from JS on touch (main.ts). */
-  --cb-max-layout-px: 100vw;
-
   /* ── Accent primitives (from CallerBuddy.svg: rgb(25,25,140) ≈ hsl 240 70%) ── */
   --cb-hue: 240;
   --cb-sat: 70%;
@@ -74,10 +71,6 @@
   --cb-segment-even: rgba(0, 0, 0, 35%);
   --cb-segment-odd:  rgba(0, 0, 0, 10%);
 
-  /* ── Mobile text-size consistency ─────────────────────────────────── */
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-
   /* ── Typography (unchanged) ───────────────────────────────────────── */
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
@@ -107,30 +100,4 @@ body {
     env(safe-area-inset-right)
     env(safe-area-inset-bottom)
     env(safe-area-inset-left);
-}
-
-/* ── Touch-device scaling ──────────────────────────────────────────────
- * On touch-primary devices (phones / tablets) the default 16px base is
- * too small for comfortable reading and reliable tap targets.  Bumping
- * the root font-size by 20% scales every rem-based dimension — text,
- * padding, button sizes — in both portrait and landscape orientations,
- * while leaving desktop completely unchanged.
- *
- * Use `(pointer: coarse)` only — Samsung One UI WebAPKs can report
- * `(hover: none)` as false on phones, so `(hover: none) and (pointer: coarse)`
- * fails and users got 16px root + tiny scaled layout (see main.ts viewport notes).
- * ───────────────────────────────────────────────────────────────────── */
-@media (pointer: coarse) {
-  :root {
-    font-size: 120%;
-  }
-
-  /*
-   * WebAPK viewport workaround sets html { zoom } in main.ts when innerWidth is
-   * stuck (see banner comment there). Zoom scales the whole subtree; keeping
-   * 120% root font-size at the same time overshoots — text and taps become huge.
-   */
-  html.cb-layout-zoom {
-    font-size: 100%;
-  }
 }
