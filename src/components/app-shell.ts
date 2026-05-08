@@ -70,6 +70,7 @@ export class AppShell extends LitElement {
   private _resumeCheckTimer: number | null = null;
   /** When true, allow a back navigation to escape the PWA. */
   private _allowExitOnNextPopstate = false;
+  private _exitAttemptSeq = 0;
 
   connectedCallback() {
     super.connectedCallback();
@@ -144,7 +145,10 @@ export class AppShell extends LitElement {
 
   /** Called when the browser back button (Android nav bar) is pressed. */
   private onPopstate() {
-    log.info(`[ui] back-button pressed`);
+    const st = (history.state as any) ?? null;
+    log.info(
+      `[ui] back-button pressed state=${st ? JSON.stringify(st) : "null"} len=${history.length}`,
+    );
     if (this._allowExitOnNextPopstate) {
       this._allowExitOnNextPopstate = false;
       log.info(`[ui] back-button: allow-exit (do not trap)`);
@@ -710,7 +714,11 @@ export class AppShell extends LitElement {
   }
 
   private onExitApp = () => {
-    log.info(`[ui] menu: Exit`);
+    const attempt = ++this._exitAttemptSeq;
+    const st0 = (history.state as any) ?? null;
+    log.info(
+      `[ui] menu: Exit attempt=${attempt} state0=${st0 ? JSON.stringify(st0) : "null"} len=${history.length}`,
+    );
     this.showMenu = false;
     // Allow the next back navigation to escape our sentinel trap. We keep one
     // forward sentinel entry; a single back should leave the PWA (installed) or
@@ -718,9 +726,17 @@ export class AppShell extends LitElement {
     this._allowExitOnNextPopstate = true;
     try {
       history.back();
+      log.info(`[ui] menu: Exit attempt=${attempt} called history.back()`);
     } catch {
+      log.warn(`[ui] menu: Exit attempt=${attempt} history.back() threw`);
       /* ignore */
     }
+    setTimeout(() => {
+      const st1 = (history.state as any) ?? null;
+      log.info(
+        `[ui] menu: Exit attempt=${attempt} after200ms state=${st1 ? JSON.stringify(st1) : "null"} len=${history.length} allowExit=${this._allowExitOnNextPopstate}`,
+      );
+    }, 200);
   };
 
   private onLyricsLarger = () => {
