@@ -41,10 +41,6 @@ import {
   type OnboardingProposal,
 } from "./services/song-onboarding.js";
 import type { EditorTabData } from "./services/app-state.js";
-import {
-  isFullscreenApiActive,
-  isPhoneLikeTouchDevice,
-} from "./utils/device-traits.js";
 
 const SETTINGS_JSON = "settings.json";
 
@@ -206,36 +202,9 @@ export class CallerBuddy {
 
     this.listenForPlaylistChanges();
 
-    log.info("activateRoot: optional fullscreen gate before editor…");
-    await this.gateFullscreenBeforeEditor();
     log.info("activateRoot: opening playlist editor tab…");
     await this.state.openEditorTab(handle, handle.name);
     log.info("activateRoot: complete");
-  }
-
-  /**
-   * On phone-class touch devices, offer Fullscreen API immediately before the
-   * playlist editor opens. The shell shows a dialog; `requestFullscreen` runs
-   * from the user's "Yes" tap (required user activation). Skipped when already
-   * fullscreen or when the one-time startup fullscreen prompt is still visible.
-   */
-  private shouldOfferFullscreenBeforeEditor(): boolean {
-    if (!isPhoneLikeTouchDevice()) return false;
-    if (isFullscreenApiActive()) return false;
-    return true;
-  }
-
-  private gateFullscreenBeforeEditor(): Promise<void> {
-    if (!this.shouldOfferFullscreenBeforeEditor()) {
-      return Promise.resolve();
-    }
-    return new Promise((resolve) => {
-      window.dispatchEvent(
-        new CustomEvent("cb-editor-fullscreen-gate", {
-          detail: { resolve },
-        }),
-      );
-    });
   }
 
   // -----------------------------------------------------------------------

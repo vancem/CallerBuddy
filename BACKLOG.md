@@ -92,9 +92,6 @@ orientation, fullscreen, visibility — useful when APIs disagree with reality.
 sizing: physical `screen` / `outer`, bogus `inner`, `vv.scale`, ideal `1/scale`,
 `preCapZ` vs **applied** html zoom, `**hitCap`**, and heuristic `**gapFrom1**`
 (positive ⇒ still too small vs natural 1.0).
-- **Samsung A25 / non–Fullscreen-API layout follow-ups:** playlist editor, song
-player, resize drags, and flex clipping are documented under
-`**## Non-fullscreen layout issues on Samsung A25`** (end of Design Decisions).
 - CallerBuddy will be a PWA application.
   - This is because PWA apps give us the cross platform reach that we need we
   avoid the need to generate many binaries for the different platforms.
@@ -237,87 +234,6 @@ strategy, offline fallback, install prompt).
   - Rationale: Matches spec (offline-first, cloud folder, cached audio). Simple
   cache-first for shell gives reliable offline; manual install avoids
   intrusive prompts.
-
-## Non-fullscreen layout issues on Samsung A25 
-
-This section captures **Samsung Galaxy A25** (and similar One UI / Chrome **WebAPK** / installed PWA) behavior when **not** using the **Fullscreen API** (`document.fullscreenElement`), where **layout-related Web APIs disagree with the physical glass** and with each other. It is meant as a **handoff document** for future sessions that explore alternatives (Fullscreen-by-default, `transform` instead of `zoom`, different sizing strategies, vendor-specific hacks, etc.) without re-deriving measurements from scratch.
-
-### What the device / stack looks like in logs
-
-Typical log fingerprint (names vary slightly by build):
-
-- **UA / platform:** `Mozilla/5.0 (X11; Linux x86_64) … Chrome/147…`, `platform="Linux armv81"`, `**uaMobile=false`** — treat as **desktop-class UA on a phone**, not a classic “mobile Safari” profile.
-- **Installed PWA / WebAPK:** `touchInstalledPwa=true`, `**(display-mode: fullscreen)`** or **standalone** can be **true from the manifest** while `**document.fullscreenElement` is still null** — that is **not** the Fullscreen API (see existing “Manifest fullscreen ≠ Fullscreen API” decision in this file).
-- `**fs=false`** in env lines means **Fullscreen API is off** — the issues below are worst in that mode.
-
-### Which APIs return “wrong” or misleading values (and how)
-
-These are **observed** on the A25 WebAPK in **portrait**, **non–Fullscreen-API** sessions; they are the root reason **CSS viewport media queries** and `**window.innerWidth`-based logic** break.
-
-
-| Signal                                                    | Typical bad value / behavior                                                                                                               | What we trust instead                                                                                                                                                                                                              |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `**window.innerWidth` / `innerHeight`**                   | Stays ~**980×2053** in portrait — a **stale / landscape-ish layout width**                                                                 | `**screen.width` / `height`** + `**screen.orientation.type**`, `**window.outerWidth`/`outerHeight**`, `**visualViewport.scale**`, `**visualViewport` width/height** (dimensions often still layout-sized, but **scale** is useful) |
-| `**<meta name="viewport">`**                              | `**content` updates** in the DOM (e.g. `width=360`)                                                                                        | Does **not** reliably change `**innerWidth`**; reflow “sandwich” did **not** fix in testing                                                                                                                                        |
-| `**100vw` / viewport-relative MQs**                       | Follow the **bogus wide** layout viewport                                                                                                  | `**--cb-max-layout-px`** on `:root` from **screen + orientation**, plus `**app-shell`** `max-width: min(100vw, var(--cb-max-layout-px))`** to clamp the **shell** to the physical edge                                             |
-| `**(max-width: 700px)` and similar**                      | Evaluate against **~980px** → **false** on a phone                                                                                         | **Container queries** on the **actual component host** (`song-play`, `playlist-editor`), or `**getBoundingClientRect()`** on the host, `**ResizeObserver**`                                                                        |
-| `**visualViewport.scale**`                                | **~0.37** in portrait — whole page **shrink-to-fit** wrong layout                                                                          | Used as primary signal for `**zoom ≈ 1/scale`** in `applyViewportFix()` (see `main.ts` banner)                                                                                                                                     |
-| **Pointer `clientX` / `clientY` deltas** vs **layout px** | With `**html { zoom }`** active (`**cb-layout-zoom**`), drag **deltas** can **overshoot** panel resize (slider moves more than the finger) | Scale deltas by `**1 / parseFloat(html.style.zoom)`** (`scalePointerDeltaForHtmlZoom` in `src/utils/html-zoom-pointer.ts`, used by `**PanelResizeController**`)                                                                    |
-
-
-**Important nuance:** “Wrong” here means **inconsistent with the visible, interactive region we care about** for touch and reading — not necessarily that the engine is “buggy” in the abstract. The WebAPK appears to keep an **oversized layout viewport** and **visually scale** the page down, which is why `**visualViewport.scale`** is informative even when `**innerWidth**` is useless.
-
-### Why the **simulator** and **Windows** do not show this (or show it mildly)
-
-- **Desktop Chrome / responsive simulator:** Usually `**innerWidth`** matches the **emulated** layout width; `**<meta viewport>`** behaves; `**visualViewport.scale**` is ~**1**; `**100vw`** matches the tool width. No stuck **980px** portrait width.
-- **No WebAPK layer:** The issue is tied to **installed PWA / Samsung + Chrome** behavior, not Lit or Vite.
-
-### Why **Fullscreen API** mode often looks “fine” (or better)
-
-- **Different chrome / layout path:** Entering **real** `requestFullscreen()` can **change** or **reset** layout so `**innerWidth`** and visible layout **align** with expectations — **not guaranteed**, but commonly **better**.
-- **Manifest “fullscreen”** still leaves you in the broken `**innerWidth`≈980** world unless the **Fullscreen API** (or OS behavior) actually changes layout; do **not** conflate the two.
-
-### Experiments and findings (chronological themes)
-
-1. **Text / UI “tiny” (~2× too small)** — `**visualViewport.scale`** ~0.37 with `**innerWidth`≈980** vs `**screen`** short edge ~360; `**gapFrom1**` in `**[viewport-math]**` showed undershoot vs neutralize when **zoom caps** were too low (`hitCap=true`).
-2. **Horizontal whitespace / wrong breakpoints** — `**max-width: 700px`** on `**welcome-view**` and viewport MQs on `**song-play**` saw **980px** “wide” viewport; **container queries** + `**clamp`** gutters fixed **welcome**; `**song-play`** uses **container width** + `**ResizeObserver`** + **host `getBoundingClientRect().width`** for `**isNarrowLayout()**`.
-3. **Playlist editor** — `**@media (max-aspect-ratio: 6/5)`** used **980×2053** → wrong **row vs column** decision; **truncated list** / **flex** fighting a **phantom tall** viewport; fixed with `**container-type: size`**, `**@container cb-playlist-editor**`, `**ResizeObserver**`, `**min-height: 0**` on host/editor, and **title column** rules via **container** `(max-width: 700px) or (max-height: 520px)` instead of viewport-only MQs.
-4. **Song player portrait** — **desktop grid** (lyrics left, controls fixed **320px**) squeezed into **~360px** shell → **sliver of lyrics**; same root cause as (2)–(3) for MQ vs real width; `**min-height: 0`** on `**.song-play` / panels** helps **grid `1fr`** receive scrollable height inside `**app-shell**`.
-5. **Playlist resize slider “runs away” from finger** — pointer **deltas** in **layout** space vs `**html` zoom**; fixed by `**scalePointerDeltaForHtmlZoom`** in `**PanelResizeController**` (also **playlist-play** horizontal split).
-6. **Vertical “can’t reach bottom” / clipping** — classic **flex** issue: `**app-shell` `.content`** needed `**min-height: 0**` so `**flex: 1; overflow: auto**` can scroll inside `**overflow: hidden**` shell.
-
-### What we implemented (work-arounds) and where (complexity)
-
-Rough layers — each is a **maintenance / portability** cost:
-
-1. `**src/main.ts` — `applyViewportFix()`** — Touch-only; rewrites **viewport meta** from `**screen` + orientation**; optional `**html { zoom }`** from `**1/visualViewport.scale**` (fallback `**inner/expected**`), **damped / under-biased / capped** by orientation; sets `**--cb-max-layout-px`**; class `**cb-layout-zoom**`; debounced `**[viewport-math]**` logging.
-2. `**src/index.css**` — `**html.cb-layout-zoom**` forces `**font-size: 100%**` so `**zoom` + 120% touch root** do not double-scale text.
-3. `**src/components/app-shell.ts`** — `**max-width**` shell clamp; `**min-height: 0**` on `**.content**`; fullscreen / log / editor-gate UX (orthogonal but same device class).
-4. `**src/components/welcome-view.ts**` — **Fluid gutters** + `**min(100%, max(36rem, min(72ch, 48rem)))`** instead of `**560px` @ 600px** viewport breakpoint.
-5. `**src/components/song-play*.ts`** — **Container** narrow layout; `**ResizeObserver`**; `**isNarrowLayout()**` from **host width** + stuck-layout portrait heuristic; `**min-height: 0`** on grid / panels.
-6. `**src/components/playlist-editor.ts**` — **Container** aspect + width/height for **stacked vs side-by-side** and **title** column; `**ResizeObserver`** on host.
-7. `**src/utils/html-zoom-pointer.ts` + `src/controllers/panel-resize-controller.ts**` — Pointer **delta / zoom** correction when `**cb-layout-zoom`** is active.
-8. `**src/services/env-log.ts` + `[viewport-math]**` — Forensics when APIs disagree.
-
-**Total:** multiple **parallel strategies** (meta + zoom + shell clamp + per-component container logic + pointer scaling + flex min-heights). New contributors should read `**main.ts` banner**, this section, and `**[env …]` / `[viewport-math]`** lines from a device capture.
-
-### Outlook: will we need more work-arounds?
-
-**Likely yes, in some form**, until one of these **structural** changes happens:
-
-- **Chrome / Samsung fixes** the WebAPK layout viewport so `**innerWidth`** and **meta viewport** agree (best outcome; outside our control).
-- We **stop using `html { zoom }`** and adopt a **different** compensation (e.g. `**transform: scale()`** on a dedicated wrapper with explicit `**width`/`height**` derived from `**visualViewport**` — different bugs: hit-testing, `position: fixed`, focus rings, third-party).
-- We **require Fullscreen API** (or a **post-permission** re-layout path) for “supported” mobile — **UX / gesture** cost and still **not** 100% stable when OS UI exits fullscreen.
-- We **detect** this stack (`innerWidth` vs `**min(screen)`** + `**visualViewport.scale**`) and **branch** UI (e.g. force **container-only** layouts, disable gestures that assume 1:1 coords) — more code paths to test.
-
-**Risk areas for future bugs:** any new **drag**, **resize**, `**100vh`**, `**position: fixed**`, `**100vw**`, or **viewport MQ** without **container** or `**visualViewport`** awareness can regress on the A25. `**html` zoom** specifically motivated `**scalePointerDeltaForHtmlZoom`** — any new pointer math should reuse it or re-derive from `**visualViewport**`.
-
-**Suggested future work (tradeoffs to explore in a dedicated session):**
-
-- **A.** Keep current stack; expand **container queries** + `**ResizeObserver`** everywhere; document “**never use viewport MQ for layout** on touch.”
-- **B.** Replace `**zoom`** with `**transform: scale**` + explicit dimensions — **large refactor**, test **FS**, **permissions**, **scroll**.
-- **C.** **Opt-in** “Samsung layout mode” user flag — isolates hacks at the cost of UX.
-- **D.** **Fullscreen** after permission / on first editor open — already partially explored; **gesture** and **exit** handling remain constraints.
 
 ## Open Design Issues
 

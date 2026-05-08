@@ -56,16 +56,12 @@ export class AppShell extends LitElement {
   @state() private showMenu = false;
   @state() private showLogs = false;
   @state() private logCopyStatus = "";
-  /** Before playlist editor on phone: offer Fullscreen API (Yes biased). */
-  @state() private showEditorFullscreenPrompt = false;
   /** If we "should be fullscreen" but OS kicked us out, prompt to re-enter. */
   @state() private showFullscreenResumePrompt = false;
-  private _editorFsGateResolve: (() => void) | null = null;
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   private _boundFsChange = () => this.onFullscreenChange();
   private _boundPopstate = () => this.onPopstate();
-  private _boundEditorFsGate = (e: Event) => this.onEditorFullscreenGate(e);
   private _boundAppReengaged = () => this.onAppReengaged();
   private _resumeCheckTimer: number | null = null;
 
@@ -74,7 +70,6 @@ export class AppShell extends LitElement {
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.addEventListener("keydown", this._boundKeydown);
     document.addEventListener("fullscreenchange", this._boundFsChange);
-    window.addEventListener("cb-editor-fullscreen-gate", this._boundEditorFsGate);
     window.addEventListener("focus", this._boundAppReengaged);
     window.addEventListener("pageshow", this._boundAppReengaged);
     document.addEventListener("visibilitychange", this._boundAppReengaged);
@@ -113,7 +108,6 @@ export class AppShell extends LitElement {
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
     document.removeEventListener("keydown", this._boundKeydown);
     document.removeEventListener("fullscreenchange", this._boundFsChange);
-    window.removeEventListener("cb-editor-fullscreen-gate", this._boundEditorFsGate);
     window.removeEventListener("popstate", this._boundPopstate);
     window.removeEventListener("focus", this._boundAppReengaged);
     window.removeEventListener("pageshow", this._boundAppReengaged);
@@ -121,10 +115,6 @@ export class AppShell extends LitElement {
     if (this._resumeCheckTimer !== null) {
       window.clearTimeout(this._resumeCheckTimer);
       this._resumeCheckTimer = null;
-    }
-    if (this._editorFsGateResolve) {
-      this._editorFsGateResolve();
-      this._editorFsGateResolve = null;
     }
   }
 
@@ -192,9 +182,6 @@ export class AppShell extends LitElement {
     if (!this.prefersFullscreenApi()) return;
     if (this.isFullscreenApi()) return;
 
-    // Avoid stacking prompts.
-    if (this.showEditorFullscreenPrompt) return;
-
     // If the user just dismissed this, don't nag immediately.
     const now = Date.now();
     try {
@@ -244,48 +231,6 @@ export class AppShell extends LitElement {
     }
     log.info(`[fs] requestFullscreen returned non-promise (legacy webkit)`);
     return Promise.resolve();
-  }
-
-  /**
-   * CallerBuddy asks for fullscreen immediately before opening the playlist editor
-   * on phone-class devices. Skip a second dialog if startup fullscreen is showing.
-   */
-  private onEditorFullscreenGate(e: Event) {
-    const ce = e as CustomEvent<{ resolve?: () => void }>;
-    const resolve = ce.detail?.resolve;
-    if (typeof resolve !== "function") return;
-    if (!isPhoneLikeTouchDevice()) {
-      resolve();
-      return;
-    }
-    if (this.showEditorFullscreenPrompt) {
-      resolve();
-      return;
-    }
-    this._editorFsGateResolve = resolve;
-    this.showEditorFullscreenPrompt = true;
-    this.requestUpdate();
-  }
-
-  private onEditorFullscreenGateYes() {
-    log.info(`[ui] fs-editor-gate: Yes — enter full screen`);
-    try {
-      sessionStorage.setItem(FS_SESSION_INTENT_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-    this.showEditorFullscreenPrompt = false;
-    const resolve = this._editorFsGateResolve;
-    this._editorFsGateResolve = null;
-    void this.requestFullscreenApi().finally(() => resolve?.());
-  }
-
-  private onEditorFullscreenGateNo() {
-    log.info(`[ui] fs-editor-gate: Not now`);
-    this.showEditorFullscreenPrompt = false;
-    const resolve = this._editorFsGateResolve;
-    this._editorFsGateResolve = null;
-    resolve?.();
   }
 
   private exitFullscreenApi(): Promise<void> | undefined {
@@ -503,56 +448,10 @@ export class AppShell extends LitElement {
             : nothing}
           ${!activeTab ? this.renderEmpty() : nothing}
         </main>
-        ${this.showEditorFullscreenPrompt
-          ? this.renderEditorFullscreenGate()
-          : nothing}
         ${this.showFullscreenResumePrompt
           ? this.renderFullscreenResumePrompt()
           : nothing}
         ${this.showLogs ? this.renderLogModal() : nothing}
-      </div>
-    `;
-  }
-
-  /** Fullscreen offer right before playlist editor on phone — primary action is easy (large, autofocus). */
-  private renderEditorFullscreenGate() {
-    return html`
-      <div
-        class="fs-startup-overlay fs-editor-gate-overlay"
-        @click=${this.onEditorFullscreenGateNo}
-      ></div>
-      <div
-        class="fs-startup-modal fs-editor-gate-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="fs-editor-gate-title"
-        @click=${(e: Event) => e.stopPropagation()}
-      >
-        <h2 id="fs-editor-gate-title" class="fs-startup-title">
-          Enter full screen?
-        </h2>
-        <p class="fs-startup-body">
-          Full screen gives the playlist editor the most room. The dialog may
-          briefly leave full screen; choose Yes to go back in. You can change
-          this anytime from the menu.
-        </p>
-        <div class="fs-startup-actions fs-editor-gate-actions">
-          <button
-            type="button"
-            class="fs-startup-primary fs-editor-gate-yes"
-            autofocus
-            @click=${this.onEditorFullscreenGateYes}
-          >
-            Yes, enter full screen
-          </button>
-          <button
-            type="button"
-            class="fs-startup-secondary fs-editor-gate-no"
-            @click=${this.onEditorFullscreenGateNo}
-          >
-            Not now
-          </button>
-        </div>
       </div>
     `;
   }
@@ -1071,33 +970,6 @@ export class AppShell extends LitElement {
       background: transparent;
       color: var(--cb-fg);
       border: 1px solid var(--cb-border-strong);
-    }
-
-    .fs-editor-gate-overlay {
-      z-index: 2120;
-    }
-
-    .fs-editor-gate-modal {
-      z-index: 2121;
-    }
-
-    .fs-editor-gate-actions {
-      gap: 0.75rem;
-    }
-
-    .fs-editor-gate-yes {
-      width: 100%;
-      min-height: 48px;
-      font-size: 1.05rem;
-      padding: 0.75em 1em;
-    }
-
-    .fs-editor-gate-no {
-      align-self: center;
-      font-size: 0.9rem;
-      padding: 0.45em 0.85em;
-      border-style: dashed;
-      opacity: 0.92;
     }
 
     .fs-resume-overlay {
