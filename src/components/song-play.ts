@@ -126,6 +126,9 @@ export class SongPlay extends LitElement {
   private clockInterval: number | null = null;
   private elapsedInterval: number | null = null;
 
+  /** Re-run split math when host width/height changes (ResizeObserver; viewport MQs lie on WebAPK). */
+  private _layoutResizeObs: ResizeObserver | null = null;
+
   get song(): Song | null {
     return callerBuddy.state.currentSong;
   }
@@ -167,6 +170,12 @@ export class SongPlay extends LitElement {
     document.addEventListener("keydown", this._boundKeydown);
     window.addEventListener("blur", this._boundWindowBlur);
     window.addEventListener("resize", this._boundWindowResize);
+
+    this._layoutResizeObs = new ResizeObserver(() => {
+      this.applyMobileSplitLayoutVars();
+      this.applyDesktopSplitLayoutVars();
+    });
+    this._layoutResizeObs.observe(this);
 
     const saved = window.localStorage.getItem("cbSongPlayMobileControlsSplitPct");
     if (saved) {
@@ -213,6 +222,8 @@ export class SongPlay extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this._layoutResizeObs?.disconnect();
+    this._layoutResizeObs = null;
     document.removeEventListener("keydown", this._boundKeydown);
     window.removeEventListener("blur", this._boundWindowBlur);
     window.removeEventListener("resize", this._boundWindowResize);
@@ -275,6 +286,15 @@ export class SongPlay extends LitElement {
   };
 
   private isNarrowLayout(): boolean {
+    const w = this.getBoundingClientRect().width;
+    if (w >= 16) {
+      return w <= 700;
+    }
+    const short = Math.min(screen.width, screen.height);
+    const inner = window.innerWidth;
+    if (inner > short * 1.2 && window.matchMedia("(orientation: portrait)").matches) {
+      return true;
+    }
     return window.matchMedia("(max-width: 700px)").matches;
   }
 

@@ -8,6 +8,11 @@ export const songPlayStyles = css`
     :host {
       display: block;
       height: 100%;
+      min-height: 0;
+      /* Viewport MQs use layout width (~980 on stuck Samsung WebAPK); use container
+       * width so stacked controls/lyrics match the real shell width (~360). */
+      container-type: inline-size;
+      container-name: cb-song-play;
     }
 
     .song-play {
@@ -589,9 +594,8 @@ export const songPlayStyles = css`
       gap: 10px;
     }
 
-    /* -- Narrow / phone layout --------------------------------------------- */
-
-    @media (max-width: 700px) {
+    /* Narrow / phone layout (container width — not viewport; fixes WebAPK innerW≈980) */
+    @container cb-song-play (max-width: 700px) {
       .song-play {
         grid-template-columns: 1fr;
         grid-template-rows: var(--cb-song-controls-h) var(--cb-song-splitter-h) 1fr auto;
