@@ -68,12 +68,6 @@ export class AppShell extends LitElement {
   private _boundEditorFsGate = (e: Event) => this.onEditorFullscreenGate(e);
   private _boundAppReengaged = () => this.onAppReengaged();
   private _resumeCheckTimer: number | null = null;
-  /**
-   * When >0, allow that many `popstate` events to pass through without trapping
-   * (used for the explicit Exit action).
-   */
-  private _allowExitPopstatesRemaining = 0;
-  private _exitAttemptSeq = 0;
 
   connectedCallback() {
     super.connectedCallback();
@@ -148,17 +142,7 @@ export class AppShell extends LitElement {
 
   /** Called when the browser back button (Android nav bar) is pressed. */
   private onPopstate() {
-    const st = history.state as unknown;
-    log.info(
-      `[ui] back-button pressed state=${st ? JSON.stringify(st) : "null"} len=${history.length}`,
-    );
-    if (this._allowExitPopstatesRemaining > 0) {
-      this._allowExitPopstatesRemaining -= 1;
-      log.info(
-        `[ui] back-button: allow-exit remaining=${this._allowExitPopstatesRemaining} (do not trap)`,
-      );
-      return;
-    }
+    log.info(`[ui] back-button pressed`);
     // Cancel the browser-level back navigation by bouncing forward.
     try {
       history.go(1);
@@ -706,10 +690,6 @@ export class AppShell extends LitElement {
           title="Show recent diagnostic log lines">
           Show Logs
         </button>
-        <button class="menu-item" role="menuitem" @click=${this.onExitApp}
-          title="Exit CallerBuddy (uses system Back behavior)">
-          Exit
-        </button>
         <hr />
         <div class="menu-item version" role="menuitem">
           CallerBuddy v${APP_VERSION}
@@ -717,42 +697,6 @@ export class AppShell extends LitElement {
       </div>
     `;
   }
-
-  private onExitApp = () => {
-    const attempt = ++this._exitAttemptSeq;
-    const st0 = history.state as unknown;
-    log.info(
-      `[ui] menu: Exit attempt=${attempt} state0=${st0 ? JSON.stringify(st0) : "null"} len=${history.length}`,
-    );
-    this.showMenu = false;
-    // Allow the next back navigation(s) to escape our sentinel trap.
-    // With our "base + sentinel" history, one back often lands on base; a second
-    // back is what actually exits the PWA. Try twice.
-    this._allowExitPopstatesRemaining = 2;
-    try {
-      history.back();
-      log.info(`[ui] menu: Exit attempt=${attempt} called history.back()`);
-    } catch {
-      log.warn(`[ui] menu: Exit attempt=${attempt} history.back() threw`);
-      /* ignore */
-    }
-    setTimeout(() => {
-      // Second attempt: if the first back landed on base, this is the one that
-      // should exit to the launcher (installed PWA) or previous page (browser).
-      try {
-        history.back();
-        log.info(`[ui] menu: Exit attempt=${attempt} called history.back() (2nd)`);
-      } catch {
-        log.warn(`[ui] menu: Exit attempt=${attempt} history.back() threw (2nd)`);
-      }
-    }, 60);
-    setTimeout(() => {
-      const st1 = history.state as unknown;
-      log.info(
-        `[ui] menu: Exit attempt=${attempt} after200ms state=${st1 ? JSON.stringify(st1) : "null"} len=${history.length} allowExitRemaining=${this._allowExitPopstatesRemaining}`,
-      );
-    }, 200);
-  };
 
   private onLyricsLarger = () => {
     const next = bumpLyricsScale(1.1);
