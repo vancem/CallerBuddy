@@ -47,6 +47,7 @@ type SortField =
   | "lastUsedDays"
   | "playedDisplay";
 type SortDir = "asc" | "desc";
+type SortKey = { field: SortField; dir: SortDir };
 
 /** Inline spreadsheet-style edit for Categories / Rank table cells. */
 type EditingCell = { key: string; field: "categories" | "rank"; draft: string };
@@ -79,8 +80,14 @@ export class PlaylistEditor extends LitElement {
   @state() private rankCompareGte = true;
   /** Empty string disables rank filtering. */
   @state() private rankFilterInput = "";
-  @state() private sortField: SortField = "title";
-  @state() private sortDir: SortDir = "asc";
+  /**
+   * Multi-key stable sort order. Most-recently toggled field is primary (index 0).
+   * Default when entering the editor: Rank (desc), then Title (asc).
+   */
+  @state() private sortKeys: SortKey[] = [
+    { field: "rank", dir: "desc" },
+    { field: "title", dir: "asc" },
+  ];
   @state() private contextTarget: ContextTarget | null = null;
   @state() private contextMenuPos = { x: 0, y: 0 };
 
@@ -989,54 +996,81 @@ export class PlaylistEditor extends LitElement {
       }
     }
 
-    const dir = this.sortDir === "asc" ? 1 : -1;
     const nowMs = Date.now();
-    songs.sort((a, b) => {
-      let cmp = 0;
-      switch (this.sortField) {
+    const getKey = (s: Song, field: SortField): string | number => {
+      switch (field) {
         case "lastUsedDays": {
-          const aKey = a.lastUsed.trim()
-            ? daysSinceLastUsedMs(a.lastUsed, nowMs)
+          return s.lastUsed.trim()
+            ? daysSinceLastUsedMs(s.lastUsed, nowMs)
             : Number.POSITIVE_INFINITY;
-          const bKey = b.lastUsed.trim()
-            ? daysSinceLastUsedMs(b.lastUsed, nowMs)
-            : Number.POSITIVE_INFINITY;
-          cmp = aKey - bKey;
-          break;
         }
         case "playedDisplay": {
-          const safe = (s: Song) => displayPlayWeight(s.playWeight, s.lastUsed, nowMs);
-          cmp = safe(a) - safe(b);
-          break;
+          return displayPlayWeight(s.playWeight, s.lastUsed, nowMs);
         }
         default: {
-          const aVal = a[this.sortField as keyof Song];
-          const bVal = b[this.sortField as keyof Song];
-          if (typeof aVal === "string" && typeof bVal === "string") {
-            cmp = aVal.localeCompare(bVal, undefined, { sensitivity: "base" });
-          } else if (typeof aVal === "number" && typeof bVal === "number") {
-            cmp = aVal - bVal;
-          }
+          return s[field as keyof Song] as unknown as string | number;
         }
       }
-      return dir * cmp;
+    };
+
+    const cmpKey = (a: Song, b: Song, field: SortField): number => {
+      const aVal = getKey(a, field);
+      const bVal = getKey(b, field);
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return aVal.localeCompare(bVal, undefined, { sensitivity: "base" });
+      }
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        // Handle NaN consistently (push NaNs to the bottom in asc, top in desc via dir multiplier).
+        const aNum = Number.isFinite(aVal) ? aVal : Number.POSITIVE_INFINITY;
+        const bNum = Number.isFinite(bVal) ? bVal : Number.POSITIVE_INFINITY;
+        return aNum - bNum;
+      }
+      return String(aVal).localeCompare(String(bVal), undefined, { sensitivity: "base" });
+    };
+
+    // Stable sort: decorate with original index and use it as the final tie-breaker.
+    const decorated = songs.map((song, idx) => ({ song, idx }));
+    decorated.sort((aa, bb) => {
+      for (const { field, dir } of this.sortKeys) {
+        const dirMul = dir === "asc" ? 1 : -1;
+        const c = cmpKey(aa.song, bb.song, field);
+        if (c !== 0) return dirMul * c;
+      }
+      return aa.idx - bb.idx;
     });
+    songs = decorated.map((d) => d.song);
 
     return songs;
   }
 
   private toggleSort(field: SortField) {
-    if (this.sortField === field) {
-      this.sortDir = this.sortDir === "asc" ? "desc" : "asc";
-    } else {
-      this.sortField = field;
-      this.sortDir = "asc";
+    const idx = this.sortKeys.findIndex((k) => k.field === field);
+    const defaultDir: SortDir = field === "rank" ? "desc" : "asc";
+
+    if (idx === 0) {
+      // Toggle direction of the primary key.
+      const cur = this.sortKeys[0];
+      this.sortKeys = [{ field, dir: cur.dir === "asc" ? "desc" : "asc" }, ...this.sortKeys.slice(1)];
+      return;
     }
+
+    if (idx > 0) {
+      // Promote existing key to primary (preserve its direction).
+      const promoted = this.sortKeys[idx];
+      this.sortKeys = [promoted, ...this.sortKeys.slice(0, idx), ...this.sortKeys.slice(idx + 1)];
+      return;
+    }
+
+    // Add new primary key.
+    this.sortKeys = [{ field, dir: defaultDir }, ...this.sortKeys];
   }
 
   private sortIndicator(field: SortField): string {
-    if (this.sortField !== field) return "";
-    return this.sortDir === "asc" ? " ▲" : " ▼";
+    const idx = this.sortKeys.findIndex((k) => k.field === field);
+    if (idx < 0) return "";
+    const arrow = this.sortKeys[idx].dir === "asc" ? " ▲" : " ▼";
+    // Show order for secondary+ keys (e.g. ▲2) so the UI reflects stable multi-sorts.
+    return idx === 0 ? arrow : `${arrow}${idx + 1}`;
   }
 
   /** Consume Enter inside the filter so it doesn't bubble up to the
