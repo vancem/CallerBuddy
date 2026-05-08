@@ -167,6 +167,8 @@ on every push to `main`.
 First-time setup: enable **Settings > Pages > Source: GitHub Actions** in the
 repo. See [RELEASE.md](RELEASE.md) for the full process and troubleshooting.
 
+For **private device debugging** without a full deploy, `RELEASE.md` also documents a local `dist/` server (`npm run preview:pages`) and an optional **Cloudflare Tunnel** approach to open that build on your phone over HTTPS.
+
 ---
 
 ## Ramp-Up Reading (in order)

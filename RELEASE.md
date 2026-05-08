@@ -95,3 +95,39 @@ If **https://&lt;your-username&gt;.github.io/CallerBuddy/** returns 404:
 
 4. **Use the exact project URL**  
    The URL must be `https://&lt;username&gt;.github.io/&lt;repo-name&gt;/` with the **exact** repo name (e.g. `CallerBuddy` with that casing). No trailing path unless you added one in the app.
+
+## Private phone testing via local build + Cloudflare Tunnel
+
+When debugging device-specific issues (especially Android PWA / WebAPK behavior), it’s often useful to test a **local production build** on a real phone without doing a full GitHub Pages deploy. This repo includes a “Pages-like” local server plus an optional Cloudflare Tunnel to expose it to your phone over HTTPS.
+
+### One-time setup
+
+- **Install Cloudflare Tunnel (`cloudflared`) on the Windows machine** you’re running the server on.
+  - You do **not** need to create a Cloudflare account for the “quick tunnel” mode used here.
+  - You *are* installing a trusted binary/service on your Windows machine, so treat it like any other dev tool you install.
+
+### Run a local production build mounted at `/CallerBuddy/`
+
+```bash
+# Windows
+set BASE_PATH=CallerBuddy
+npm run build
+npm run preview:pages
+```
+
+This serves `dist/` at `http://localhost:4173/CallerBuddy/` and also binds on the LAN interface.
+
+### Expose it to your phone (HTTPS) with a quick tunnel
+
+In another terminal:
+
+```bash
+cloudflared tunnel --url http://localhost:4173
+```
+
+Cloudflare will print a temporary HTTPS URL. Open that URL on your phone and navigate to `/CallerBuddy/` if needed (depending on what URL `cloudflared` prints and how you opened it).
+
+### Notes
+
+- This is meant for **temporary private debugging** (quick iteration) and is not a replacement for the normal GitHub Pages release flow.
+- If you see `EADDRINUSE` on port 4173, something else is still listening there; stop the old server or pick a different port via `PORT=...`.
