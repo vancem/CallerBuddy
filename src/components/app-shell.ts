@@ -84,13 +84,13 @@ export class AppShell extends LitElement {
     // Trap the Android back button (and browser back) so it doesn't
     // navigate away from the PWA.
     //
-    // Important: some Android PWA shells will still "exit the app" when the user
-    // presses back at the root if the browser believes there is no navigable
-    // history. Keeping TWO sentinel entries makes the back press always land on
-    // a sentinel (triggering popstate) instead of closing the app.
-    history.replaceState({ cbSentinel: true }, "");
-    history.pushState({ cbSentinel: true }, "");
-    history.pushState({ cbSentinel: true }, "");
+    // Implementation detail:
+    // - Keep exactly one forward "sentinel" history entry.
+    // - When the user presses system back, the browser pops to the base entry and
+    //   fires `popstate`. We immediately bounce forward via history.go(1), so the
+    //   browser-level history never actually moves (prevents "exit app" at root).
+    history.replaceState({ cbSentinel: "base" }, "");
+    history.pushState({ cbSentinel: "sentinel" }, "");
     window.addEventListener("popstate", this._boundPopstate);
 
     // Legacy cleanup: older builds persisted fullscreen intent in localStorage,
@@ -150,9 +150,12 @@ export class AppShell extends LitElement {
       log.info(`[ui] back-button: allow-exit (do not trap)`);
       return;
     }
-    // Re-push sentinels so the trap stays active for the next press.
-    history.pushState({ cbSentinel: true }, "");
-    history.pushState({ cbSentinel: true }, "");
+    // Cancel the browser-level back navigation by bouncing forward.
+    try {
+      history.go(1);
+    } catch {
+      /* ignore */
+    }
 
     // Use in-app tab back navigation if available; otherwise ignore the press.
     if (!callerBuddy.state.peekBackTarget()) {
@@ -709,16 +712,14 @@ export class AppShell extends LitElement {
   private onExitApp = () => {
     log.info(`[ui] menu: Exit`);
     this.showMenu = false;
-    // Allow the next back navigation to escape our sentinel trap.
-    // We created 3 in-app history entries (replaceState + 2 pushState), so jump
-    // back past them. In an installed PWA this typically exits to the launcher;
-    // in a browser tab it navigates to the prior page.
+    // Allow the next back navigation to escape our sentinel trap. We keep one
+    // forward sentinel entry; a single back should leave the PWA (installed) or
+    // navigate to the prior page (browser tab).
     this._allowExitOnNextPopstate = true;
     try {
-      history.go(-3);
-    } catch {
-      // Fallback: at least attempt a single back.
       history.back();
+    } catch {
+      /* ignore */
     }
   };
 
