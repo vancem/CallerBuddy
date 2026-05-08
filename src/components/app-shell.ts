@@ -68,6 +68,8 @@ export class AppShell extends LitElement {
   private _boundEditorFsGate = (e: Event) => this.onEditorFullscreenGate(e);
   private _boundAppReengaged = () => this.onAppReengaged();
   private _resumeCheckTimer: number | null = null;
+  /** When true, allow a back navigation to escape the PWA. */
+  private _allowExitOnNextPopstate = false;
 
   connectedCallback() {
     super.connectedCallback();
@@ -143,6 +145,11 @@ export class AppShell extends LitElement {
   /** Called when the browser back button (Android nav bar) is pressed. */
   private onPopstate() {
     log.info(`[ui] back-button pressed`);
+    if (this._allowExitOnNextPopstate) {
+      this._allowExitOnNextPopstate = false;
+      log.info(`[ui] back-button: allow-exit (do not trap)`);
+      return;
+    }
     // Re-push sentinels so the trap stays active for the next press.
     history.pushState({ cbSentinel: true }, "");
     history.pushState({ cbSentinel: true }, "");
@@ -687,6 +694,10 @@ export class AppShell extends LitElement {
           title="Show recent diagnostic log lines">
           Show Logs
         </button>
+        <button class="menu-item" role="menuitem" @click=${this.onExitApp}
+          title="Exit CallerBuddy (uses system Back behavior)">
+          Exit
+        </button>
         <hr />
         <div class="menu-item version" role="menuitem">
           CallerBuddy v${APP_VERSION}
@@ -694,6 +705,22 @@ export class AppShell extends LitElement {
       </div>
     `;
   }
+
+  private onExitApp = () => {
+    log.info(`[ui] menu: Exit`);
+    this.showMenu = false;
+    // Allow the next back navigation to escape our sentinel trap.
+    // We created 3 in-app history entries (replaceState + 2 pushState), so jump
+    // back past them. In an installed PWA this typically exits to the launcher;
+    // in a browser tab it navigates to the prior page.
+    this._allowExitOnNextPopstate = true;
+    try {
+      history.go(-3);
+    } catch {
+      // Fallback: at least attempt a single back.
+      history.back();
+    }
+  };
 
   private onLyricsLarger = () => {
     const next = bumpLyricsScale(1.1);
