@@ -68,8 +68,11 @@ export class AppShell extends LitElement {
   private _boundEditorFsGate = (e: Event) => this.onEditorFullscreenGate(e);
   private _boundAppReengaged = () => this.onAppReengaged();
   private _resumeCheckTimer: number | null = null;
-  /** When true, allow a back navigation to escape the PWA. */
-  private _allowExitOnNextPopstate = false;
+  /**
+   * When >0, allow that many `popstate` events to pass through without trapping
+   * (used for the explicit Exit action).
+   */
+  private _allowExitPopstatesRemaining = 0;
   private _exitAttemptSeq = 0;
 
   connectedCallback() {
@@ -149,9 +152,11 @@ export class AppShell extends LitElement {
     log.info(
       `[ui] back-button pressed state=${st ? JSON.stringify(st) : "null"} len=${history.length}`,
     );
-    if (this._allowExitOnNextPopstate) {
-      this._allowExitOnNextPopstate = false;
-      log.info(`[ui] back-button: allow-exit (do not trap)`);
+    if (this._allowExitPopstatesRemaining > 0) {
+      this._allowExitPopstatesRemaining -= 1;
+      log.info(
+        `[ui] back-button: allow-exit remaining=${this._allowExitPopstatesRemaining} (do not trap)`,
+      );
       return;
     }
     // Cancel the browser-level back navigation by bouncing forward.
@@ -720,10 +725,10 @@ export class AppShell extends LitElement {
       `[ui] menu: Exit attempt=${attempt} state0=${st0 ? JSON.stringify(st0) : "null"} len=${history.length}`,
     );
     this.showMenu = false;
-    // Allow the next back navigation to escape our sentinel trap. We keep one
-    // forward sentinel entry; a single back should leave the PWA (installed) or
-    // navigate to the prior page (browser tab).
-    this._allowExitOnNextPopstate = true;
+    // Allow the next back navigation(s) to escape our sentinel trap.
+    // With our "base + sentinel" history, one back often lands on base; a second
+    // back is what actually exits the PWA. Try twice.
+    this._allowExitPopstatesRemaining = 2;
     try {
       history.back();
       log.info(`[ui] menu: Exit attempt=${attempt} called history.back()`);
@@ -732,9 +737,19 @@ export class AppShell extends LitElement {
       /* ignore */
     }
     setTimeout(() => {
+      // Second attempt: if the first back landed on base, this is the one that
+      // should exit to the launcher (installed PWA) or previous page (browser).
+      try {
+        history.back();
+        log.info(`[ui] menu: Exit attempt=${attempt} called history.back() (2nd)`);
+      } catch {
+        log.warn(`[ui] menu: Exit attempt=${attempt} history.back() threw (2nd)`);
+      }
+    }, 60);
+    setTimeout(() => {
       const st1 = history.state as unknown;
       log.info(
-        `[ui] menu: Exit attempt=${attempt} after200ms state=${st1 ? JSON.stringify(st1) : "null"} len=${history.length} allowExit=${this._allowExitOnNextPopstate}`,
+        `[ui] menu: Exit attempt=${attempt} after200ms state=${st1 ? JSON.stringify(st1) : "null"} len=${history.length} allowExitRemaining=${this._allowExitPopstatesRemaining}`,
       );
     }, 200);
   };
