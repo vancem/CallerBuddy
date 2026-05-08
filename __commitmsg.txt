@@ -1,0 +1,4 @@
+Clean up A25 PWA startup and manifest
+
+Remove global viewport/zoom workaround stack, switch manifest display to standalone, and add a Pages-like dist server for local testing.
+
