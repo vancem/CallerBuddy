@@ -96,6 +96,18 @@ If **https://&lt;your-username&gt;.github.io/CallerBuddy/** returns 404:
 4. **Use the exact project URL**  
    The URL must be `https://&lt;username&gt;.github.io/&lt;repo-name&gt;/` with the **exact** repo name (e.g. `CallerBuddy` with that casing). No trailing path unless you added one in the app.
 
+## Troubleshooting: Android PWA “stale install” (layout/weirdness after deploy)
+
+If you deploy a fix (especially one that touches **PWA manifest** fields like `display`) but the installed Android app still behaves like the old version (e.g. **tiny text / wrong viewport**, “fullscreen-ish” behavior, etc.), the device may be running a **stale WebAPK install** that did not fully pick up the new manifest/service-worker state.
+
+Try this before spending time on code changes:
+
+1. **Uninstall the CallerBuddy PWA** from the phone.
+2. In Chrome on the phone: **clear site data** for the origin (e.g. `vancem.github.io`) — storage + service worker.
+3. Revisit the site and **install again**.
+
+This can flip the runtime back to the intended display-mode and resolve layout issues immediately.
+
 ## Private phone testing via local build + Cloudflare Tunnel
 
 When debugging device-specific issues (especially Android PWA / WebAPK behavior), it’s often useful to test a **local production build** on a real phone without doing a full GitHub Pages deploy. This repo includes a “Pages-like” local server plus an optional Cloudflare Tunnel to expose it to your phone over HTTPS.

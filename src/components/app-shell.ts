@@ -80,10 +80,14 @@ export class AppShell extends LitElement {
     document.addEventListener("visibilitychange", this._boundAppReengaged);
 
     // Trap the Android back button (and browser back) so it doesn't
-    // navigate away from the PWA. We keep a sentinel history entry on
-    // top; when the user presses back the sentinel is popped, we
-    // re-push it immediately, and optionally perform in-app navigation.
+    // navigate away from the PWA.
+    //
+    // Important: some Android PWA shells will still "exit the app" when the user
+    // presses back at the root if the browser believes there is no navigable
+    // history. Keeping TWO sentinel entries makes the back press always land on
+    // a sentinel (triggering popstate) instead of closing the app.
     history.replaceState({ cbSentinel: true }, "");
+    history.pushState({ cbSentinel: true }, "");
     history.pushState({ cbSentinel: true }, "");
     window.addEventListener("popstate", this._boundPopstate);
 
@@ -139,9 +143,15 @@ export class AppShell extends LitElement {
   /** Called when the browser back button (Android nav bar) is pressed. */
   private onPopstate() {
     log.info(`[ui] back-button pressed`);
-    // Re-push the sentinel so the trap stays active for the next press.
+    // Re-push sentinels so the trap stays active for the next press.
     history.pushState({ cbSentinel: true }, "");
-    // Use in-app tab back navigation if available.
+    history.pushState({ cbSentinel: true }, "");
+
+    // Use in-app tab back navigation if available; otherwise ignore the press.
+    if (!callerBuddy.state.peekBackTarget()) {
+      log.info(`[ui] back-button ignored (no in-app back target)`);
+      return;
+    }
     void this.handleGoBack();
   }
 
