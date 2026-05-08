@@ -469,13 +469,20 @@ export class CallerBuddy {
     }
     this.lastLoadedSongDirHandle = handle;
     try {
+      const t0 = performance.now();
       const data = await readBinaryFile(handle, song.musicFile);
+      const t1 = performance.now();
       await this.audio.loadAudio(data);
+      const t2 = performance.now();
       this.audio.setVolume(song.volume);
       const { start, end } = effectiveAudioLoopPoints(song, this.audio.getDuration());
       this.audio.setLoopPoints(start, end);
       this.audio.setPitch(song.pitch);
       this.audio.setTempo(song.deltaTempo, song.originalTempo);
+      const t3 = performance.now();
+      log.info(
+        `loadSongAudio: read=${(t1 - t0).toFixed(1)}ms decode=${(t2 - t1).toFixed(1)}ms setup=${(t3 - t2).toFixed(1)}ms total=${(t3 - t0).toFixed(1)}ms`,
+      );
     } catch (err) {
       this.lastLoadedSongDirHandle = null;
       throw err;
@@ -578,7 +585,9 @@ export class CallerBuddy {
     opts?: { closeNowPlayingWhenDone?: boolean },
   ): Promise<void> {
     this.closeNowPlayingWhenSongPlayCloses = opts?.closeNowPlayingWhenDone ?? false;
+    const t0 = performance.now();
     await this.audio.ensureContextRunning();
+    const t1 = performance.now();
     try {
       await this.loadSongAudio(song);
     } catch (err) {
@@ -586,8 +595,13 @@ export class CallerBuddy {
       this.closeNowPlayingWhenSongPlayCloses = false;
       return;
     }
+    const t2 = performance.now();
     this.state.setCurrentSong(song);
     await this.audio.play();
+    const t3 = performance.now();
+    log.info(
+      `openSongPlay: ctxResume=${(t1 - t0).toFixed(1)}ms loadSongAudio=${(t2 - t1).toFixed(1)}ms play=${(t3 - t2).toFixed(1)}ms total=${(t3 - t0).toFixed(1)}ms`,
+    );
     this.state.openSingletonTab(
       TabType.SongPlay,
       song.title,

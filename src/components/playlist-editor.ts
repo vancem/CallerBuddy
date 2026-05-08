@@ -33,7 +33,7 @@ import {
 import { StateEvents } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import type { Song } from "../models/song.js";
-import { loadAndMergeSongs } from "../services/song-library.js";
+import { loadAndMergeSongs, loadSongsJson } from "../services/song-library.js";
 import { listDirectory, type DirEntry } from "../services/file-system-service.js";
 import { log } from "../services/logger.js";
 import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js";
@@ -120,6 +120,9 @@ export class PlaylistEditor extends LitElement {
 
   /** True while the initial (or navigated) folder is being scanned. */
   @state() private loading = false;
+
+  /** Incrementing token to ignore stale async folder loads (tab switches / navigation). */
+  private folderLoadSeq = 0;
 
   private resizerX = new PanelResizeController(this, DEFAULT_PLAYLIST_PANEL_WIDTH, {
     axis: "x",
@@ -274,29 +277,61 @@ export class PlaylistEditor extends LitElement {
 
     this.editingCell = null;
     this.loading = true;
+    const seq = ++this.folderLoadSeq;
     try {
-      // Sequential: concurrent use of the same directory handle can hang
-      // (handle.values() is not safe to call concurrently).
-      const songs = await loadAndMergeSongs(handle);
-      const entries = await listDirectory(handle);
+      // Fast path: load songs.json first so the UI can render quickly.
+      const t0 = performance.now();
+      const persisted = await loadSongsJson(handle);
+      const t1 = performance.now();
+      if (seq !== this.folderLoadSeq) return;
 
-      for (const song of songs) {
-        song.dirHandle = handle;
-      }
+      for (const song of persisted) song.dirHandle = handle;
+      this.localSongs = persisted;
+      this.loading = false;
+      log.info(
+        `playlist-editor: loaded songs.json (${persisted.length} songs) in ${(t1 - t0).toFixed(1)}ms`,
+      );
 
-      this.localSongs = songs;
-      this.subfolders = entries.filter((e) => e.kind === "directory");
+      // Background: list directories for folder rows (non-blocking UI).
+      void (async () => {
+        const d0 = performance.now();
+        const entries = await listDirectory(handle);
+        const d1 = performance.now();
+        if (seq !== this.folderLoadSeq) return;
+        this.subfolders = entries.filter((e) => e.kind === "directory");
+        log.info(
+          `playlist-editor: listed folder entries (${entries.length}) in ${(d1 - d0).toFixed(1)}ms`,
+        );
+      })();
 
-      // Kick off background BPM detection for this folder's songs
-      callerBuddy.detectBpmForSongs(handle, songs, (updated) => {
-        this.localSongs = [...updated];
-      });
+      // Background: scan the folder and merge, then refresh if anything changed.
+      void (async () => {
+        const s0 = performance.now();
+        const merged = await loadAndMergeSongs(handle);
+        const s1 = performance.now();
+        if (seq !== this.folderLoadSeq) return;
+
+        for (const song of merged) song.dirHandle = handle;
+        this.localSongs = merged;
+        log.info(
+          `playlist-editor: scan+merge complete (merged=${merged.length}) in ${(s1 - s0).toFixed(1)}ms`,
+        );
+
+        // Kick off background BPM detection for this folder's songs
+        callerBuddy.detectBpmForSongs(handle, merged, (updated) => {
+          if (seq !== this.folderLoadSeq) return;
+          this.localSongs = [...updated];
+        });
+      })();
     } catch (err) {
       log.error(`Failed to load folder "${handle.name}":`, err);
       this.localSongs = [];
       this.subfolders = [];
     } finally {
-      this.loading = false;
+      if (seq === this.folderLoadSeq) {
+        // If we already flipped loading=false after songs.json, keep it off.
+        this.loading = false;
+      }
     }
   }
 

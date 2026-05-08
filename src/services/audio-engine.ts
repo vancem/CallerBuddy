@@ -130,6 +130,13 @@ export class WebAudioEngine implements AudioEngine {
   private playing = false;
   private connected = false;
 
+  // --- Raw playback state (no pitch/tempo mods) ---
+  private sourceNode: AudioBufferSourceNode | null = null;
+  /** Context time when raw playback started (used to compute current time). */
+  private rawStartContextTime = 0;
+  /** Offset into the buffer at which raw playback started. */
+  private rawStartOffsetSeconds = 0;
+
   /** Current pitch shift in half-steps. */
   private pitchHalfSteps = 0;
   /** Current tempo ratio (1.0 = original). */
@@ -160,13 +167,16 @@ export class WebAudioEngine implements AudioEngine {
 
   async loadAudio(audioData: ArrayBuffer): Promise<void> {
     this.stop();
+    const t0 = performance.now();
     this.audioBuffer = await this.context.decodeAudioData(audioData);
+    const t1 = performance.now();
     this.lastReportedTime = 0;
     this.endedFired = false;
     log.info(
       `Audio loaded: ${this.audioBuffer.duration.toFixed(1)}s, ` +
         `${this.audioBuffer.numberOfChannels}ch, ${this.audioBuffer.sampleRate}Hz`,
     );
+    log.info(`Audio decode: ${(t1 - t0).toFixed(1)}ms`);
   }
 
   async ensureContextRunning(): Promise<void> {
@@ -185,15 +195,20 @@ export class WebAudioEngine implements AudioEngine {
       await this.context.resume();
     }
 
-    // If we don't have a PitchShifter yet, create one
-    if (!this.shifter) {
-      this.createShifter();
-    }
+    // If no pitch/tempo modifications are requested, avoid SoundTouchJS overhead.
+    if (this.canUseRawPlayback()) {
+      this.startRawPlayback();
+    } else {
+      // If we don't have a PitchShifter yet, create one
+      if (!this.shifter) {
+        this.createShifter();
+      }
 
-    // Connect the shifter to the gain node to start audio flowing
-    if (this.shifter && !this.connected) {
-      this.shifter.connect(this.gainNode);
-      this.connected = true;
+      // Connect the shifter to the gain node to start audio flowing
+      if (this.shifter && !this.connected) {
+        this.shifter.connect(this.gainNode);
+        this.connected = true;
+      }
     }
 
     this.playing = true;
@@ -209,6 +224,22 @@ export class WebAudioEngine implements AudioEngine {
       this.shifter.disconnect();
       this.connected = false;
     }
+    if (this.sourceNode) {
+      // Stopping the source is the only way to pause; remember current position.
+      this.lastReportedTime = this.getCurrentTime();
+      try {
+        this.sourceNode.onended = null;
+        this.sourceNode.stop();
+      } catch {
+        // ignore
+      }
+      try {
+        this.sourceNode.disconnect();
+      } catch {
+        // ignore
+      }
+      this.sourceNode = null;
+    }
     this.playing = false;
     this.stopTimeUpdates();
     void this.wakeLock.release();
@@ -218,6 +249,20 @@ export class WebAudioEngine implements AudioEngine {
     if (this.shifter && this.connected) {
       this.shifter.disconnect();
       this.connected = false;
+    }
+    if (this.sourceNode) {
+      try {
+        this.sourceNode.onended = null;
+        this.sourceNode.stop();
+      } catch {
+        // ignore
+      }
+      try {
+        this.sourceNode.disconnect();
+      } catch {
+        // ignore
+      }
+      this.sourceNode = null;
     }
     this.destroyShifter();
     this.lastReportedTime = 0;
@@ -246,6 +291,27 @@ export class WebAudioEngine implements AudioEngine {
       this.lastReportedTime = clampedTime;
     }
 
+    // Raw mode: restart source at the desired offset when playing.
+    if (!this.shifter && this.playing) {
+      if (this.sourceNode) {
+        try {
+          this.sourceNode.onended = null;
+          this.sourceNode.stop();
+        } catch {
+          // ignore
+        }
+        try {
+          this.sourceNode.disconnect();
+        } catch {
+          // ignore
+        }
+        this.sourceNode = null;
+      }
+      if (this.canUseRawPlayback()) {
+        this.startRawPlayback(clampedTime);
+      }
+    }
+
     // If we're playing but had to recreate the shifter, reconnect
     if (this.playing && this.shifter && !this.connected) {
       this.shifter.connect(this.gainNode);
@@ -254,6 +320,10 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   getCurrentTime(): number {
+    if (this.sourceNode && this.playing) {
+      const elapsed = this.context.currentTime - this.rawStartContextTime;
+      return Math.max(0, this.rawStartOffsetSeconds + elapsed);
+    }
     return this.lastReportedTime;
   }
 
@@ -268,6 +338,10 @@ export class WebAudioEngine implements AudioEngine {
 
   setPitch(halfSteps: number): void {
     this.pitchHalfSteps = halfSteps;
+    // If we're playing raw and pitch is changed, switch to shifter.
+    if (this.playing && this.sourceNode && !this.canUseRawPlayback()) {
+      this.switchRawToShifterAtCurrentTime();
+    }
     if (this.shifter) {
       this.shifter.pitchSemitones = halfSteps;
     }
@@ -282,6 +356,10 @@ export class WebAudioEngine implements AudioEngine {
     // Clamp to reasonable range (0.5x to 2.0x)
     this.tempoRatio = Math.max(0.5, Math.min(2.0, this.tempoRatio));
 
+    // If we're playing raw and tempo is changed, switch to shifter.
+    if (this.playing && this.sourceNode && !this.canUseRawPlayback()) {
+      this.switchRawToShifterAtCurrentTime();
+    }
     if (this.shifter) {
       this.shifter.tempo = this.tempoRatio;
     }
@@ -304,6 +382,13 @@ export class WebAudioEngine implements AudioEngine {
       `setLoopPoints(${start.toFixed(2)}, ${end.toFixed(2)}) — ` +
         (end > 0 ? "looping enabled" : "looping disabled"),
     );
+    if (this.sourceNode) {
+      this.sourceNode.loop = end > 0 && end > start;
+      if (this.sourceNode.loop) {
+        this.sourceNode.loopStart = start;
+        this.sourceNode.loopEnd = end;
+      }
+    }
   }
 
   isPlaying(): boolean {
@@ -360,6 +445,7 @@ export class WebAudioEngine implements AudioEngine {
 
     this.destroyShifter();
 
+    const t0 = performance.now();
     this.shifter = new PitchShifter(
       this.context,
       this.audioBuffer,
@@ -383,7 +469,8 @@ export class WebAudioEngine implements AudioEngine {
       this.shifter.percentagePlayed = fraction;
     }
 
-    log.info("SoundTouchJS PitchShifter created");
+    const t1 = performance.now();
+    log.info(`SoundTouchJS PitchShifter created in ${(t1 - t0).toFixed(1)}ms`);
   }
 
   /** Called by SoundTouchJS when the source buffer is exhausted. */
@@ -423,35 +510,39 @@ export class WebAudioEngine implements AudioEngine {
   private startTimeUpdates(): void {
     this.stopTimeUpdates();
     const tick = () => {
-      // Read current position directly from the shifter's internal state.
-      // NOTE: SoundTouchJS has an asymmetric API:
-      //   - setter expects a 0–1 fraction (see seek())
-      //   - getter returns a 0–100 percentage
-      // So we divide by 100 here to convert to a fraction, then multiply by
-      // duration to get seconds.
-      if (this.shifter && this.playing) {
-        const duration = this.getDuration();
-        if (duration > 0) {
-          const pctRaw = this.shifter.percentagePlayed; // 0–100
-          this.lastReportedTime = (pctRaw / 100) * duration;
+      if (this.playing) {
+        if (this.shifter) {
+          // Read current position directly from the shifter's internal state.
+          // NOTE: SoundTouchJS has an asymmetric API:
+          //   - setter expects a 0–1 fraction (see seek())
+          //   - getter returns a 0–100 percentage
+          // So we divide by 100 here to convert to a fraction, then multiply by
+          // duration to get seconds.
+          const duration = this.getDuration();
+          if (duration > 0) {
+            const pctRaw = this.shifter.percentagePlayed; // 0–100
+            this.lastReportedTime = (pctRaw / 100) * duration;
 
-          // Throttled position log (about once per second)
-          const now = Date.now();
-          if (now - this.lastPositionLogTime >= 1000) {
-            this.lastPositionLogTime = now;
-            log.info(
-              `position: pctRaw=${pctRaw.toFixed(4)}, time=${this.lastReportedTime.toFixed(2)}s, duration=${duration.toFixed(2)}s`,
-            );
+            // Throttled position log (about once per second)
+            const now = Date.now();
+            if (now - this.lastPositionLogTime >= 1000) {
+              this.lastPositionLogTime = now;
+              log.info(
+                `position: pctRaw=${pctRaw.toFixed(4)}, time=${this.lastReportedTime.toFixed(2)}s, duration=${duration.toFixed(2)}s`,
+              );
+            }
           }
-        }
 
-        // Check loop points
-        if (
-          this.loopEnd > 0 &&
-          this.loopEnd > this.loopStart &&
-          this.lastReportedTime >= this.loopEnd
-        ) {
-          this.seek(this.loopStart);
+          // Check loop points
+          if (
+            this.loopEnd > 0 &&
+            this.loopEnd > this.loopStart &&
+            this.lastReportedTime >= this.loopEnd
+          ) {
+            this.seek(this.loopStart);
+          }
+        } else if (this.sourceNode) {
+          this.lastReportedTime = this.getCurrentTime();
         }
       }
 
@@ -459,6 +550,104 @@ export class WebAudioEngine implements AudioEngine {
       this.rafId = requestAnimationFrame(tick);
     };
     this.rafId = requestAnimationFrame(tick);
+  }
+
+  private canUseRawPlayback(): boolean {
+    return this.pitchHalfSteps === 0 && Math.abs(this.tempoRatio - 1.0) < 1e-6;
+  }
+
+  private startRawPlayback(offsetSeconds?: number): void {
+    if (!this.audioBuffer) return;
+    const offset = offsetSeconds ?? this.lastReportedTime;
+    const clamped = Math.max(0, Math.min(offset, this.audioBuffer.duration));
+
+    // Ensure any shifter path is down before starting raw playback.
+    if (this.shifter && this.connected) {
+      try {
+        this.shifter.disconnect();
+      } catch {
+        // ignore
+      }
+      this.connected = false;
+    }
+    this.destroyShifter();
+
+    if (this.sourceNode) {
+      try {
+        this.sourceNode.onended = null;
+        this.sourceNode.stop();
+      } catch {
+        // ignore
+      }
+      try {
+        this.sourceNode.disconnect();
+      } catch {
+        // ignore
+      }
+      this.sourceNode = null;
+    }
+
+    const t0 = performance.now();
+    const src = this.context.createBufferSource();
+    src.buffer = this.audioBuffer;
+    src.connect(this.gainNode);
+
+    src.loop = this.loopEnd > 0 && this.loopEnd > this.loopStart;
+    if (src.loop) {
+      src.loopStart = this.loopStart;
+      src.loopEnd = this.loopEnd;
+    }
+
+    src.onended = () => {
+      if (!this.playing || this.sourceNode !== src) return;
+      if (this.endedFired) return;
+      if (this.loopEnd > 0 && this.loopEnd > this.loopStart) return;
+      this.endedFired = true;
+      this.playing = false;
+      this.stopTimeUpdates();
+      this.endedCb?.();
+    };
+
+    this.sourceNode = src;
+    this.rawStartOffsetSeconds = clamped;
+    this.rawStartContextTime = this.context.currentTime;
+    this.lastReportedTime = clamped;
+
+    try {
+      src.start(0, clamped);
+    } catch (err) {
+      log.warn("Raw playback source.start failed:", err);
+    }
+
+    const t1 = performance.now();
+    log.info(
+      `Audio play (raw): started in ${(t1 - t0).toFixed(1)}ms at ${clamped.toFixed(2)}s`,
+    );
+  }
+
+  private switchRawToShifterAtCurrentTime(): void {
+    const t = this.getCurrentTime();
+    if (this.sourceNode) {
+      try {
+        this.sourceNode.onended = null;
+        this.sourceNode.stop();
+      } catch {
+        // ignore
+      }
+      try {
+        this.sourceNode.disconnect();
+      } catch {
+        // ignore
+      }
+      this.sourceNode = null;
+    }
+    this.lastReportedTime = t;
+    this.createShifter();
+    if (this.shifter && !this.connected) {
+      this.shifter.connect(this.gainNode);
+      this.connected = true;
+    }
+    log.info(`Audio mode switch: raw → shifter at ${t.toFixed(2)}s`);
   }
 
   private stopTimeUpdates(): void {
