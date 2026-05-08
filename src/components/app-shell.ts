@@ -145,7 +145,7 @@ export class AppShell extends LitElement {
 
   /** Called when the browser back button (Android nav bar) is pressed. */
   private onPopstate() {
-    const st = (history.state as any) ?? null;
+    const st = history.state as unknown;
     log.info(
       `[ui] back-button pressed state=${st ? JSON.stringify(st) : "null"} len=${history.length}`,
     );
@@ -715,7 +715,7 @@ export class AppShell extends LitElement {
 
   private onExitApp = () => {
     const attempt = ++this._exitAttemptSeq;
-    const st0 = (history.state as any) ?? null;
+    const st0 = history.state as unknown;
     log.info(
       `[ui] menu: Exit attempt=${attempt} state0=${st0 ? JSON.stringify(st0) : "null"} len=${history.length}`,
     );
@@ -732,7 +732,7 @@ export class AppShell extends LitElement {
       /* ignore */
     }
     setTimeout(() => {
-      const st1 = (history.state as any) ?? null;
+      const st1 = history.state as unknown;
       log.info(
         `[ui] menu: Exit attempt=${attempt} after200ms state=${st1 ? JSON.stringify(st1) : "null"} len=${history.length} allowExit=${this._allowExitOnNextPopstate}`,
       );
