@@ -62,6 +62,8 @@ export class PlaylistPlay extends LitElement {
   private clockInterval: number | null = null;
   private breakInterval: number | null = null;
   private breakAlarmInterval: number | null = null;
+  /** Stops {@link breakAlarmInterval} after {@link breakMinutes} from alarm start. */
+  private breakAlarmStopTimeout: number | null = null;
 
   connectedCallback() {
     super.connectedCallback();
@@ -449,6 +451,10 @@ export class PlaylistPlay extends LitElement {
       clearInterval(this.breakAlarmInterval);
       this.breakAlarmInterval = null;
     }
+    if (this.breakAlarmStopTimeout !== null) {
+      clearTimeout(this.breakAlarmStopTimeout);
+      this.breakAlarmStopTimeout = null;
+    }
     void this.breakWakeLock.release();
   }
 
@@ -477,10 +483,21 @@ export class PlaylistPlay extends LitElement {
 
   private playBreakAlarm() {
     callerBuddy.audio.playBeep();
-      // Replay every 15 seconds
+    // Replay every 15 seconds; stop after break-length wall time so it cannot run forever.
     this.breakAlarmInterval = window.setInterval(() => {
       callerBuddy.audio.playBeep();
     }, 15_000);
+    if (this.breakAlarmStopTimeout !== null) {
+      clearTimeout(this.breakAlarmStopTimeout);
+    }
+    const capMs = Math.max(0, Math.round(this.breakMinutes * 60 * 1000));
+    this.breakAlarmStopTimeout = window.setTimeout(() => {
+      this.breakAlarmStopTimeout = null;
+      if (this.breakAlarmInterval !== null) {
+        clearInterval(this.breakAlarmInterval);
+        this.breakAlarmInterval = null;
+      }
+    }, capMs);
   }
 
   // -- Clock ----------------------------------------------------------------
