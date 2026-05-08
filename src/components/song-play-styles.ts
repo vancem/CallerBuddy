@@ -26,6 +26,7 @@ export const songPlayStyles = css`
       grid-template-columns: 1fr var(--cb-song-vsplitter-w) var(--cb-song-controls-w);
       grid-template-rows: 1fr auto;
       height: 100%;
+      min-height: 0;
     }
 
     /* -- Left panel: lyrics or patter controls ----------------------------- */
@@ -36,6 +37,7 @@ export const songPlayStyles = css`
       overflow-y: auto;
       border-right: none;
       min-width: 0;
+      min-height: 0;
     }
 
     .lyrics-content {
@@ -278,6 +280,7 @@ export const songPlayStyles = css`
       gap: 20px;
       overflow-y: auto;
       min-width: 0;
+      min-height: 0;
     }
 
     .desktop-splitter {

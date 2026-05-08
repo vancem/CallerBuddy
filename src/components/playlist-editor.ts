@@ -71,6 +71,9 @@ export class PlaylistEditor extends LitElement {
   /** This editor tab's id; used to close via the button or Esc. */
   @property({ type: String }) tabId = "";
 
+  /** Re-render when host box changes (orientation; viewport MQs lie on WebAPK). */
+  private _editorLayoutRo: ResizeObserver | null = null;
+
   @state() private filterText = "";
   /** When true, rank filter uses >= threshold; when false, uses < threshold. */
   @state() private rankCompareGte = true;
@@ -141,10 +144,15 @@ export class PlaylistEditor extends LitElement {
     callerBuddy.state.addEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     document.addEventListener("keydown", this._boundKeydown);
+
+    this._editorLayoutRo = new ResizeObserver(() => this.requestUpdate());
+    this._editorLayoutRo.observe(this);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this._editorLayoutRo?.disconnect();
+    this._editorLayoutRo = null;
     document.removeEventListener("keydown", this._boundKeydown);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
     callerBuddy.state.removeEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
@@ -158,6 +166,18 @@ export class PlaylistEditor extends LitElement {
       callerBuddy.state.settings.playlistPanelHeight ?? DEFAULT_PLAYLIST_PANEL_HEIGHT;
     this.requestUpdate();
   };
+
+  /**
+   * Stacked playlist-on-top layout. Prefer host `getBoundingClientRect()` — viewport
+   * aspect MQs see bogus ~980×2053 on Samsung WebAPK while the shell is ~360 wide.
+   */
+  private isEditorPortraitLayout(): boolean {
+    const r = this.getBoundingClientRect();
+    if (r.width >= 16 && r.height >= 16) {
+      return r.width / r.height <= 6 / 5;
+    }
+    return window.matchMedia("(max-aspect-ratio: 6/5)").matches;
+  }
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
 
@@ -303,7 +323,7 @@ export class PlaylistEditor extends LitElement {
     const songs = this.getFilteredSongs();
     const playlist = callerBuddy.state.playlist;
 
-    const isPortrait = window.matchMedia("(max-aspect-ratio: 6/5)").matches;
+    const isPortrait = this.isEditorPortraitLayout();
     const playlistPanelStyle = isPortrait
       ? `height: ${this.resizerY.size}px`
       : `width: ${this.resizerX.width}px`;
@@ -1038,11 +1058,16 @@ export class PlaylistEditor extends LitElement {
     :host {
       display: block;
       height: 100%;
+      min-height: 0;
+      /* Viewport aspect MQs see bogus 980×2053 on Samsung WebAPK; use host box. */
+      container-type: size;
+      container-name: cb-playlist-editor;
     }
 
     .editor {
       display: flex;
       height: 100%;
+      min-height: 0;
       position: relative;
     }
 
@@ -1657,9 +1682,9 @@ export class PlaylistEditor extends LitElement {
       font-size: 0.85rem;
     }
 
-    /* -- Narrow layout: playlist on top when width <= 1.2× height ---------- */
+    /* Narrow layout: playlist on top when host is taller than wide (not viewport MQ). */
 
-    @media (max-aspect-ratio: 6/5) {
+    @container cb-playlist-editor (max-aspect-ratio: 6/5) {
       .editor {
         flex-direction: column;
       }
@@ -1699,18 +1724,7 @@ export class PlaylistEditor extends LitElement {
       }
     }
 
-    /* Phone: cap Title width so other columns remain usable (portrait + landscape). */
-    @media (pointer: coarse) and (max-width: 700px) {
-      .song-table th.title-col-head,
-      .song-table td.title-cell {
-        width: 27ch;
-        max-width: 27ch;
-      }
-    }
-
-    /* Some installed-phone stacks report a bogus large "innerWidth" in landscape.
-       Height is still phone-like, so use it to keep the title cap consistent. */
-    @media (pointer: coarse) and (max-height: 520px) {
+    @container cb-playlist-editor ((max-width: 700px) or (max-height: 520px)) {
       .song-table th.title-col-head,
       .song-table td.title-cell {
         width: 27ch;

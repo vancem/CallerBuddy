@@ -5,6 +5,7 @@
 
 import type { ReactiveController, ReactiveControllerHost } from "lit";
 import { callerBuddy } from "../caller-buddy.js";
+import { scalePointerDeltaForHtmlZoom } from "../utils/html-zoom-pointer.js";
 
 const MIN_PLAYLIST_SIZE = 180;
 const MAX_PLAYLIST_SIZE = 500;
@@ -68,7 +69,9 @@ export class PanelResizeController implements ReactiveController {
   }
 
   private onMouseMove(e: MouseEvent): void {
-    const delta = this.axis === "x" ? e.clientX - this.startX : e.clientY - this.startY;
+    const raw =
+      this.axis === "x" ? e.clientX - this.startX : e.clientY - this.startY;
+    const delta = scalePointerDeltaForHtmlZoom(raw);
     this.size = Math.round(Math.max(this.min, Math.min(this.max, this.startWidth + delta)));
     this.host.requestUpdate();
   }
@@ -96,7 +99,9 @@ export class PanelResizeController implements ReactiveController {
   private onPointerMove(e: PointerEvent): void {
     if (this.activePointerId === null || e.pointerId !== this.activePointerId) return;
     e.preventDefault();
-    const delta = this.axis === "x" ? e.clientX - this.startX : e.clientY - this.startY;
+    const raw =
+      this.axis === "x" ? e.clientX - this.startX : e.clientY - this.startY;
+    const delta = scalePointerDeltaForHtmlZoom(raw);
     this.size = Math.round(Math.max(this.min, Math.min(this.max, this.startWidth + delta)));
     this.host.requestUpdate();
   }
