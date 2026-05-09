@@ -72,6 +72,8 @@ describe("AppState", () => {
         playlistPanelHeight: 240,
         playlistPaths: [],
         playlistPlayedPaths: [],
+        lyricsFontScaleDesktop: 1,
+        lyricsFontScalePhone: 0.85,
       });
       expect(state.settings.breakTimerMinutes).toBe(10);
       expect(handler).toHaveBeenCalledOnce();

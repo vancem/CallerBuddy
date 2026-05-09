@@ -19,6 +19,7 @@
 import { LitElement, css, html, nothing, unsafeCSS } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { bumpLyricsScale } from "../utils/lyrics-scale.js";
 import {
   LYRICS_BODY_FONT_SIZE,
   LYRICS_H1_SIZE,
@@ -101,6 +102,27 @@ export class LyricsEditor extends LitElement {
 
   private onKeydown(e: KeyboardEvent) {
     e.stopPropagation();
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+      const increase =
+        e.key === "+" ||
+        e.key === "=" ||
+        e.code === "Equal" ||
+        e.code === "NumpadAdd";
+      const decrease =
+        e.key === "-" ||
+        e.code === "Minus" ||
+        e.code === "NumpadSubtract";
+      if (increase) {
+        e.preventDefault();
+        void bumpLyricsScale(1.1);
+        return;
+      }
+      if (decrease) {
+        e.preventDefault();
+        void bumpLyricsScale(1 / 1.1);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       document.execCommand("insertLineBreak");

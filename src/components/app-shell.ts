@@ -27,7 +27,7 @@ import { StateEvents, TabType, type EditorTabData, type TabInfo } from "../servi
 import { APP_VERSION } from "../version.js";
 import { log, getRecentLogs, clearRecentLogs } from "../services/logger.js";
 import { isPhoneLikeTouchDevice } from "../utils/device-traits.js";
-import { bumpLyricsScale, getLyricsScale } from "../utils/lyrics-scale.js";
+import { bumpLyricsScale } from "../utils/lyrics-scale.js";
 
 // Side-effect imports to register custom elements
 import "./tab-bar.js";
@@ -421,6 +421,7 @@ export class AppShell extends LitElement {
           ></cb-tab-bar>
           <div class="global-controls">
             <button
+              type="button"
               class="menu-btn"
               title="Menu"
               @click=${this.toggleMenu}
@@ -429,7 +430,6 @@ export class AppShell extends LitElement {
             >
               ☰
             </button>
-            ${this.showMenu ? this.renderMenu() : nothing}
           </div>
         </header>
         <main class="content">
@@ -448,6 +448,7 @@ export class AppShell extends LitElement {
             : nothing}
           ${!activeTab ? this.renderEmpty() : nothing}
         </main>
+        ${this.showMenu ? this.renderMenu() : nothing}
         ${this.showFullscreenResumePrompt
           ? this.renderFullscreenResumePrompt()
           : nothing}
@@ -547,8 +548,6 @@ export class AppShell extends LitElement {
   }
 
   private renderMenu() {
-    const lyricsScale = getLyricsScale();
-    const lyricsPct = Math.round(lyricsScale * 100);
     return html`
       <div class="menu-overlay" @click=${this.closeMenu}></div>
       <div class="menu" role="menu">
@@ -567,18 +566,18 @@ export class AppShell extends LitElement {
         <button
           class="menu-item"
           role="menuitem"
-          title="Increase lyrics text size by 10% (persists)."
+          title="Increase lyrics text size by ~10%. (Alt++)"
           @click=${this.onLyricsLarger}
         >
-          Lyrics larger (${lyricsPct}%)
+          Lyrics larger (Alt++)
         </button>
         <button
           class="menu-item"
           role="menuitem"
-          title="Decrease lyrics text size by 10% (persists)."
+          title="Decrease lyrics text size by ~10%. (Alt+−)"
           @click=${this.onLyricsSmaller}
         >
-          Lyrics smaller (${lyricsPct}%)
+          Lyrics smaller (Alt+-)
         </button>
         <hr />
         <button class="menu-item" role="menuitem" @click=${this.onHelp}
@@ -597,14 +596,14 @@ export class AppShell extends LitElement {
     `;
   }
 
-  private onLyricsLarger = () => {
-    const next = bumpLyricsScale(1.1);
+  private onLyricsLarger = async () => {
+    const next = await bumpLyricsScale(1.1);
     log.info(`[ui] menu: Lyrics larger scale=${next.toFixed(3)}`);
     this.showMenu = false;
   };
 
-  private onLyricsSmaller = () => {
-    const next = bumpLyricsScale(0.9);
+  private onLyricsSmaller = async () => {
+    const next = await bumpLyricsScale(0.9);
     log.info(`[ui] menu: Lyrics smaller scale=${next.toFixed(3)}`);
     this.showMenu = false;
   };
@@ -798,6 +797,11 @@ export class AppShell extends LitElement {
       align-items: stretch;
       background: var(--cb-tab-bar-bg);
       border-bottom: 1px solid var(--cb-border);
+      /* Stack above <main class="content"> so the hamburger menu (and overlay)
+       * are not painted underneath tab body — later siblings win when z-index ties. */
+      position: relative;
+      z-index: 20;
+      flex-shrink: 0;
     }
 
     cb-tab-bar {
@@ -810,6 +814,8 @@ export class AppShell extends LitElement {
       display: flex;
       align-items: center;
       padding: 0 8px;
+      flex-shrink: 0;
+      z-index: 1;
     }
 
     .menu-btn {
@@ -820,27 +826,32 @@ export class AppShell extends LitElement {
       cursor: pointer;
       padding: 4px 8px;
       border-radius: 4px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
     }
 
     .menu-btn:hover {
       background: var(--cb-hover);
     }
 
+    /* Rendered after <main> so stacking is never under tab body; blocks clicks below. */
     .menu-overlay {
       position: fixed;
       inset: 0;
-      z-index: 999;
+      z-index: 5000;
+      background: transparent;
     }
 
     .menu {
-      position: absolute;
-      top: 100%;
-      right: 0;
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 2.75rem);
+      right: max(8px, env(safe-area-inset-right, 0px));
       background: var(--cb-menu-bg);
       border: 1px solid var(--cb-border);
       border-radius: 6px;
       box-shadow: 0 4px 16px var(--cb-shadow);
-      z-index: 1000;
+      z-index: 5001;
       min-width: 220px;
       padding: 4px 0;
     }
@@ -884,6 +895,8 @@ export class AppShell extends LitElement {
       flex: 1;
       min-height: 0;
       overflow: auto;
+      position: relative;
+      z-index: 0;
     }
 
     /* PlaylistPlay is kept alive across tab switches so its break timer

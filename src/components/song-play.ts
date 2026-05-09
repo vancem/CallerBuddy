@@ -42,6 +42,7 @@ import {
   wrapLyricsHtml,
 } from "../utils/lyrics-html.js";
 import { tempoRatioFromSong } from "../utils/play-history.js";
+import { bumpLyricsScale } from "../utils/lyrics-scale.js";
 import "./lyrics-editor.js";
 
 /**
@@ -398,6 +399,29 @@ export class SongPlay extends LitElement {
     // Match prior behavior: while the editor is open, global Esc does not close the player
     // (Esc exits the editor when focus is inside it — handled there with stopPropagation).
     if (this.editing && e.key === "Escape") return;
+
+    /** Lyrics font scale — Alt avoids browser Ctrl+/Ctrl− zoom shortcuts. */
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+      const increase =
+        e.key === "+" ||
+        e.key === "=" ||
+        e.code === "Equal" ||
+        e.code === "NumpadAdd";
+      const decrease =
+        e.key === "-" ||
+        e.code === "Minus" ||
+        e.code === "NumpadSubtract";
+      if (increase) {
+        e.preventDefault();
+        void bumpLyricsScale(1.1);
+        return;
+      }
+      if (decrease) {
+        e.preventDefault();
+        void bumpLyricsScale(1 / 1.1);
+        return;
+      }
+    }
 
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "p") {
       e.preventDefault();

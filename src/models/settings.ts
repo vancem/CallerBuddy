@@ -12,6 +12,16 @@ export const DEFAULT_PLAYLIST_PANEL_WIDTH = 280;
 /** Default height in px for the playlist panel in portrait (editor only). */
 export const DEFAULT_PLAYLIST_PANEL_HEIGHT = 240;
 
+/** Default lyrics body scale on desktop/wide layout (~viewport &gt; 700px). */
+export const DEFAULT_LYRICS_FONT_SCALE_DESKTOP = 1;
+
+/** Default lyrics body scale on phone/narrow layout (≤700px). */
+export const DEFAULT_LYRICS_FONT_SCALE_PHONE = 0.85;
+
+/** Min/max lyrics scale multiplier (matches `--cb-lyrics-font-size` clamp). */
+export const LYRICS_FONT_SCALE_MIN = 0.5;
+export const LYRICS_FONT_SCALE_MAX = 2.5;
+
 export interface Settings {
   /** Break timer default duration in minutes (decimal allowed). Default 5. */
   breakTimerMinutes: number;
@@ -28,6 +38,16 @@ export interface Settings {
    * Persisted so checkbox state survives restart.
    */
   playlistPlayedPaths: string[];
+  /**
+   * Lyrics body font scale in the player (0.5–2.5). Used when the layout is
+   * wide (viewport &gt; ~700px). Persisted in settings.json.
+   */
+  lyricsFontScaleDesktop: number;
+  /**
+   * Lyrics body font scale for narrow/phone-style layout (≤ ~700px).
+   * Separate from desktop so each mode keeps its own preference.
+   */
+  lyricsFontScalePhone: number;
 }
 
 /** Returns a Settings object populated with default values. */
@@ -39,6 +59,8 @@ export function defaultSettings(): Settings {
     playlistPanelHeight: DEFAULT_PLAYLIST_PANEL_HEIGHT,
     playlistPaths: [],
     playlistPlayedPaths: [],
+    lyricsFontScaleDesktop: DEFAULT_LYRICS_FONT_SCALE_DESKTOP,
+    lyricsFontScalePhone: DEFAULT_LYRICS_FONT_SCALE_PHONE,
   };
 }
 
@@ -87,5 +109,17 @@ export function normalizeSettings(raw: unknown): Settings {
     ),
     playlistPaths,
     playlistPlayedPaths,
+    lyricsFontScaleDesktop: pickNum(
+      "lyricsFontScaleDesktop",
+      defaults.lyricsFontScaleDesktop,
+      LYRICS_FONT_SCALE_MIN,
+      LYRICS_FONT_SCALE_MAX,
+    ),
+    lyricsFontScalePhone: pickNum(
+      "lyricsFontScalePhone",
+      defaults.lyricsFontScalePhone,
+      LYRICS_FONT_SCALE_MIN,
+      LYRICS_FONT_SCALE_MAX,
+    ),
   };
 }

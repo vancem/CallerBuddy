@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   defaultSettings,
   DEFAULT_BREAK_TIMER_MINUTES,
+  DEFAULT_LYRICS_FONT_SCALE_DESKTOP,
+  DEFAULT_LYRICS_FONT_SCALE_PHONE,
   DEFAULT_PLAYLIST_PANEL_HEIGHT,
   DEFAULT_PLAYLIST_PANEL_WIDTH,
   normalizeSettings,
@@ -16,6 +18,8 @@ describe("defaultSettings", () => {
     expect(s.playlistPanelHeight).toBe(DEFAULT_PLAYLIST_PANEL_HEIGHT);
     expect(s.playlistPaths).toEqual([]);
     expect(s.playlistPlayedPaths).toEqual([]);
+    expect(s.lyricsFontScaleDesktop).toBe(DEFAULT_LYRICS_FONT_SCALE_DESKTOP);
+    expect(s.lyricsFontScalePhone).toBe(DEFAULT_LYRICS_FONT_SCALE_PHONE);
   });
 
   it("returns a new object each call (no shared reference)", () => {

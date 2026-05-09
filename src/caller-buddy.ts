@@ -27,6 +27,11 @@ import {
 } from "./services/audio-engine.js";
 import { detectBPM } from "./services/bpm-detector.js";
 import { defaultSettings, normalizeSettings, type Settings } from "./models/settings.js";
+import {
+  applyLyricsFontScaleFromSettings,
+  mergeLegacyLyricsScaleFromDisk,
+  persistLyricsScaleMirror,
+} from "./utils/lyrics-scale.js";
 import { type Song, nextOrderAdded, effectiveAudioLoopPoints } from "./models/song.js";
 import {
   daysSinceLastUsedMs,
@@ -218,14 +223,22 @@ export class CallerBuddy {
       const exists = await fileExists(handle, SETTINGS_JSON);
       if (exists) {
         const text = await readTextFile(handle, SETTINGS_JSON);
-        this.state.setSettings(normalizeSettings(JSON.parse(text)));
+        const raw = JSON.parse(text) as Record<string, unknown>;
+        const normalized = normalizeSettings(raw);
+        this.state.setSettings(mergeLegacyLyricsScaleFromDisk(normalized, raw));
+        applyLyricsFontScaleFromSettings();
+        persistLyricsScaleMirror();
         log.info("Settings loaded from settings.json");
       } else {
         this.state.setSettings(defaultSettings());
+        applyLyricsFontScaleFromSettings();
+        persistLyricsScaleMirror();
       }
     } catch (err) {
       log.warn("Could not load settings.json:", err);
       this.state.setSettings(defaultSettings());
+      applyLyricsFontScaleFromSettings();
+      persistLyricsScaleMirror();
     }
   }
 

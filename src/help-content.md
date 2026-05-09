@@ -297,6 +297,8 @@ excellent and 0 means avoid).
 | <kbd>v</kbd> / <kbd>V</kbd> | Volume down / up (by 5) |
 | <kbd>p</kbd> / <kbd>P</kbd> | Pitch down / up (by 1 half-step) |
 | <kbd>t</kbd> / <kbd>T</kbd> | Tempo down / up (by 1 BPM) |
+| <kbd>Alt</kbd>+<kbd>+</kbd> | Lyrics text larger (~10%; plus / = key, not Ctrl — avoids browser zoom) |
+| <kbd>Alt</kbd>+<kbd>−</kbd> | Lyrics text smaller |
 
 ## Loop Controls (patter songs, when focused)
 

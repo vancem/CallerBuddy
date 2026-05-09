@@ -102,6 +102,7 @@
  */
 
 import { callerBuddy } from "./caller-buddy.js";
+import { log } from "./services/logger.js";
 import {
   installEnvListeners,
   logDeviceInfo,
@@ -109,6 +110,45 @@ import {
 } from "./services/env-log.js";
 import "./components/app-shell.js";
 import { initLyricsScale } from "./utils/lyrics-scale.js";
+
+/**
+ * Dev-only: remove any service worker + Cache Storage for this origin.
+ * We intentionally do not register a SW in dev (`import.meta.env.DEV`), but a SW
+ * from a production preview / older session can still control localhost and serve
+ * cached shells — so the app appears to work after `npm run dev` is killed.
+ *
+ * Invoked only when `import.meta.env.DEV` is true (see call site). Production
+ * builds never run this — offline/PWA behavior uses the block below that registers
+ * `sw.js` only when not in dev.
+ */
+async function stripDevServiceWorkerAndCaches(): Promise<void> {
+  try {
+    let swRemoved = 0;
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      swRemoved = regs.length;
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    let cachesCleared = 0;
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      cachesCleared = keys.length;
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    if (swRemoved > 0 || cachesCleared > 0) {
+      log.info(
+        `[dev] Unregistered ${swRemoved} service worker(s), cleared ${cachesCleared} cache(s). Reload if the tab still acts offline.`,
+      );
+    }
+  } catch (err) {
+    log.warn("[dev] Could not unregister service worker / clear caches:", err);
+  }
+}
+
+if (import.meta.env.DEV) {
+  void stripDevServiceWorkerAndCaches();
+}
+
 initLyricsScale();
 
 // Optional diagnostics for mobile debugging — touches resize / fullscreen / VP.
