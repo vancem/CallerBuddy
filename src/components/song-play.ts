@@ -129,6 +129,11 @@ export class SongPlay extends LitElement {
   /** Re-run split math when host width/height changes (ResizeObserver; viewport MQs lie on WebAPK). */
   private _layoutResizeObs: ResizeObserver | null = null;
 
+  /** Root `.song-play` surface — capture pointerdown to blur editor before focus moves to a control. */
+  private _songPlaySurface: HTMLElement | null = null;
+  private _boundSongPlayPointerCapture = (e: PointerEvent) =>
+    this.onSongPlayPointerCapture(e);
+
   get song(): Song | null {
     return callerBuddy.state.currentSong;
   }
@@ -222,6 +227,12 @@ export class SongPlay extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this._songPlaySurface?.removeEventListener(
+      "pointerdown",
+      this._boundSongPlayPointerCapture,
+      { capture: true },
+    );
+    this._songPlaySurface = null;
     this._layoutResizeObs?.disconnect();
     this._layoutResizeObs = null;
     document.removeEventListener("keydown", this._boundKeydown);
@@ -242,6 +253,12 @@ export class SongPlay extends LitElement {
     this.focusControlsPanel();
     this.applyMobileSplitLayoutVars();
     this.applyDesktopSplitLayoutVars();
+    this._songPlaySurface = this.shadowRoot?.querySelector(".song-play") as HTMLElement | null;
+    this._songPlaySurface?.addEventListener(
+      "pointerdown",
+      this._boundSongPlayPointerCapture,
+      { capture: true },
+    );
   }
 
   protected updated(changed: Map<PropertyKey, unknown>) {
@@ -341,10 +358,46 @@ export class SongPlay extends LitElement {
     });
   }
 
+  /** Shadow-inclusive: true when the event came from inside `<lyrics-editor>`. */
+  private eventTargetIsInsideLyricsEditor(e: Event): boolean {
+    return e.composedPath().some(
+      (n) => n instanceof HTMLElement && n.tagName === "LYRICS-EDITOR",
+    );
+  }
+
+  /** Clear focus from the editor surface so the caret/ring follow clicks elsewhere. */
+  private blurLyricsEditorFocus() {
+    const editor = this.getLyricsEditorComponent();
+    if (!editor) return;
+    let el: Element | null = document.activeElement;
+    while (el && el !== document.body) {
+      const root = el.getRootNode();
+      if (root instanceof ShadowRoot && root.host === editor) {
+        (el as HTMLElement).blur();
+        return;
+      }
+      if (el === editor) {
+        editor.blur();
+        return;
+      }
+      el = el.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
+    }
+  }
+
+  /** Runs in capture phase so the editor blurs before the clicked button/slider takes focus. */
+  private onSongPlayPointerCapture(e: PointerEvent) {
+    if (!this.editing) return;
+    if (this.eventTargetIsInsideLyricsEditor(e)) return;
+    this.blurLyricsEditorFocus();
+  }
+
   private onKeydown(e: KeyboardEvent) {
-    if (this.editing) return;
+    if (this.eventTargetIsInsideLyricsEditor(e)) return;
     // document listener sees retargeted target; use composed path for fields inside this shadow root.
     if (this.shouldYieldShortcutsToFocusedControl(e)) return;
+    // Match prior behavior: while the editor is open, global Esc does not close the player
+    // (Esc exits the editor when focus is inside it — handled there with stopPropagation).
+    if (this.editing && e.key === "Escape") return;
 
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "p") {
       e.preventDefault();
