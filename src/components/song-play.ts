@@ -361,6 +361,7 @@ export class SongPlay extends LitElement {
         this.onPlayPause();
         break;
       case "Home":
+      case ".":
         e.preventDefault();
         this.onRestart();
         break;
