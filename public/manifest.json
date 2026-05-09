@@ -2,7 +2,7 @@
   "name": "CallerBuddy",
   "short_name": "CallerBuddy",
   "description": "Square dance caller music and lyrics manager",
-  "version": "0.1.0-pre.64 ae197cc8-dirty",
+  "version": "0.1.0-pre.65 73c21b08-dirty",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

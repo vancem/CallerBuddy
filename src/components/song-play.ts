@@ -270,14 +270,9 @@ export class SongPlay extends LitElement {
   }
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
-  /**
-   * Leaving the browser window closes song play. Disabled while the lyric editor is
-   * open (`editing`): native confirm/alert steals focus and fires spurious blurs,
-   * and we avoid closing while the user may have unsaved edits in the DOM.
-   */
+  /** When the window loses focus, pause audio but keep the player open. */
   private _boundWindowBlur = () => {
-    if (this.editing) return;
-    void callerBuddy.closeSongPlay();
+    this.pausePlayback();
   };
 
   private _boundWindowResize = () => {
@@ -947,12 +942,17 @@ export class SongPlay extends LitElement {
 
   private onPlayPause() {
     if (this.playing) {
-      callerBuddy.audio.pause();
-      this.playing = false;
-      this.pausePatterTimer();
+      this.pausePlayback();
     } else {
       this.beginPlayback();
     }
+  }
+
+  private pausePlayback() {
+    if (!this.playing) return;
+    callerBuddy.audio.pause();
+    this.playing = false;
+    this.pausePatterTimer();
   }
 
   private onRestart() {
