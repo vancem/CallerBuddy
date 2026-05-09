@@ -48,7 +48,8 @@
   --cb-border-strong: #bdc1c6;
 
   /* ── Interactive states ───────────────────────────────────────────── */
-  --cb-hover:   rgba(0, 0, 0, 0.04);
+  /* Intentionally no gray wash on hover (flat UI); cursor / focus / accents carry affordance. */
+  --cb-hover:   transparent;
   --cb-active:  rgba(0, 0, 0, 0.08);
   --cb-shadow:  rgba(0, 0, 0, 0.15);
 
@@ -62,7 +63,7 @@
 
   /* ── Tab bar ──────────────────────────────────────────────────────── */
   --cb-tab-fg:        var(--cb-fg-secondary);
-  --cb-tab-hover:     var(--cb-hover);
+  --cb-tab-hover:     transparent;
   --cb-tab-active-fg: var(--cb-fg);
   --cb-tab-active-bg: var(--cb-bg);
 

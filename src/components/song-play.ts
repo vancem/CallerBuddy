@@ -346,6 +346,21 @@ export class SongPlay extends LitElement {
     // document listener sees retargeted target; use composed path for fields inside this shadow root.
     if (this.shouldYieldShortcutsToFocusedControl(e)) return;
 
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "p") {
+      e.preventDefault();
+      this.onTogglePractice();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "e") {
+      e.preventDefault();
+      const song = this.song;
+      if (!song) return;
+      if (isSingingCall(song)) this.onEditLyrics();
+      else this.onCreateLyrics();
+      return;
+    }
+
     switch (e.key) {
       case " ":
         e.preventDefault();
@@ -382,10 +397,12 @@ export class SongPlay extends LitElement {
         this.adjustVolume(-5);
         break;
       case "P":
+        if (e.ctrlKey || e.metaKey) break;
         e.preventDefault();
         this.adjustPitch(1);
         break;
       case "p":
+        if (e.ctrlKey || e.metaKey) break;
         e.preventDefault();
         this.adjustPitch(-1);
         break;
@@ -703,7 +720,7 @@ export class SongPlay extends LitElement {
         <button
           type="button"
           class="secondary practice-btn"
-          title="When practice is on, the song is not counted in play history (last used / how often played)."
+          title="When practice is on, the song is not counted in play history (last used / how often played). (Ctrl+P)"
           @click=${this.onTogglePractice}
         >
           ${practice ? "Stop practice" : "Start practice"}
@@ -731,8 +748,11 @@ export class SongPlay extends LitElement {
     if (!song) return nothing;
     const hasLyrics = isSingingCall(song);
     return html`
-      <button class="secondary edit-lyrics-btn"
-        @click=${hasLyrics ? this.onEditLyrics : this.onCreateLyrics}>
+      <button
+        class="secondary edit-lyrics-btn"
+        title=${hasLyrics ? "Edit lyrics (Ctrl+E)" : "Create lyrics (Ctrl+E)"}
+        @click=${hasLyrics ? this.onEditLyrics : this.onCreateLyrics}
+      >
         ${hasLyrics ? "Edit Lyrics" : "Create Lyrics"}
       </button>
     `;

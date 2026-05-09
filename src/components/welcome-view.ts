@@ -11,6 +11,7 @@
  */
 
 import { LitElement, css, html } from "lit";
+import type { PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { TabType } from "../services/app-state.js";
@@ -29,6 +30,30 @@ export class WelcomeView extends LitElement {
     if (callerBuddy.state.rootHandle) {
       this.folderName = callerBuddy.state.rootHandle.name;
     }
+  }
+
+  protected override firstUpdated(_changed: PropertyValues<this>): void {
+    super.firstUpdated(_changed);
+    this.tryFocusReconnectButton();
+  }
+
+  protected override updated(changed: PropertyValues<this>): void {
+    super.updated(changed);
+    const c = changed as unknown as Map<PropertyKey, unknown>;
+    if (c.has("loading") && !this.loading) {
+      this.tryFocusReconnectButton();
+    }
+  }
+
+  /** When the reconnect control is shown and enabled, focus it so Enter activates it. */
+  private tryFocusReconnectButton() {
+    if (!this.folderName || this.loading) return;
+    queueMicrotask(() => {
+      const btn = this.renderRoot.querySelector(
+        "button.welcome-reconnect",
+      ) as HTMLButtonElement | null;
+      if (btn && !btn.disabled) btn.focus();
+    });
   }
 
   render() {
@@ -52,7 +77,8 @@ export class WelcomeView extends LitElement {
         ${this.folderName
           ? html`
               <button
-                class="primary"
+                type="button"
+                class="primary welcome-reconnect"
                 @click=${this.reconnect}
                 ?disabled=${this.loading}
               >

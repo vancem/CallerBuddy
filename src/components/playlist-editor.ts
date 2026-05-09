@@ -22,6 +22,7 @@
  */
 
 import { LitElement, css, html, nothing } from "lit";
+import type { PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { PlaylistReorderController } from "../controllers/playlist-reorder-controller.js";
@@ -98,6 +99,18 @@ export class PlaylistEditor extends LitElement {
   /** `${musicFile}|field` for the cell that last received autofocus (avoid refocus on each keystroke). */
   private lastFocusedEditAnchor: string | null = null;
 
+  /**
+   * {@link songKey} for the focused song row (keyboard shortcuts, selection styling).
+   * Kept in sync with the filtered list in {@link syncSelectionToFilteredList}.
+   */
+  @state() private keyboardShortcutSongKey: string | null = null;
+
+  /** After load or tab activation, move focus to the song table for keyboard shortcuts. */
+  private pendingSongTableFocus = false;
+
+  /** Tracks tab switches so we focus the table when this editor becomes active. */
+  private lastSeenActiveTabId: string | null = null;
+
   /** Song object being dragged from the song table (kept as reference to preserve dirHandle). */
   private draggedSong: Song | null = null;
 
@@ -153,6 +166,8 @@ export class PlaylistEditor extends LitElement {
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
     callerBuddy.state.addEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
+    callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onAppStateChanged);
+    this.lastSeenActiveTabId = callerBuddy.state.activeTabId;
     document.addEventListener("keydown", this._boundKeydown);
 
     this._editorLayoutRo = new ResizeObserver(() => this.requestUpdate());
@@ -167,6 +182,7 @@ export class PlaylistEditor extends LitElement {
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
     callerBuddy.state.removeEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
     callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
+    callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onAppStateChanged);
   }
 
   private onSettingsChanged = () => {
@@ -175,6 +191,19 @@ export class PlaylistEditor extends LitElement {
     this.resizerY.size =
       callerBuddy.state.settings.playlistPanelHeight ?? DEFAULT_PLAYLIST_PANEL_HEIGHT;
     this.requestUpdate();
+  };
+
+  private onAppStateChanged = () => {
+    const { activeTabId } = callerBuddy.state;
+    const becameThisTab =
+      Boolean(this.tabId) &&
+      activeTabId === this.tabId &&
+      this.lastSeenActiveTabId !== this.tabId;
+    this.lastSeenActiveTabId = activeTabId;
+    if (becameThisTab && !this.loading) {
+      this.pendingSongTableFocus = true;
+      this.requestUpdate();
+    }
   };
 
   /**
@@ -193,10 +222,12 @@ export class PlaylistEditor extends LitElement {
 
   private onKeydown(e: KeyboardEvent) {
     if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
+    const inTypingControl =
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      e.target instanceof HTMLSelectElement;
     if (e.key === "Escape" && this.editorClosable && this.tabId) {
-      const inInput =
-        e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-      if (!inInput) {
+      if (!inTypingControl) {
         if (this.contextTarget) {
           e.preventDefault();
           this.closeContextMenu();
@@ -208,12 +239,107 @@ export class PlaylistEditor extends LitElement {
       }
     }
 
+    const mod = e.ctrlKey || e.metaKey || e.altKey;
+    const isAddShortcut =
+      !mod &&
+      (e.key === "+" || e.key === "=" || e.code === "NumpadAdd");
+    const isPlayNowShortcut = !mod && e.key.toLowerCase() === "p";
+
+    if ((isAddShortcut || isPlayNowShortcut) && !inTypingControl && !this.loading) {
+      const song = this.resolveShortcutTargetSong();
+      if (song) {
+        e.preventDefault();
+        if (isAddShortcut) void this.addToPlaylist(song);
+        else void this.playSongNow(song);
+        return;
+      }
+    }
+
+    if (
+      !mod &&
+      (e.key === "ArrowDown" || e.key === "ArrowUp") &&
+      !inTypingControl &&
+      !this.loading
+    ) {
+      const songs = this.getFilteredSongs();
+      if (songs.length > 0) {
+        e.preventDefault();
+        let idx = this.keyboardShortcutSongKey
+          ? songs.findIndex((s) => this.songKey(s) === this.keyboardShortcutSongKey)
+          : 0;
+        if (idx < 0) idx = 0;
+        const delta = e.key === "ArrowDown" ? 1 : -1;
+        const next = Math.min(songs.length - 1, Math.max(0, idx + delta));
+        this.keyboardShortcutSongKey = this.songKey(songs[next]);
+        return;
+      }
+    }
+
+    const isClearShortcut =
+      (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "c";
+    if (isClearShortcut && !inTypingControl && !this.loading) {
+      if (callerBuddy.state.playlist.length > 0) {
+        e.preventDefault();
+        callerBuddy.state.clearPlaylist();
+        return;
+      }
+    }
+
+    if (
+      !this.loading &&
+      !this.editingCell &&
+      (e.ctrlKey || e.metaKey) &&
+      !e.altKey
+    ) {
+      const k = e.key.toLowerCase();
+      if (k === "f") {
+        e.preventDefault();
+        queueMicrotask(() => this.focusFilterInput());
+        return;
+      }
+      if (k === "r" && !e.shiftKey) {
+        e.preventDefault();
+        queueMicrotask(() => this.focusRankFilterInput());
+        return;
+      }
+    }
+
     if (e.key !== "Enter") return;
-    const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-    if (inInput) return;
+    if (inTypingControl) return;
     if (callerBuddy.state.playlist.length === 0) return;
     e.preventDefault();
     this.onPlayPlaylist();
+  }
+
+  private focusFilterInput() {
+    const el = this.renderRoot.querySelector(
+      ".filter-input",
+    ) as HTMLInputElement | null;
+    el?.focus();
+    el?.select();
+  }
+
+  private focusRankFilterInput() {
+    const el = this.renderRoot.querySelector(
+      ".rank-filter-input",
+    ) as HTMLInputElement | null;
+    el?.focus();
+    el?.select();
+  }
+
+  private onSongRowShortcutAnchor(song: Song) {
+    this.keyboardShortcutSongKey = this.songKey(song);
+  }
+
+  /** Song targeted by selection, +/=, P, and arrow keys. */
+  private resolveShortcutTargetSong(): Song | null {
+    const songs = this.getFilteredSongs();
+    if (songs.length === 0) return null;
+    if (this.keyboardShortcutSongKey) {
+      const hit = songs.find((s) => this.songKey(s) === this.keyboardShortcutSongKey);
+      if (hit) return hit;
+    }
+    return songs[0];
   }
 
   private onCloseEditorTab() {
@@ -243,6 +369,32 @@ export class PlaylistEditor extends LitElement {
 
   // -- Folder loading -------------------------------------------------------
 
+  protected override willUpdate(changed: PropertyValues<this>): void {
+    super.willUpdate(changed);
+    const c = changed as unknown as Map<PropertyKey, unknown>;
+    if (
+      c.has("localSongs") ||
+      c.has("filterText") ||
+      c.has("rankFilterInput") ||
+      c.has("rankCompareGte") ||
+      c.has("sortKeys")
+    ) {
+      this.syncSelectionToFilteredList();
+    }
+  }
+
+  /** Keep the highlighted row on a visible song; clear when the list is empty. */
+  private syncSelectionToFilteredList() {
+    const songs = this.getFilteredSongs();
+    if (songs.length === 0) {
+      if (this.keyboardShortcutSongKey !== null) this.keyboardShortcutSongKey = null;
+      return;
+    }
+    const cur = this.keyboardShortcutSongKey;
+    if (cur && songs.some((s) => this.songKey(s) === cur)) return;
+    this.keyboardShortcutSongKey = this.songKey(songs[0]);
+  }
+
   /**
    * Respond to the dirHandle property being set or changed by the parent.
    * Resets navigation and loads the new folder.
@@ -271,6 +423,30 @@ export class PlaylistEditor extends LitElement {
         });
       }
     }
+
+    if (this.pendingSongTableFocus && !this.loading) {
+      this.pendingSongTableFocus = false;
+      queueMicrotask(() => {
+        if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
+        const table = this.renderRoot.querySelector(
+          "table.song-table",
+        ) as HTMLTableElement | null;
+        table?.focus();
+      });
+    }
+
+    if (changed.has("keyboardShortcutSongKey") && this.keyboardShortcutSongKey) {
+      queueMicrotask(() => this.scrollSelectedSongRowIntoView());
+    }
+  }
+
+  private scrollSelectedSongRowIntoView() {
+    const key = this.keyboardShortcutSongKey;
+    if (!key) return;
+    const row = this.renderRoot.querySelector(
+      `tr[data-song-key="${CSS.escape(key)}"]`,
+    ) as HTMLTableRowElement | null;
+    row?.scrollIntoView({ block: "nearest", behavior: "auto" });
   }
 
   private async initFolder(handle: FileSystemDirectoryHandle): Promise<void> {
@@ -338,6 +514,8 @@ export class PlaylistEditor extends LitElement {
       if (seq === this.folderLoadSeq) {
         // If we already flipped loading=false after songs.json, keep it off.
         this.loading = false;
+        this.pendingSongTableFocus = true;
+        this.requestUpdate();
       }
     }
   }
@@ -422,7 +600,7 @@ export class PlaylistEditor extends LitElement {
             <button
               class="primary"
               ?disabled=${playlist.length === 0}
-              title="Play the playlist"
+              title="Play the playlist (Enter)"
               @click=${this.onPlayPlaylist}
             >
               ▶ Play
@@ -431,7 +609,7 @@ export class PlaylistEditor extends LitElement {
               ? html`
                   <button
                     class="secondary"
-                    title="Clear playlist"
+                    title="Clear playlist (Ctrl+C)"
                     @click=${() => callerBuddy.state.clearPlaylist()}
                   >
                     Clear
@@ -486,6 +664,7 @@ export class PlaylistEditor extends LitElement {
                     type="text"
                     class="filter-input"
                     placeholder="Filter songs by title, label, or categories…"
+                    title="Filter songs by title, label, or categories (Ctrl+F)"
                     .value=${this.filterText}
                     @input=${this.onFilterInput}
                     @keydown=${this.onFilterKeydown}
@@ -516,7 +695,7 @@ export class PlaylistEditor extends LitElement {
                     max="100"
                     step="1"
                     placeholder=""
-                    title="Rank threshold (0–100). Empty = no rank filter."
+                    title="Rank threshold (0–100). Empty = no rank filter. (Ctrl+R)"
                     .value=${this.rankFilterInput}
                     @input=${this.onRankFilterInput}
                     @keydown=${this.onFilterKeydown}
@@ -534,11 +713,22 @@ export class PlaylistEditor extends LitElement {
               ${this.loading
                 ? html`<p class="muted table-empty">Loading…</p>`
                 : html`
-                <table class="song-table">
+                <table
+                  class="song-table"
+                  tabindex="-1"
+                  aria-label="Songs in this folder"
+                  aria-multiselectable="false"
+                >
                   <thead>
                     <tr>
-                      <th class="play-cell" title="Play this song now in the player"></th>
-                      <th class="add-cell" title="Add this song to the playlist"></th>
+                      <th
+                        class="play-cell"
+                        title="Play this song now in the player (P)"
+                      ></th>
+                      <th
+                        class="add-cell"
+                        title="Add this song to the playlist (+)"
+                      ></th>
                       <th
                         class="sortable title-col-head"
                         title="Song title, taken from the audio filename."
@@ -590,6 +780,12 @@ export class PlaylistEditor extends LitElement {
                       (song) => html`
                         <tr
                           draggable="true"
+                          data-song-key=${this.songKey(song)}
+                          aria-selected=${this.songKey(song) === this.keyboardShortcutSongKey}
+                          class=${this.songKey(song) === this.keyboardShortcutSongKey
+                            ? "song-row-selected"
+                            : ""}
+                          @mousedown=${() => this.onSongRowShortcutAnchor(song)}
                           @dragstart=${(e: DragEvent) => this.onSongDragStart(e, song)}
                           @dragend=${this.onEditorDragEnd}
                           @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "song", song })}
@@ -599,14 +795,14 @@ export class PlaylistEditor extends LitElement {
                           <td class="play-cell">
                             <button
                               class="icon-btn"
-                              title="Play now"
+                              title="Play now (P)"
                               @click=${() => this.playSongNow(song)}
                             >▶</button>
                           </td>
                           <td class="add-cell">
                             <button
                               class="icon-btn add-btn"
-                              title="Add to playlist"
+                              title="Add to playlist (+)"
                               @click=${() => void this.addToPlaylist(song)}
                             >+</button>
                           </td>
@@ -1077,6 +1273,14 @@ export class PlaylistEditor extends LitElement {
    *  page-level keydown handler (which would start playback). */
   private onFilterKeydown(e: KeyboardEvent) {
     if (e.key === "Enter") e.stopPropagation();
+    if (e.key === "Escape") {
+      const t = e.target as HTMLInputElement;
+      if (t.classList.contains("filter-input") && this.filterText) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.filterText = "";
+      }
+    }
   }
 
   private onFilterInput(e: Event) {
@@ -1498,18 +1702,20 @@ export class PlaylistEditor extends LitElement {
       border-bottom: 1px solid var(--cb-border);
     }
 
-    .song-table tbody tr:hover {
-      background: var(--cb-hover);
+    /* Single selection row: shortcuts (+/=, P), arrow keys, and add/play targets. */
+    .song-table tbody tr.song-row-selected {
+      background: color-mix(in srgb, var(--cb-accent) 14%, var(--cb-panel-bg));
+    }
+
+    .song-table:focus {
+      outline: 2px solid var(--cb-accent);
+      outline-offset: 2px;
     }
 
     /* -- Folder rows ------------------------------------------------------- */
 
     .folder-row {
       cursor: pointer;
-    }
-
-    .folder-row:hover {
-      background: var(--cb-hover);
     }
 
     .folder-icon-cell {
