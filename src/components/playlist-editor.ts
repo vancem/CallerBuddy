@@ -327,6 +327,14 @@ export class PlaylistEditor extends LitElement {
     el?.select();
   }
 
+  private focusSongTable() {
+    if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
+    const table = this.renderRoot.querySelector(
+      "table.song-table",
+    ) as HTMLTableElement | null;
+    table?.focus();
+  }
+
   private onSongRowShortcutAnchor(song: Song) {
     this.keyboardShortcutSongKey = this.songKey(song);
   }
@@ -426,13 +434,7 @@ export class PlaylistEditor extends LitElement {
 
     if (this.pendingSongTableFocus && !this.loading) {
       this.pendingSongTableFocus = false;
-      queueMicrotask(() => {
-        if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
-        const table = this.renderRoot.querySelector(
-          "table.song-table",
-        ) as HTMLTableElement | null;
-        table?.focus();
-      });
+      queueMicrotask(() => this.focusSongTable());
     }
 
     if (changed.has("keyboardShortcutSongKey") && this.keyboardShortcutSongKey) {
@@ -1279,6 +1281,7 @@ export class PlaylistEditor extends LitElement {
         e.preventDefault();
         e.stopPropagation();
         this.filterText = "";
+        queueMicrotask(() => this.focusSongTable());
       }
     }
   }
