@@ -580,6 +580,26 @@ export const songPlayStyles = css`
       background: var(--cb-hover);
     }
 
+    .primary {
+      border-radius: 6px;
+      border: 1px solid transparent;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
+      cursor: pointer;
+    }
+
+    .primary:hover:not(:disabled) {
+      background: var(--cb-accent-hover);
+    }
+
+    .primary:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
     .muted {
       color: var(--cb-fg-tertiary);
     }

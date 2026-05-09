@@ -321,7 +321,7 @@ export class PlaylistPlay extends LitElement {
               </div>
               <button
                 type="button"
-                class="close-tab-btn"
+                class="close-tab-btn primary"
                 title="Close Now Playing (Esc)"
                 @click=${this.onCloseNowPlayingTab}
               >
@@ -804,17 +804,6 @@ export class PlaylistPlay extends LitElement {
     .close-tab-btn {
       align-self: flex-start;
       margin-top: 4px;
-      padding: 6px 14px;
-      font-size: 0.9rem;
-      border-radius: 6px;
-      border: 1px solid var(--cb-border);
-      background: var(--cb-input-bg);
-      color: var(--cb-fg);
-      cursor: pointer;
-    }
-
-    .close-tab-btn:hover {
-      background: var(--cb-hover);
     }
 
     .playing-info {

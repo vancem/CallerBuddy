@@ -714,7 +714,7 @@ export class SongPlay extends LitElement {
         </button>
         ${this.renderEditLyricsButton()}
         <button
-          class="secondary close-play-btn"
+          class="primary close-play-btn"
           title="Close player and return to playlist (Esc)"
           @click=${this.onGoToEnd}
         >
