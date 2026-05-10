@@ -617,6 +617,22 @@ export const songPlayStyles = css`
       gap: 10px;
     }
 
+    .practice-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      color: var(--cb-fg);
+    }
+
+    .practice-toggle input {
+      cursor: pointer;
+    }
+
     /* Lyrics editor — unsaved exit prompt (Esc / backdrop / Keep editing = stay) */
     .lyrics-exit-overlay {
       position: fixed;

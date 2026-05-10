@@ -62,6 +62,10 @@ function prepareLyricsHtml(raw: string): string {
   return body;
 }
 
+/** Tooltip for practice checkbox + label (same text on both for reliable hover/focus hints). */
+const PRACTICE_MODE_TOOLTIP =
+  "When practice is on, the song is not counted in play history (last used / how often played). (Ctrl+P)";
+
 function generateLyricsTemplate(song: Song): string {
   const title = song.title || "Untitled";
   const label = song.label || "";
@@ -952,14 +956,15 @@ export class SongPlay extends LitElement {
     const practice = callerBuddy.getPracticeMode();
     return html`
       <div class="play-extras-row">
-        <button
-          type="button"
-          class="secondary practice-btn"
-          title="When practice is on, the song is not counted in play history (last used / how often played). (Ctrl+P)"
-          @click=${this.onTogglePractice}
-        >
-          ${practice ? "Stop practice" : "Start practice"}
-        </button>
+        <label class="practice-toggle" title=${PRACTICE_MODE_TOOLTIP}>
+          <input
+            type="checkbox"
+            .checked=${practice}
+            title=${PRACTICE_MODE_TOOLTIP}
+            @change=${this.onPracticeChange}
+          />
+          Practice
+        </label>
         ${this.renderEditLyricsButton()}
         <button
           class="primary close-play-btn"
@@ -970,6 +975,12 @@ export class SongPlay extends LitElement {
         </button>
       </div>
     `;
+  }
+
+  private onPracticeChange(e: Event) {
+    const checked = (e.target as HTMLInputElement).checked;
+    callerBuddy.setPracticeMode(checked);
+    this.requestUpdate();
   }
 
   private onTogglePractice() {
