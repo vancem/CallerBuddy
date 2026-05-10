@@ -116,6 +116,13 @@ const DEFAULT_REFERENCE_BPM = 128;
  */
 const SHIFTER_BUFFER_SIZE = 4096;
 
+/**
+ * Position/loop polling interval. Using timers instead of requestAnimationFrame
+ * keeps time labels and the progress bar updating while the tab is in the
+ * background (rAF is throttled or paused there).
+ */
+const TIME_UPDATE_INTERVAL_MS = 100;
+
 // ---------------------------------------------------------------------------
 // Web Audio + SoundTouchJS implementation
 // ---------------------------------------------------------------------------
@@ -149,7 +156,7 @@ export class WebAudioEngine implements AudioEngine {
   // --- Callbacks ---
   private endedCb: EndedCallback | null = null;
   private timeUpdateCb: TimeUpdateCallback | null = null;
-  private rafId: number | null = null;
+  private timeUpdateIntervalId: ReturnType<typeof setInterval> | null = null;
 
   // --- Playback tracking ---
   /** The most recent time (seconds) reported by the PitchShifter. */
@@ -159,10 +166,18 @@ export class WebAudioEngine implements AudioEngine {
 
   private wakeLock = new WakeLockService();
 
+  /** When returning to the tab, resume a browser-suspended context (important when auto-pause-on-blur is off). */
+  private readonly onDocumentVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      void this.ensureContextRunning();
+    }
+  };
+
   constructor() {
     this.context = new AudioContext();
     this.gainNode = this.context.createGain();
     this.gainNode.connect(this.context.destination);
+    document.addEventListener("visibilitychange", this.onDocumentVisibilityChange);
   }
 
   async loadAudio(audioData: ArrayBuffer): Promise<void> {
@@ -433,6 +448,7 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   dispose(): void {
+    document.removeEventListener("visibilitychange", this.onDocumentVisibilityChange);
     this.stop();
     this.wakeLock.dispose();
     this.context.close();
@@ -551,9 +567,9 @@ export class WebAudioEngine implements AudioEngine {
       }
 
       this.timeUpdateCb?.(this.lastReportedTime);
-      this.rafId = requestAnimationFrame(tick);
     };
-    this.rafId = requestAnimationFrame(tick);
+    tick();
+    this.timeUpdateIntervalId = window.setInterval(tick, TIME_UPDATE_INTERVAL_MS);
   }
 
   private canUseRawPlayback(): boolean {
@@ -655,9 +671,9 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   private stopTimeUpdates(): void {
-    if (this.rafId !== null) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
+    if (this.timeUpdateIntervalId !== null) {
+      window.clearInterval(this.timeUpdateIntervalId);
+      this.timeUpdateIntervalId = null;
     }
   }
 }

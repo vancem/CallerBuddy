@@ -190,6 +190,7 @@ export class SongPlay extends LitElement {
     document.addEventListener("keydown", this._boundLyricsExitDialogKeydown, true);
     window.addEventListener("blur", this._boundWindowBlur);
     window.addEventListener("resize", this._boundWindowResize);
+    document.addEventListener("visibilitychange", this._boundVisibilityChange);
 
     this._layoutResizeObs = new ResizeObserver(() => {
       this.applyMobileSplitLayoutVars();
@@ -254,6 +255,7 @@ export class SongPlay extends LitElement {
     document.removeEventListener("keydown", this._boundLyricsExitDialogKeydown, true);
     window.removeEventListener("blur", this._boundWindowBlur);
     window.removeEventListener("resize", this._boundWindowResize);
+    document.removeEventListener("visibilitychange", this._boundVisibilityChange);
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     if (this.elapsedInterval !== null) clearInterval(this.elapsedInterval);
     this.stopPatterTimer();
@@ -390,6 +392,15 @@ export class SongPlay extends LitElement {
   private _boundWindowBlur = () => {
     if (!callerBuddy.getAutoPauseOnWindowBlur()) return;
     this.pausePlayback();
+  };
+
+  /**
+   * Browsers often suspend AudioContext when the tab is hidden; resume when
+   * visible so playback/UI recover when "Auto-Pause" is off (we did not call pause).
+   */
+  private _boundVisibilityChange = () => {
+    if (document.visibilityState !== "visible") return;
+    void callerBuddy.audio.ensureContextRunning().then(() => this.requestUpdate());
   };
 
   private _boundWindowResize = () => {
