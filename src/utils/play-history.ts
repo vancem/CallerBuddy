@@ -7,6 +7,9 @@ import type { Song } from "../models/song.js";
 
 export const PLAY_HISTORY_HALF_LIFE_DAYS = 28;
 
+/** Minimum wall time since lastUsed before another qualifying play bumps lastUsed / playWeight. */
+export const PLAY_STATS_UPDATE_MIN_INTERVAL_MS = 3 * 60 * 60 * 1000;
+
 const MS_PER_DAY = 86400000;
 const MIN_TEMPO_RATIO = 0.5;
 const MAX_TEMPO_RATIO = 2.0;
@@ -40,6 +43,23 @@ export function daysSinceLastUsedMs(lastUsedIso: string, nowMs: number): number 
   const t = Date.parse(lastUsedIso);
   if (!Number.isFinite(t)) return 0;
   return Math.max(0, (nowMs - t) / MS_PER_DAY);
+}
+
+/**
+ * Whether to persist a new lastUsed and playWeight after a qualifying play.
+ * Always true when lastUsed is missing or invalid; otherwise requires the
+ * interval in {@link PLAY_STATS_UPDATE_MIN_INTERVAL_MS}.
+ */
+export function shouldRefreshPlayStats(
+  lastUsedIso: string,
+  nowMs: number,
+  minIntervalMs: number = PLAY_STATS_UPDATE_MIN_INTERVAL_MS,
+): boolean {
+  if (!lastUsedIso.trim()) return true;
+  const t = Date.parse(lastUsedIso);
+  if (!Number.isFinite(t)) return true;
+  const elapsedMs = Math.max(0, nowMs - t);
+  return elapsedMs >= minIntervalMs;
 }
 
 export function nextPlayWeight(wOld: number, deltaDays: number): number {

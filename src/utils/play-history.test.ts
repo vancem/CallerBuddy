@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   PLAY_HISTORY_HALF_LIFE_DAYS,
+  PLAY_STATS_UPDATE_MIN_INTERVAL_MS,
   qualifyingPlayWallSeconds,
   nextPlayWeight,
   displayPlayWeight,
   tempoRatioFromSong,
   daysSinceLastUsedMs,
+  shouldRefreshPlayStats,
 } from "./play-history.js";
 
 describe("qualifyingPlayWallSeconds", () => {
@@ -82,5 +84,29 @@ describe("tempoRatioFromSong", () => {
 describe("daysSinceLastUsedMs", () => {
   it("returns 0 for empty lastUsed", () => {
     expect(daysSinceLastUsedMs("", Date.now())).toBe(0);
+  });
+});
+
+describe("shouldRefreshPlayStats", () => {
+  const t0 = "2020-06-01T12:00:00.000Z";
+  const base = Date.parse(t0);
+
+  it("is true when lastUsed is empty or invalid", () => {
+    expect(shouldRefreshPlayStats("", base)).toBe(true);
+    expect(shouldRefreshPlayStats("not-a-date", base)).toBe(true);
+  });
+
+  it("is false within the cooldown after lastUsed", () => {
+    expect(shouldRefreshPlayStats(t0, base)).toBe(false);
+    expect(shouldRefreshPlayStats(t0, base + PLAY_STATS_UPDATE_MIN_INTERVAL_MS - 1)).toBe(
+      false,
+    );
+  });
+
+  it("is true at or after the cooldown", () => {
+    expect(shouldRefreshPlayStats(t0, base + PLAY_STATS_UPDATE_MIN_INTERVAL_MS)).toBe(true);
+    expect(shouldRefreshPlayStats(t0, base + PLAY_STATS_UPDATE_MIN_INTERVAL_MS + 60_000)).toBe(
+      true,
+    );
   });
 });

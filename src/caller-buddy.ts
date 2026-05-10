@@ -37,6 +37,7 @@ import {
   daysSinceLastUsedMs,
   nextPlayWeight,
   qualifyingPlayWallSeconds,
+  shouldRefreshPlayStats,
   tempoRatioFromSong,
 } from "./utils/play-history.js";
 import { log } from "./services/logger.js";
@@ -660,14 +661,16 @@ export class CallerBuddy {
         session.naturalEnd ||
         (Number.isFinite(threshold) && session.accumulatedPlayingWallSec >= threshold);
       if (qualifies) {
-        const nowIso = new Date().toISOString();
         const nowMs = Date.now();
-        const deltaDays = daysSinceLastUsedMs(song.lastUsed, nowMs);
-        const wNew = nextPlayWeight(song.playWeight, deltaDays);
-        const updated = { ...song, lastUsed: nowIso, playWeight: wNew };
-        await this.updateSong(updated, {
-          dirHandle: persistDirHandle ?? undefined,
-        });
+        if (shouldRefreshPlayStats(song.lastUsed, nowMs)) {
+          const nowIso = new Date().toISOString();
+          const deltaDays = daysSinceLastUsedMs(song.lastUsed, nowMs);
+          const wNew = nextPlayWeight(song.playWeight, deltaDays);
+          const updated = { ...song, lastUsed: nowIso, playWeight: wNew };
+          await this.updateSong(updated, {
+            dirHandle: persistDirHandle ?? undefined,
+          });
+        }
       }
     }
 
