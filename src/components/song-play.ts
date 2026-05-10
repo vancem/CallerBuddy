@@ -978,7 +978,7 @@ export class SongPlay extends LitElement {
               title=${AUTO_PAUSE_ON_BLUR_TOOLTIP}
               @change=${this.onAutoPauseBlurChange}
             />
-            auto-pause
+            Auto-Pause
           </label>
         </div>
         <div class="play-extras-actions">
