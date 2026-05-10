@@ -617,6 +617,78 @@ export const songPlayStyles = css`
       gap: 10px;
     }
 
+    /* Lyrics editor — unsaved exit prompt (Esc / backdrop / Keep editing = stay) */
+    .lyrics-exit-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      box-sizing: border-box;
+    }
+
+    .lyrics-exit-modal {
+      width: min(92vw, 22rem);
+      box-sizing: border-box;
+      padding: 1.25rem 1.35rem;
+      background: var(--cb-bg);
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border);
+      border-radius: 10px;
+      box-shadow: 0 12px 40px var(--cb-shadow);
+      z-index: 2201;
+    }
+
+    .lyrics-exit-title {
+      margin: 0 0 1rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .lyrics-exit-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 0;
+    }
+
+    .lyrics-exit-primary {
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 0.6em 1em;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
+    }
+
+    .lyrics-exit-danger {
+      border-radius: 8px;
+      padding: 0.55em 1em;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      background: transparent;
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border-strong);
+    }
+
+    .lyrics-exit-secondary {
+      border-radius: 8px;
+      padding: 0.55em 1em;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      background: transparent;
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border-strong);
+    }
+
     /* Narrow / phone layout (container width — not viewport; fixes WebAPK innerW≈980) */
     @container cb-song-play (max-width: 700px) {
       .song-play {

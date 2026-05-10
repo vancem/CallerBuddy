@@ -87,7 +87,13 @@ export class SongPlay extends LitElement {
   @state() private editing = false;
   /** True while lyrics editor DOM differs from last saved baseline (cleared on save). */
   @state() private lyricsModified = false;
+  /** Unsaved-changes prompt when exiting the lyrics editor or closing the player with dirty lyrics. */
+  @state() private lyricsExitConfirmOpen = false;
   @state() private clockTime = "";
+
+  /** Set while `runSongPlayUnsavedGuard` is showing the shared dialog (song end, tab nav, Close, etc.). */
+  private lyricsExitPendingGuardResolve: ((allowed: boolean) => void) | null = null;
+  private lyricsUnsavedGuardPromise: Promise<boolean> | null = null;
 
   /** Body HTML snapshot when the editor was opened or last saved (browser-normalized). */
   private lyricsEditorBaselineHtml = "";
@@ -174,6 +180,7 @@ export class SongPlay extends LitElement {
     this.updateClock();
 
     document.addEventListener("keydown", this._boundKeydown);
+    document.addEventListener("keydown", this._boundLyricsExitDialogKeydown, true);
     window.addEventListener("blur", this._boundWindowBlur);
     window.addEventListener("resize", this._boundWindowResize);
 
@@ -237,6 +244,7 @@ export class SongPlay extends LitElement {
     this._layoutResizeObs?.disconnect();
     this._layoutResizeObs = null;
     document.removeEventListener("keydown", this._boundKeydown);
+    document.removeEventListener("keydown", this._boundLyricsExitDialogKeydown, true);
     window.removeEventListener("blur", this._boundWindowBlur);
     window.removeEventListener("resize", this._boundWindowResize);
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
@@ -263,6 +271,9 @@ export class SongPlay extends LitElement {
   }
 
   protected updated(changed: Map<PropertyKey, unknown>) {
+    if (changed.has("lyricsExitConfirmOpen") && this.lyricsExitConfirmOpen) {
+      requestAnimationFrame(() => this.focusLyricsExitDefaultButton());
+    }
     if (changed.has("editing") && this.editing) {
       requestAnimationFrame(() => this.syncLyricsEditorBaselineFromDom());
     }
@@ -288,6 +299,86 @@ export class SongPlay extends LitElement {
   }
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
+  /** Capture phase: Esc / Del / Enter (when needed) while the unsaved-lyrics dialog is open. */
+  private _boundLyricsExitDialogKeydown = (e: KeyboardEvent) => {
+    if (!this.lyricsExitConfirmOpen) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      this.dismissLyricsExitDialogKeepEditing();
+      return;
+    }
+    if (
+      e.key === "Delete" &&
+      !e.shiftKey &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      this.onLyricsExitConfirmDiscard();
+      return;
+    }
+    if (
+      e.key === "Enter" &&
+      !e.shiftKey &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey &&
+      !this.eventPathIncludesLyricsExitModal(e)
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      void this.onLyricsExitConfirmSave();
+    }
+  };
+
+  private focusLyricsExitDefaultButton() {
+    const btn = this.shadowRoot?.querySelector(
+      ".lyrics-exit-form .lyrics-exit-primary",
+    ) as HTMLButtonElement | null;
+    btn?.focus();
+  }
+
+  /** True if the event path goes through the lyrics exit dialog panel (not the dimmed backdrop). */
+  private eventPathIncludesLyricsExitModal(e: Event): boolean {
+    return e.composedPath().some(
+      (n) =>
+        n instanceof HTMLElement && n.classList.contains("lyrics-exit-modal"),
+    );
+  }
+
+  private onLyricsExitFormSubmit(e: Event) {
+    e.preventDefault();
+    void this.onLyricsExitConfirmSave();
+  }
+
+  /** Completes a pending `runSongPlayUnsavedGuard` wait. @returns whether a guard was pending. */
+  private resolveLyricsUnsavedGuardIfPending(allowed: boolean): boolean {
+    const r = this.lyricsExitPendingGuardResolve;
+    if (!r) return false;
+    this.lyricsExitPendingGuardResolve = null;
+    this.lyricsUnsavedGuardPromise = null;
+    r(allowed);
+    return true;
+  }
+
+  /** Close the unsaved dialog without saving; abort player close if guard is pending; focus the lyric surface. */
+  private dismissLyricsExitDialogKeepEditing() {
+    this.lyricsExitConfirmOpen = false;
+    this.resolveLyricsUnsavedGuardIfPending(false);
+    void this.updateComplete.then(() => this.focusLyricsEditorEditableSurface());
+  }
+
+  private focusLyricsEditorEditableSurface() {
+    if (!this.editing) return;
+    const le = this.getLyricsEditorComponent();
+    const surface = le?.shadowRoot?.querySelector(
+      ".lyrics-editor.lyrics-content",
+    ) as HTMLElement | null;
+    surface?.focus();
+  }
   /** When the window loses focus, pause audio but keep the player open. */
   private _boundWindowBlur = () => {
     this.pausePlayback();
@@ -393,6 +484,8 @@ export class SongPlay extends LitElement {
   }
 
   private onKeydown(e: KeyboardEvent) {
+    /** Lyrics exit modal — focus may be on Save (inside shadow DOM); bubble reaches here and would otherwise steal Enter/Space/Esc for transport. */
+    if (this.lyricsExitConfirmOpen) return;
     if (this.eventTargetIsInsideLyricsEditor(e)) return;
     // document listener sees retargeted target; use composed path for fields inside this shadow root.
     if (this.shouldYieldShortcutsToFocusedControl(e)) return;
@@ -576,6 +669,7 @@ export class SongPlay extends LitElement {
     if (!song) return html`<p class="muted">No song loaded.</p>`;
 
     return html`
+      ${this.lyricsExitConfirmOpen ? this.renderLyricsExitConfirm() : nothing}
       <div class="song-play">
         <!-- Left panel: lyrics or loop controls -->
         <div class="left-panel">
@@ -774,6 +868,70 @@ export class SongPlay extends LitElement {
 
   // -- Lyrics editor --------------------------------------------------------
 
+  private renderLyricsExitConfirm() {
+    return html`
+      <div
+        class="lyrics-exit-overlay"
+        @click=${(e: MouseEvent) => {
+          if (e.target !== e.currentTarget) return;
+          this.dismissLyricsExitDialogKeepEditing();
+        }}
+      >
+        <div
+          class="lyrics-exit-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lyrics-exit-title"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <h2 id="lyrics-exit-title" class="lyrics-exit-title">Unsaved lyric changes</h2>
+          <form
+            class="lyrics-exit-actions lyrics-exit-form"
+            @submit=${(e: Event) => this.onLyricsExitFormSubmit(e)}
+          >
+            <button type="submit" class="lyrics-exit-primary">Save and exit (Enter)</button>
+            <button
+              type="button"
+              class="lyrics-exit-danger"
+              @click=${() => this.onLyricsExitConfirmDiscard()}
+            >
+              Discard and exit (DEL)
+            </button>
+            <button
+              type="button"
+              class="lyrics-exit-secondary"
+              @click=${() => this.dismissLyricsExitDialogKeepEditing()}
+            >
+              Keep editing (ESC)
+            </button>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+
+  private async onLyricsExitConfirmSave() {
+    try {
+      await this.persistLyricsFromEditor();
+    } catch {
+      window.alert("Could not save lyrics.");
+      return;
+    }
+    this.lyricsExitConfirmOpen = false;
+    this.resolveLyricsUnsavedGuardIfPending(true);
+    this.editing = false;
+  }
+
+  private onLyricsExitConfirmDiscard() {
+    this.lyricsExitConfirmOpen = false;
+    if (!this.song?.lyricsFile) {
+      this.lyrics = "";
+    }
+    this.lyricsModified = false;
+    this.resolveLyricsUnsavedGuardIfPending(true);
+    this.editing = false;
+  }
+
   private renderLyricsEditor() {
     return html`
       <lyrics-editor
@@ -868,20 +1026,20 @@ export class SongPlay extends LitElement {
     }
   }
 
-  /** Prompt when closing song play while the editor has unsaved edits. Cancel = stay. */
+  /**
+   * Prompt when closing song play while the lyrics editor has unsaved edits.
+   * Uses the same dialog as leaving the editor: save, discard and leave, or stay.
+   */
   private async runSongPlayUnsavedGuard(): Promise<boolean> {
     if (!this.editing || !this.lyricsModified) return true;
-    const save = window.confirm(
-      "You have unsaved lyric changes. Save before closing?",
-    );
-    if (!save) return false;
-    try {
-      await this.persistLyricsFromEditor();
-      return true;
-    } catch {
-      window.alert("Could not save lyrics.");
-      return false;
+    if (!this.lyricsUnsavedGuardPromise) {
+      this.lyricsUnsavedGuardPromise = new Promise<boolean>((resolve) => {
+        this.lyricsExitPendingGuardResolve = resolve;
+      });
+      this.lyricsExitConfirmOpen = true;
+      this.requestUpdate();
     }
+    return await this.lyricsUnsavedGuardPromise;
   }
 
   private async persistLyricsFromEditor(): Promise<void> {
@@ -915,22 +1073,12 @@ export class SongPlay extends LitElement {
   }
 
   private async onExitLyricsEditor() {
+    if (this.lyricsExitConfirmOpen) return;
     if (this.lyricsModified) {
-      const save = window.confirm(
-        "Save lyric changes before exiting the editor?\n\n" +
-          "OK: Save and exit\nCancel: Discard changes and exit",
-      );
-      if (save) {
-        try {
-          await this.persistLyricsFromEditor();
-        } catch {
-          window.alert("Could not save lyrics.");
-          return;
-        }
-      } else if (!this.song?.lyricsFile) {
-        this.lyrics = "";
-      }
-    } else if (!this.song?.lyricsFile) {
+      this.lyricsExitConfirmOpen = true;
+      return;
+    }
+    if (!this.song?.lyricsFile) {
       this.lyrics = "";
     }
     this.editing = false;
