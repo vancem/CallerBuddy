@@ -89,10 +89,10 @@ export interface AudioEngine {
   /** Register a callback invoked roughly every animation frame with current time. */
   onTimeUpdate(callback: TimeUpdateCallback): void;
 
-  /** Play a short alert beep (for timers). */
+  /** Short alert beep for timers (stronger than {@link playErrorBeep} for audibility over music). */
   playBeep(): void;
 
-  /** Play a short beep indicating an error (e.g. no song to play). Same sound as playBeep but semantically distinct. */
+  /** Short beep for errors (e.g. no song to play); softer than timer {@link playBeep}. */
   playErrorBeep(): void;
 
   /** Release all resources. */
@@ -403,22 +403,26 @@ export class WebAudioEngine implements AudioEngine {
     this.timeUpdateCb = callback;
   }
 
-  /** Play a short non-obtrusive beep using an oscillator (for timer alerts). */
+  /** Play a short beep using an oscillator (for timer alerts). Louder/longer than {@link playErrorBeep} so it cuts through music. */
   playBeep(): void {
-    this.playTone(880, 0.5);
+    this.playTone(880, 1.0, 2.0);  // 1.0 second, 2.0 gain
   }
 
-  /** Play a short beep for errors (e.g. no song to play). Uses same sound as timer for consistency. */
+  /** Play a short beep for errors (e.g. no song to play). Uses a softer profile than timer beeps. */
   playErrorBeep(): void {
-    this.playTone(880, 0.5);
+    this.playTone(880, 0.5, 0.15);
   }
 
-  private playTone(frequencyHz: number, durationSeconds: number): void {
+  private playTone(
+    frequencyHz: number,
+    durationSeconds: number,
+    peakGain = 0.15,
+  ): void {
     const osc = this.context.createOscillator();
     const g = this.context.createGain();
     osc.type = "sine";
     osc.frequency.value = frequencyHz;
-    g.gain.setValueAtTime(0.15, this.context.currentTime);
+    g.gain.setValueAtTime(peakGain, this.context.currentTime);
     g.gain.exponentialRampToValueAtTime(
       0.001,
       this.context.currentTime + durationSeconds,
