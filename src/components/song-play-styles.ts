@@ -611,13 +611,21 @@ export const songPlayStyles = css`
 
     .play-extras-row {
       display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .play-extras-checks,
+    .play-extras-actions {
+      display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: center;
       gap: 10px;
     }
 
-    .practice-toggle {
+    .song-play-extras-toggle {
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -629,7 +637,7 @@ export const songPlayStyles = css`
       color: var(--cb-fg);
     }
 
-    .practice-toggle input {
+    .song-play-extras-toggle input {
       cursor: pointer;
     }
 

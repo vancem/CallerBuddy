@@ -80,6 +80,12 @@ export class CallerBuddy {
    */
   private practiceMode = false;
 
+  /**
+   * When true, song-play pauses audio on window blur. App-wide, not persisted.
+   * Default true (matches prior always-on behavior).
+   */
+  private autoPauseOnWindowBlur = true;
+
   private songPlaySession: {
     accumulatedPlayingWallSec: number;
     naturalEnd: boolean;
@@ -92,6 +98,14 @@ export class CallerBuddy {
 
   setPracticeMode(value: boolean): void {
     this.practiceMode = value;
+  }
+
+  getAutoPauseOnWindowBlur(): boolean {
+    return this.autoPauseOnWindowBlur;
+  }
+
+  setAutoPauseOnWindowBlur(value: boolean): void {
+    this.autoPauseOnWindowBlur = value;
   }
 
   /** Called when song-play mounts: fresh session for wall-clock qualification. */

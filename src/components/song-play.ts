@@ -66,6 +66,9 @@ function prepareLyricsHtml(raw: string): string {
 const PRACTICE_MODE_TOOLTIP =
   "When practice is on, the song is not counted in play history (last used / how often played). (Ctrl+P)";
 
+const AUTO_PAUSE_ON_BLUR_TOOLTIP =
+  "When checked, playback pauses when this window loses focus (switching apps or tabs). Uncheck to keep playing in the background.";
+
 function generateLyricsTemplate(song: Song): string {
   const title = song.title || "Untitled";
   const label = song.label || "";
@@ -383,8 +386,9 @@ export class SongPlay extends LitElement {
     ) as HTMLElement | null;
     surface?.focus();
   }
-  /** When the window loses focus, pause audio but keep the player open. */
+  /** When the window loses focus, pause audio but keep the player open (if auto-pause is on). */
   private _boundWindowBlur = () => {
+    if (!callerBuddy.getAutoPauseOnWindowBlur()) return;
     this.pausePlayback();
   };
 
@@ -954,25 +958,39 @@ export class SongPlay extends LitElement {
     const song = this.song;
     if (!song) return nothing;
     const practice = callerBuddy.getPracticeMode();
+    const autoPauseBlur = callerBuddy.getAutoPauseOnWindowBlur();
     return html`
       <div class="play-extras-row">
-        <label class="practice-toggle" title=${PRACTICE_MODE_TOOLTIP}>
-          <input
-            type="checkbox"
-            .checked=${practice}
-            title=${PRACTICE_MODE_TOOLTIP}
-            @change=${this.onPracticeChange}
-          />
-          Practice
-        </label>
-        ${this.renderEditLyricsButton()}
-        <button
-          class="primary close-play-btn"
-          title="Close player and return to playlist (Esc)"
-          @click=${this.onGoToEnd}
-        >
-          Close
-        </button>
+        <div class="play-extras-checks">
+          <label class="song-play-extras-toggle" title=${PRACTICE_MODE_TOOLTIP}>
+            <input
+              type="checkbox"
+              .checked=${practice}
+              title=${PRACTICE_MODE_TOOLTIP}
+              @change=${this.onPracticeChange}
+            />
+            Practice
+          </label>
+          <label class="song-play-extras-toggle" title=${AUTO_PAUSE_ON_BLUR_TOOLTIP}>
+            <input
+              type="checkbox"
+              .checked=${autoPauseBlur}
+              title=${AUTO_PAUSE_ON_BLUR_TOOLTIP}
+              @change=${this.onAutoPauseBlurChange}
+            />
+            auto-pause
+          </label>
+        </div>
+        <div class="play-extras-actions">
+          ${this.renderEditLyricsButton()}
+          <button
+            class="primary close-play-btn"
+            title="Close player and return to playlist (Esc)"
+            @click=${this.onGoToEnd}
+          >
+            Close
+          </button>
+        </div>
       </div>
     `;
   }
@@ -980,6 +998,12 @@ export class SongPlay extends LitElement {
   private onPracticeChange(e: Event) {
     const checked = (e.target as HTMLInputElement).checked;
     callerBuddy.setPracticeMode(checked);
+    this.requestUpdate();
+  }
+
+  private onAutoPauseBlurChange(e: Event) {
+    const checked = (e.target as HTMLInputElement).checked;
+    callerBuddy.setAutoPauseOnWindowBlur(checked);
     this.requestUpdate();
   }
 
