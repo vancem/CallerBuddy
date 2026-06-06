@@ -93,12 +93,36 @@ describe("mergeSongs", () => {
     expect(result[0].lyricsFile).toBe("a.html");
   });
 
-  it("matches musicFile case-insensitively", () => {
-    const scanned = [makeSong({ musicFile: "Song.MP3" })];
-    const persisted = [makeSong({ musicFile: "song.mp3", rank: 5 })];
+  it("reconciles persisted metadata by label when musicFile differs", () => {
+    const scanned = [makeSong({ musicFile: "Song.MP3", label: "ABC 123" })];
+    const persisted = [makeSong({ musicFile: "song.mp3", label: "ABC 123", rank: 5 })];
     const result = mergeSongs(scanned, persisted);
     expect(result).toHaveLength(1);
     expect(result[0].rank).toBe(5);
+    expect(result[0].musicFile).toBe("Song.MP3");
+  });
+
+  it("uses on-disk filenames from scan on overlap", () => {
+    const scanned = [
+      makeSong({
+        musicFile: "BS 579 - CANDY GIRL.mp3",
+        lyricsFile: "BS 579 - CANDY GIRL.html",
+        label: "BS 579",
+      }),
+    ];
+    const persisted = [
+      makeSong({
+        musicFile: "BS 579 - Candy Girl.mp3",
+        lyricsFile: "BS 579 - Candy Girl.html",
+        label: "BS 579",
+        rank: 10,
+      }),
+    ];
+    const result = mergeSongs(scanned, persisted);
+    expect(result).toHaveLength(1);
+    expect(result[0].rank).toBe(10);
+    expect(result[0].musicFile).toBe("BS 579 - CANDY GIRL.mp3");
+    expect(result[0].lyricsFile).toBe("BS 579 - CANDY GIRL.html");
   });
 
   it("adds new scanned songs and omits persisted songs missing from scan", () => {
@@ -173,6 +197,7 @@ describe("applyConservativeOrphanCleanup", () => {
 
     const result = await applyConservativeOrphanCleanup([], [], [orphan], fakeDirHandle);
     expect(result).toHaveLength(1);
+    expect(result[0].musicFile).toBe("old.mp3");
     expect(result[0].rank).toBe(10);
   });
 

@@ -498,6 +498,7 @@ export class PlaylistEditor extends LitElement {
 
         for (const song of merged) song.dirHandle = handle;
         this.localSongs = merged;
+        await callerBuddy.syncPlaylistFilenamesFromFolder(handle, merged);
         log.info(
           `playlist-editor: scan+merge complete (merged=${merged.length}) in ${(s1 - s0).toFixed(1)}ms`,
         );

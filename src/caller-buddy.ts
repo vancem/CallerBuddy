@@ -377,6 +377,45 @@ export class CallerBuddy {
   }
 
   /**
+   * After a folder scan, sync playlist entries in that folder to scan filenames
+   * (matched by exact musicFile or label) and persist paths to settings.json.
+   */
+  async syncPlaylistFilenamesFromFolder(
+    dirHandle: FileSystemDirectoryHandle,
+    folderSongs: Song[],
+  ): Promise<void> {
+    const byFile = new Map(folderSongs.map((s) => [s.musicFile, s]));
+    const byLabel = new Map<string, Song>();
+    for (const s of folderSongs) {
+      if (s.label) byLabel.set(s.label, s);
+    }
+    let changed = false;
+    for (const song of this.state.playlist) {
+      if (song.dirHandle !== dirHandle && song.dirHandle?.name !== dirHandle.name) {
+        continue;
+      }
+      const scanned =
+        byFile.get(song.musicFile) ??
+        (song.label ? byLabel.get(song.label) : undefined);
+      if (!scanned) continue;
+      if (
+        scanned.musicFile === song.musicFile &&
+        scanned.lyricsFile === song.lyricsFile
+      ) {
+        continue;
+      }
+      song.musicFile = scanned.musicFile;
+      song.lyricsFile = scanned.lyricsFile;
+      await this.ensurePlaylistRelPathForSong(song);
+      changed = true;
+      log.info(`Playlist entry synced to scanned filenames: ${scanned.musicFile}`);
+    }
+    if (changed) {
+      await this.persistPlaylistPaths();
+    }
+  }
+
+  /**
    * Rebuild the in-memory playlist from the paths stored in settings.json.
    * Each path is relative to CallerBuddyRoot (e.g. "Christmas/Song.MP3" or
    * just "Song.MP3" for root-level songs). Loads songs.json (or scans) from
@@ -877,7 +916,8 @@ export class CallerBuddy {
 
     // Refresh the song list for the target folder
     try {
-      await loadAndMergeSongs(dirHandle);
+      const merged = await loadAndMergeSongs(dirHandle);
+      await this.syncPlaylistFilenamesFromFolder(dirHandle, merged);
       log.info("importSong: song list refreshed");
     } catch (err) {
       log.warn("importSong: could not refresh song list:", err);
@@ -1008,21 +1048,13 @@ async function logSongAudioLoadFailure(
         (musicFiles.length > 0 ? musicFiles.join(", ") : "(none)"),
     );
 
-    const storedLower = song.musicFile.toLowerCase();
-    const caseMatch = musicFiles.find((f) => f.toLowerCase() === storedLower);
-    if (caseMatch && caseMatch !== song.musicFile) {
-      log.error(
-        `Filename case mismatch: stored "${song.musicFile}" but disk has "${caseMatch}"`,
-      );
-    }
-
-    const labelPrefix = song.label.trim().toLowerCase();
-    if (labelPrefix) {
-      const sameLabel = musicFiles.filter((f) =>
-        f.toLowerCase().startsWith(labelPrefix),
-      );
+    if (song.label) {
+      const sameLabel = musicFiles.filter((f) => f.startsWith(song.label + " - "));
       if (sameLabel.length > 0 && !sameLabel.includes(song.musicFile)) {
-        log.error(`Same label on disk: ${sameLabel.join(", ")}`);
+        log.error(
+          `Stored musicFile "${song.musicFile}" not on disk; same label: ${sameLabel.join(", ")} ` +
+            `(open this folder tab and wait for scan+merge to sync songs.json)`,
+        );
       }
     }
   } catch (listErr) {

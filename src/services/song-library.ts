@@ -31,7 +31,7 @@ const SONGS_JSON = "songs.json";
 /** Max fraction of persisted entries removable in one pass before scan is treated as suspicious. */
 const MAX_ORPHAN_DROP_FRACTION = 0.5;
 
-/** musicFile keys (lowercase) seen missing once; removed after a second consecutive miss. */
+/** musicFile values seen missing once; removed after a second consecutive miss. */
 const pendingOrphanRemovals = new Map<string, Set<string>>();
 
 /** Reset in-memory orphan confirmation state (for tests). */
@@ -60,7 +60,8 @@ export function isSuspiciousScan(
 
 /**
  * Scan a directory for music and lyrics files and produce a Song list.
- * Music and lyrics are matched by base name (case-insensitive).
+ * Filenames come verbatim from the directory listing. Lyrics are paired by
+ * base name (see {@link baseName}) so ".MP3" / ".html" extension case can differ.
  *
  * Does NOT recurse into subdirectories (playlist editor handles folder
  * navigation; scanner operates on one folder at a time).
@@ -71,7 +72,7 @@ export async function scanDirectory(
   const entries = await listDirectory(dirHandle);
 
   const musicFiles: string[] = [];
-  const lyricsMap = new Map<string, string>(); // lower-base → filename
+  const lyricsMap = new Map<string, string>(); // baseName → filename on disk
 
   for (const entry of entries) {
     if (entry.kind !== "file") continue;
@@ -148,28 +149,32 @@ export async function saveSongsJson(
  * Merge freshly scanned songs with previously persisted songs.
  *
  * Strategy:
- *  - Songs present in both (matched by musicFile) keep the persisted metadata
- *    but update the lyricsFile if a matching lyrics file was found on disk.
- *  - New songs (on disk but not in persisted) get sequential orderAdded
- *    (maxOrderAdded(persisted) + 1, + 2, … in scan order).
- *  - Orphans (in persisted but not in scan) are handled separately by
- *    {@link applyConservativeOrphanCleanup}.
+ *  - Match by exact musicFile, else by label (e.g. after a Windows → Android move).
+ *  - musicFile and lyricsFile always come from the scan (verbatim directory names).
+ *  - New songs (on disk but not matched) get sequential orderAdded.
+ *  - Unmatched persisted entries are handled by {@link applyConservativeOrphanCleanup}.
  */
 export function mergeSongs(scanned: Song[], persisted: Song[]): Song[] {
-  const persistedMap = new Map<string, Song>();
+  const persistedByFile = new Map<string, Song>();
+  const persistedByLabel = new Map<string, Song>();
   for (const song of persisted) {
-    persistedMap.set(song.musicFile.toLowerCase(), song);
+    persistedByFile.set(song.musicFile, song);
+    if (song.label) persistedByLabel.set(song.label, song);
   }
 
   const merged: Song[] = [];
   let nextOrder = maxOrderAdded(persisted) + 1;
 
   for (const fresh of scanned) {
-    const key = fresh.musicFile.toLowerCase();
-    const existing = persistedMap.get(key);
+    const existing =
+      persistedByFile.get(fresh.musicFile) ??
+      (fresh.label ? persistedByLabel.get(fresh.label) : undefined);
     if (existing) {
-      // Keep persisted metadata, refresh lyrics in case a new lyrics file appeared
-      merged.push({ ...existing, lyricsFile: fresh.lyricsFile });
+      merged.push({
+        ...existing,
+        musicFile: fresh.musicFile,
+        lyricsFile: fresh.lyricsFile,
+      });
     } else {
       merged.push({ ...fresh, orderAdded: nextOrder });
       nextOrder += 1;
@@ -190,11 +195,11 @@ export async function applyConservativeOrphanCleanup(
   persisted: Song[],
   dirHandle: FileSystemDirectoryHandle,
 ): Promise<Song[]> {
-  const scannedKeys = new Set(scanned.map((s) => s.musicFile.toLowerCase()));
+  const scannedNames = new Set(scanned.map((s) => s.musicFile));
   // Base result is scan-derived entries only; orphans are re-added only when kept.
-  const result = merged.filter((s) => scannedKeys.has(s.musicFile.toLowerCase()));
-  const resultKeys = new Set(result.map((s) => s.musicFile.toLowerCase()));
-  const orphans = persisted.filter((s) => !scannedKeys.has(s.musicFile.toLowerCase()));
+  const result = merged.filter((s) => scannedNames.has(s.musicFile));
+  const resultNames = new Set(result.map((s) => s.musicFile));
+  const orphans = persisted.filter((s) => !scannedNames.has(s.musicFile));
 
   const recovered: Song[] = [];
   const stillMissing: Song[] = [];
@@ -209,10 +214,10 @@ export async function applyConservativeOrphanCleanup(
   const key = folderKey(dirHandle);
   const pending = pendingOrphanRemovals.get(key) ?? new Set<string>();
   for (const song of scanned) {
-    pending.delete(song.musicFile.toLowerCase());
+    pending.delete(song.musicFile);
   }
   for (const song of recovered) {
-    pending.delete(song.musicFile.toLowerCase());
+    pending.delete(song.musicFile);
   }
 
   const suspicious = isSuspiciousScan(
@@ -234,12 +239,11 @@ export async function applyConservativeOrphanCleanup(
     }
   } else {
     for (const song of stillMissing) {
-      const fileKey = song.musicFile.toLowerCase();
-      if (pending.has(fileKey)) {
+      if (pending.has(song.musicFile)) {
         removed.push(song);
-        pending.delete(fileKey);
+        pending.delete(song.musicFile);
       } else {
-        pending.add(fileKey);
+        pending.add(song.musicFile);
         kept.push(song);
       }
     }
@@ -254,9 +258,7 @@ export async function applyConservativeOrphanCleanup(
     );
   }
 
-  const awaitingConfirm = stillMissing.filter((s) =>
-    pending.has(s.musicFile.toLowerCase()),
-  );
+  const awaitingConfirm = stillMissing.filter((s) => pending.has(s.musicFile));
   if (awaitingConfirm.length > 0 && !suspicious) {
     log.info(
       `Orphan removal pending confirmation (${awaitingConfirm.length}): ` +
@@ -265,10 +267,9 @@ export async function applyConservativeOrphanCleanup(
   }
 
   for (const song of kept) {
-    const fileKey = song.musicFile.toLowerCase();
-    if (!resultKeys.has(fileKey)) {
+    if (!resultNames.has(song.musicFile)) {
       result.push(song);
-      resultKeys.add(fileKey);
+      resultNames.add(song.musicFile);
     }
   }
 
