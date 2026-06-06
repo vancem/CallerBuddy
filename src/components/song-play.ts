@@ -550,6 +550,18 @@ export class SongPlay extends LitElement {
       return;
     }
 
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      !e.altKey &&
+      e.key.toLowerCase() === "t" &&
+      this.song &&
+      isPatter(this.song)
+    ) {
+      e.preventDefault();
+      this.togglePatterTimerEnabled();
+      return;
+    }
+
     switch (e.key) {
       case " ":
         e.preventDefault();
@@ -1445,7 +1457,15 @@ export class SongPlay extends LitElement {
   }
 
   private onPatterTimerEnabledChange(e: Event) {
-    const enabled = (e.target as HTMLInputElement).checked;
+    this.setPatterTimerEnabled((e.target as HTMLInputElement).checked);
+  }
+
+  private togglePatterTimerEnabled() {
+    this.setPatterTimerEnabled(!this.patterTimerEnabled);
+  }
+
+  private setPatterTimerEnabled(enabled: boolean) {
+    if (this.patterTimerEnabled === enabled) return;
     this.patterTimerEnabled = enabled;
     if (!enabled) {
       this.stopPatterTimer();

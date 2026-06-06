@@ -4,7 +4,8 @@
  * Shows the playlist with selection highlighting, break timer, and clock.
  * Played songs show a checked checkbox. The selected song defaults to the first
  * unplayed song; clicking a song overrides the selection. Play/Enter/Space
- * plays the selected song. S starts/stops the break timer. Esc closes the tab.
+ * plays the selected song. Ctrl+T toggles the break timer on/off; S starts/stops
+ * the break timer countdown. Esc closes the tab.
  *
  * See CallerBuddySpec.md §"PlaylistPlay UI".
  */
@@ -126,6 +127,11 @@ export class PlaylistPlay extends LitElement {
     if (e.ctrlKey && e.key === "r") {
       e.preventDefault();
       this.resetPlayedSongs();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "t") {
+      e.preventDefault();
+      this.toggleBreakTimerEnabled();
       return;
     }
     if (e.key.toLowerCase() === "s" && this.breakTimerEnabled) {
@@ -280,7 +286,7 @@ export class PlaylistPlay extends LitElement {
             <div class="break-controls">
               <div class="break-toggle-row">
                 <label class="break-toggle"
-                  title="When enabled, the break timer counts down automatically after each song ends">
+                  title="When enabled, the break timer counts down automatically after each song ends (Ctrl+T)">
                   <input
                     type="checkbox"
                     .checked=${this.breakTimerEnabled}
@@ -394,8 +400,17 @@ export class PlaylistPlay extends LitElement {
   // -- Break timer ----------------------------------------------------------
 
   private toggleBreakTimer(e: Event) {
-    this.breakTimerEnabled = (e.target as HTMLInputElement).checked;
-    if (!this.breakTimerEnabled) {
+    this.setBreakTimerEnabled((e.target as HTMLInputElement).checked);
+  }
+
+  private toggleBreakTimerEnabled() {
+    this.setBreakTimerEnabled(!this.breakTimerEnabled);
+  }
+
+  private setBreakTimerEnabled(enabled: boolean) {
+    if (this.breakTimerEnabled === enabled) return;
+    this.breakTimerEnabled = enabled;
+    if (!enabled) {
       this.stopBreakTimer();
     }
   }

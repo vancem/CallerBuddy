@@ -99,7 +99,8 @@ export function renderPatterControls(ctx: PatterControlsCtx): TemplateResult {
         </div>` : nothing}
       <div class="patter-timer-controls ${ctx.patterTimerEnabled ? "" : "timer-disabled"}">
         <div class="patter-toggle-row">
-          <label class="patter-toggle">
+          <label class="patter-toggle"
+            title="When enabled, the patter timer counts down while music plays (Ctrl+T)">
             <input
               type="checkbox"
               .checked=${ctx.patterTimerEnabled}
