@@ -19,6 +19,7 @@ import {
   readBinaryFile,
   writeTextFile,
   fileExists,
+  listDirectory,
 } from "./services/file-system-service.js";
 import { loadSongsJson, saveSongsJson, loadAndMergeSongs, scanDirectory } from "./services/song-library.js";
 import {
@@ -32,7 +33,12 @@ import {
   mergeLegacyLyricsScaleFromDisk,
   persistLyricsScaleMirror,
 } from "./utils/lyrics-scale.js";
-import { type Song, nextOrderAdded, effectiveAudioLoopPoints } from "./models/song.js";
+import {
+  type Song,
+  nextOrderAdded,
+  effectiveAudioLoopPoints,
+  isMusicFile,
+} from "./models/song.js";
 import {
   daysSinceLastUsedMs,
   nextPlayWeight,
@@ -319,9 +325,6 @@ export class CallerBuddy {
       playlistPaths: paths,
       playlistPlayedPaths: playedOut,
     };
-    // #region agent log
-    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:persistPlaylistPaths',message:'persisting paths',data:{paths,playedOut,rootName:rootHandle.name},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     await this.saveSettings();
     log.info(`Playlist persisted: ${paths.length} song(s), ${playedOut.length} marked played`);
   }
@@ -337,9 +340,6 @@ export class CallerBuddy {
     let rawPath: string | undefined;
     try {
       const segments = await rootHandle.resolve(dirHandle);
-      // #region agent log
-      fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:ensurePlaylistRelPathForSong',message:'resolve segments',data:{musicFile:song.musicFile,segments,existingPath:song.playlistRelPath,rootName},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       if (segments && segments.length > 0) {
         const decodedSegments = segments.map((s) => {
           try {
@@ -358,9 +358,6 @@ export class CallerBuddy {
       rawPath = song.playlistRelPath ?? song.musicFile;
     }
     song.playlistRelPath = normalizePlaylistRelPath(rawPath, rootName);
-    // #region agent log
-    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:ensurePlaylistRelPathForSong',message:'normalized path',data:{musicFile:song.musicFile,rawPath,normalized:song.playlistRelPath,rootName},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
   }
 
   /** Add to playlist after resolving {@link Song.playlistRelPath}. */
@@ -392,10 +389,6 @@ export class CallerBuddy {
     const paths = normalizePlaylistRelPaths(rawPaths, rootName);
     const playedPaths = normalizePlaylistRelPaths(rawPlayed, rootName);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:restorePlaylist',message:'path normalization',data:{rawPaths,paths,rawPlayed,playedPaths,rootName},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
     const pathsNeedMigration =
       paths.length !== rawPaths.length ||
       paths.some((p, i) => p !== rawPaths[i]);
@@ -426,10 +419,6 @@ export class CallerBuddy {
       foldersToLoad.add(slashIdx >= 0 ? p.substring(0, slashIdx) : "");
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:restorePlaylist',message:'folders to load',data:{folders:[...foldersToLoad]},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
     for (const folder of foldersToLoad) {
       try {
         const dirHandle = folder
@@ -446,27 +435,18 @@ export class CallerBuddy {
         }
       } catch (err) {
         log.warn(`restorePlaylist: could not load folder "${folder}":`, err);
-        // #region agent log
-        fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:restorePlaylist',message:'folder load failed',data:{folder,error:String(err)},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
       }
     }
 
     const restored: Song[] = [];
-    const missed: string[] = [];
     for (const p of paths) {
       const song = songsByPath.get(p.toLowerCase());
       if (song) {
         restored.push({ ...song, playlistRelPath: p });
       } else {
-        missed.push(p);
         log.warn(`restorePlaylist: song not found for path "${p}", skipping`);
       }
     }
-
-    // #region agent log
-    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:restorePlaylist',message:'restore result',data:{restoredCount:restored.length,total:paths.length,missed,availableKeys:[...songsByPath.keys()]},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
 
     if (restored.length > 0) {
       this.state.playlist = restored;
@@ -575,6 +555,7 @@ export class CallerBuddy {
       );
     } catch (err) {
       this.lastLoadedSongDirHandle = null;
+      await logSongAudioLoadFailure(song, handle, this.state.rootHandle, err);
       throw err;
     }
   }
@@ -680,8 +661,7 @@ export class CallerBuddy {
     const t1 = performance.now();
     try {
       await this.loadSongAudio(song);
-    } catch (err) {
-      log.error(`Failed to load audio for "${song.title}":`, err);
+    } catch {
       this.closeNowPlayingWhenSongPlayCloses = false;
       return;
     }
@@ -951,6 +931,103 @@ interface OnboardingSource {
   type: "zip" | "folder";
   readText: (path: string) => Promise<string>;
   readBinary: (path: string) => Promise<ArrayBuffer>;
+}
+
+/** Decode a File System Access path segment when Android returns URI-encoded names. */
+function decodePathSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+/**
+ * Describe where CallerBuddy expects a song's audio file (for error logs).
+ * Uses playlistRelPath when set; otherwise root-relative dir + musicFile.
+ */
+async function describeSongAudioTarget(
+  song: Song,
+  dirHandle: FileSystemDirectoryHandle,
+  rootHandle: FileSystemDirectoryHandle | null,
+): Promise<{ displayPath: string; details: string }> {
+  let rootRelDir = "";
+  if (rootHandle) {
+    try {
+      const segments = await rootHandle.resolve(dirHandle);
+      if (segments && segments.length > 0) {
+        rootRelDir = segments.map(decodePathSegment).join("/");
+      }
+    } catch {
+      /* resolve() may fail on some platforms */
+    }
+  }
+
+  const displayPath =
+    song.playlistRelPath ??
+    (rootRelDir ? `${rootRelDir}/${song.musicFile}` : `${dirHandle.name}/${song.musicFile}`);
+
+  const details = [
+    `path="${displayPath}"`,
+    `musicFile="${song.musicFile}"`,
+    `dirHandle="${dirHandle.name}"`,
+    song.playlistRelPath ? `playlistRelPath="${song.playlistRelPath}"` : null,
+    rootRelDir ? `rootRelDir="${rootRelDir}"` : null,
+    song.dirHandle ? "dirHandleSource=song" : "dirHandleSource=rootFallback",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return { displayPath, details };
+}
+
+/** Log a failed audio load with path context and on-disk hints (for phone debugging). */
+async function logSongAudioLoadFailure(
+  song: Song,
+  dirHandle: FileSystemDirectoryHandle,
+  rootHandle: FileSystemDirectoryHandle | null,
+  err: unknown,
+): Promise<void> {
+  const { displayPath, details } = await describeSongAudioTarget(
+    song,
+    dirHandle,
+    rootHandle,
+  );
+  log.error(`Failed to load audio for "${song.title}" at ${displayPath}:`, err);
+  log.error(`Audio load context: ${details}`);
+
+  if (!(err instanceof DOMException && err.name === "NotFoundError")) return;
+
+  try {
+    const entries = await listDirectory(dirHandle);
+    const musicFiles = entries
+      .filter((e) => e.kind === "file" && isMusicFile(e.name))
+      .map((e) => e.name);
+    log.error(
+      `Directory "${dirHandle.name}" contains ${musicFiles.length} music file(s): ` +
+        (musicFiles.length > 0 ? musicFiles.join(", ") : "(none)"),
+    );
+
+    const storedLower = song.musicFile.toLowerCase();
+    const caseMatch = musicFiles.find((f) => f.toLowerCase() === storedLower);
+    if (caseMatch && caseMatch !== song.musicFile) {
+      log.error(
+        `Filename case mismatch: stored "${song.musicFile}" but disk has "${caseMatch}"`,
+      );
+    }
+
+    const labelPrefix = song.label.trim().toLowerCase();
+    if (labelPrefix) {
+      const sameLabel = musicFiles.filter((f) =>
+        f.toLowerCase().startsWith(labelPrefix),
+      );
+      if (sameLabel.length > 0 && !sameLabel.includes(song.musicFile)) {
+        log.error(`Same label on disk: ${sameLabel.join(", ")}`);
+      }
+    }
+  } catch (listErr) {
+    log.warn(`Could not list directory "${dirHandle.name}" for diagnosis:`, listErr);
+  }
 }
 
 /** Walk a slash-separated relative path from a root directory handle. */

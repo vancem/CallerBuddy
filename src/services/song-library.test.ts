@@ -12,7 +12,16 @@ vi.mock("./file-system-service.js", () => ({
   fileExists: vi.fn(),
 }));
 
-import { mergeSongs, scanDirectory, loadSongsJson, saveSongsJson } from "./song-library.js";
+import {
+  mergeSongs,
+  scanDirectory,
+  loadSongsJson,
+  saveSongsJson,
+  loadAndMergeSongs,
+  isSuspiciousScan,
+  applyConservativeOrphanCleanup,
+  resetOrphanRemovalPendingForTests,
+} from "./song-library.js";
 import { listDirectory, readTextFile, writeTextFile, fileExists } from "./file-system-service.js";
 
 // ---------------------------------------------------------------------------
@@ -40,6 +49,8 @@ function makeSong(overrides: Partial<Song> = {}): Song {
   };
 }
 
+const fakeDirHandle = { name: "test-folder" } as FileSystemDirectoryHandle;
+
 // ---------------------------------------------------------------------------
 // Tier 1: mergeSongs (pure function)
 // ---------------------------------------------------------------------------
@@ -57,11 +68,10 @@ describe("mergeSongs", () => {
     expect(result[0].orderAdded).toBe(1);
   });
 
-  it("retains persisted songs when scanned is empty (file may be temporarily missing)", () => {
+  it("omits persisted songs when scanned is empty (orphans handled separately)", () => {
     const persisted = [makeSong({ musicFile: "a.mp3", rank: 10 })];
     const result = mergeSongs([], persisted);
-    expect(result).toHaveLength(1);
-    expect(result[0].rank).toBe(10);
+    expect(result).toHaveLength(0);
   });
 
   it("preserves persisted metadata on overlap", () => {
@@ -91,16 +101,13 @@ describe("mergeSongs", () => {
     expect(result[0].rank).toBe(5);
   });
 
-  it("combines new scanned + missing persisted songs", () => {
+  it("adds new scanned songs and omits persisted songs missing from scan", () => {
     const scanned = [makeSong({ musicFile: "new.mp3" })];
     const persisted = [makeSong({ musicFile: "old.mp3", orderAdded: 20 })];
     const result = mergeSongs(scanned, persisted);
-    expect(result).toHaveLength(2);
-    const files = result.map((s) => s.musicFile);
-    expect(files).toContain("new.mp3");
-    expect(files).toContain("old.mp3");
-    expect(result.find((s) => s.musicFile === "new.mp3")!.orderAdded).toBe(21);
-    expect(result.find((s) => s.musicFile === "old.mp3")!.orderAdded).toBe(20);
+    expect(result).toHaveLength(1);
+    expect(result[0].musicFile).toBe("new.mp3");
+    expect(result[0].orderAdded).toBe(21);
   });
 
   it("assigns sequential orderAdded for multiple new songs in one merge", () => {
@@ -110,16 +117,102 @@ describe("mergeSongs", () => {
     ];
     const persisted = [makeSong({ musicFile: "x.mp3", orderAdded: 100 })];
     const result = mergeSongs(scanned, persisted);
+    expect(result).toHaveLength(2);
     expect(result.find((s) => s.musicFile === "a.mp3")!.orderAdded).toBe(101);
     expect(result.find((s) => s.musicFile === "b.mp3")!.orderAdded).toBe(102);
+  });
+});
+
+describe("isSuspiciousScan", () => {
+  it("flags empty scan with persisted songs", () => {
+    expect(isSuspiciousScan(0, 5, 5)).toBe(true);
+  });
+
+  it("flags when most persisted songs would be removed", () => {
+    expect(isSuspiciousScan(1, 4, 3)).toBe(true);
+  });
+
+  it("allows modest orphan cleanup", () => {
+    expect(isSuspiciousScan(9, 10, 1)).toBe(false);
+  });
+});
+
+describe("applyConservativeOrphanCleanup", () => {
+  beforeEach(() => {
+    resetOrphanRemovalPendingForTests();
+    vi.clearAllMocks();
+  });
+
+  it("keeps orphan on first miss and removes on second consecutive miss", async () => {
+    const orphan = makeSong({ musicFile: "old.mp3", rank: 10 });
+    const scanned = [makeSong({ musicFile: "keep.mp3" })];
+    const persisted = [makeSong({ musicFile: "keep.mp3" }), orphan];
+    const merged = mergeSongs(scanned, persisted);
+    vi.mocked(fileExists).mockResolvedValue(false);
+
+    const first = await applyConservativeOrphanCleanup(
+      merged,
+      scanned,
+      persisted,
+      fakeDirHandle,
+    );
+    expect(first.some((s) => s.musicFile === "old.mp3")).toBe(true);
+
+    const second = await applyConservativeOrphanCleanup(
+      merged,
+      scanned,
+      persisted,
+      fakeDirHandle,
+    );
+    expect(second.some((s) => s.musicFile === "old.mp3")).toBe(false);
+  });
+
+  it("keeps orphan when fileExists succeeds even if scan missed it", async () => {
+    const orphan = makeSong({ musicFile: "old.mp3", rank: 10 });
+    vi.mocked(fileExists).mockResolvedValue(true);
+
+    const result = await applyConservativeOrphanCleanup([], [], [orphan], fakeDirHandle);
+    expect(result).toHaveLength(1);
+    expect(result[0].rank).toBe(10);
+  });
+
+  it("skips removal on suspicious scan even when orphan was pending", async () => {
+    const orphan = makeSong({ musicFile: "old.mp3" });
+    vi.mocked(fileExists).mockResolvedValue(false);
+
+    await applyConservativeOrphanCleanup([], [], [orphan], fakeDirHandle);
+    const result = await applyConservativeOrphanCleanup([], [], [orphan], fakeDirHandle);
+    expect(result).toHaveLength(1);
+  });
+});
+
+describe("loadAndMergeSongs orphan cleanup", () => {
+  beforeEach(() => {
+    resetOrphanRemovalPendingForTests();
+    vi.clearAllMocks();
+    vi.mocked(fileExists).mockImplementation(async (_dir, filename) => filename === "songs.json");
+    vi.mocked(readTextFile).mockResolvedValue(JSON.stringify([]));
+    vi.mocked(writeTextFile).mockResolvedValue(undefined);
+  });
+
+  it("requires two scans before removing a missing orphan", async () => {
+    const orphan = makeSong({ musicFile: "old.mp3" });
+    const keep = makeSong({ musicFile: "keep.mp3" });
+    vi.mocked(readTextFile).mockResolvedValue(JSON.stringify([keep, orphan]));
+    vi.mocked(listDirectory).mockResolvedValue([{ name: "keep.mp3", kind: "file" }]);
+    vi.mocked(fileExists).mockImplementation(async (_dir, filename) => filename === "songs.json");
+
+    const first = await loadAndMergeSongs(fakeDirHandle);
+    expect(first.some((s) => s.musicFile === "old.mp3")).toBe(true);
+
+    const second = await loadAndMergeSongs(fakeDirHandle);
+    expect(second.some((s) => s.musicFile === "old.mp3")).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
 // Tier 3: scanDirectory (mocked file-system-service)
 // ---------------------------------------------------------------------------
-
-const fakeDirHandle = { name: "test-folder" } as FileSystemDirectoryHandle;
 
 describe("scanDirectory", () => {
   beforeEach(() => {

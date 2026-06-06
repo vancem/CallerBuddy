@@ -28,6 +28,32 @@ import { log, assert } from "./logger.js";
 
 const SONGS_JSON = "songs.json";
 
+/** Max fraction of persisted entries removable in one pass before scan is treated as suspicious. */
+const MAX_ORPHAN_DROP_FRACTION = 0.5;
+
+/** musicFile keys (lowercase) seen missing once; removed after a second consecutive miss. */
+const pendingOrphanRemovals = new Map<string, Set<string>>();
+
+/** Reset in-memory orphan confirmation state (for tests). */
+export function resetOrphanRemovalPendingForTests(): void {
+  pendingOrphanRemovals.clear();
+}
+
+function folderKey(dirHandle: FileSystemDirectoryHandle): string {
+  return dirHandle.name;
+}
+
+/** True when scan results are too incomplete to trust orphan removal. */
+export function isSuspiciousScan(
+  scannedCount: number,
+  persistedCount: number,
+  orphanCount: number,
+): boolean {
+  if (persistedCount === 0 || orphanCount === 0) return false;
+  if (scannedCount === 0) return true;
+  return orphanCount / persistedCount > MAX_ORPHAN_DROP_FRACTION;
+}
+
 // ---------------------------------------------------------------------------
 // Scanning
 // ---------------------------------------------------------------------------
@@ -126,8 +152,8 @@ export async function saveSongsJson(
  *    but update the lyricsFile if a matching lyrics file was found on disk.
  *  - New songs (on disk but not in persisted) get sequential orderAdded
  *    (maxOrderAdded(persisted) + 1, + 2, … in scan order).
- *  - Songs in persisted but missing on disk are kept (the file might be
- *    temporarily unavailable, e.g. cloud sync lag).
+ *  - Orphans (in persisted but not in scan) are handled separately by
+ *    {@link applyConservativeOrphanCleanup}.
  */
 export function mergeSongs(scanned: Song[], persisted: Song[]): Song[] {
   const persistedMap = new Map<string, Song>();
@@ -136,12 +162,10 @@ export function mergeSongs(scanned: Song[], persisted: Song[]): Song[] {
   }
 
   const merged: Song[] = [];
-  const seen = new Set<string>();
   let nextOrder = maxOrderAdded(persisted) + 1;
 
   for (const fresh of scanned) {
     const key = fresh.musicFile.toLowerCase();
-    seen.add(key);
     const existing = persistedMap.get(key);
     if (existing) {
       // Keep persisted metadata, refresh lyrics in case a new lyrics file appeared
@@ -152,14 +176,103 @@ export function mergeSongs(scanned: Song[], persisted: Song[]): Song[] {
     }
   }
 
-  // Retain songs that were persisted but not found on disk this time
-  for (const song of persisted) {
-    if (!seen.has(song.musicFile.toLowerCase())) {
-      merged.push(song);
+  return merged;
+}
+
+/**
+ * Reconcile persisted entries missing from the scan with conservative cleanup:
+ * verify each orphan with fileExists, skip removal on suspicious scans, and
+ * require two consecutive missed scans before deleting from songs.json.
+ */
+export async function applyConservativeOrphanCleanup(
+  merged: Song[],
+  scanned: Song[],
+  persisted: Song[],
+  dirHandle: FileSystemDirectoryHandle,
+): Promise<Song[]> {
+  const scannedKeys = new Set(scanned.map((s) => s.musicFile.toLowerCase()));
+  // Base result is scan-derived entries only; orphans are re-added only when kept.
+  const result = merged.filter((s) => scannedKeys.has(s.musicFile.toLowerCase()));
+  const resultKeys = new Set(result.map((s) => s.musicFile.toLowerCase()));
+  const orphans = persisted.filter((s) => !scannedKeys.has(s.musicFile.toLowerCase()));
+
+  const recovered: Song[] = [];
+  const stillMissing: Song[] = [];
+  for (const song of orphans) {
+    if (await fileExists(dirHandle, song.musicFile)) {
+      recovered.push(song);
+    } else {
+      stillMissing.push(song);
     }
   }
 
-  return merged;
+  const key = folderKey(dirHandle);
+  const pending = pendingOrphanRemovals.get(key) ?? new Set<string>();
+  for (const song of scanned) {
+    pending.delete(song.musicFile.toLowerCase());
+  }
+  for (const song of recovered) {
+    pending.delete(song.musicFile.toLowerCase());
+  }
+
+  const suspicious = isSuspiciousScan(
+    scanned.length,
+    persisted.length,
+    stillMissing.length,
+  );
+
+  const kept: Song[] = [...recovered];
+  const removed: Song[] = [];
+
+  if (suspicious) {
+    kept.push(...stillMissing);
+    if (stillMissing.length > 0) {
+      log.info(
+        `Skipped orphan removal for ${stillMissing.length} song(s): suspicious scan ` +
+          `(scanned=${scanned.length}, persisted=${persisted.length})`,
+      );
+    }
+  } else {
+    for (const song of stillMissing) {
+      const fileKey = song.musicFile.toLowerCase();
+      if (pending.has(fileKey)) {
+        removed.push(song);
+        pending.delete(fileKey);
+      } else {
+        pending.add(fileKey);
+        kept.push(song);
+      }
+    }
+  }
+
+  pendingOrphanRemovals.set(key, pending);
+
+  if (removed.length > 0) {
+    log.info(
+      `Removed ${removed.length} song(s) from songs.json with no audio file on disk: ` +
+        removed.map((s) => s.musicFile).join(", "),
+    );
+  }
+
+  const awaitingConfirm = stillMissing.filter((s) =>
+    pending.has(s.musicFile.toLowerCase()),
+  );
+  if (awaitingConfirm.length > 0 && !suspicious) {
+    log.info(
+      `Orphan removal pending confirmation (${awaitingConfirm.length}): ` +
+        awaitingConfirm.map((s) => s.musicFile).join(", "),
+    );
+  }
+
+  for (const song of kept) {
+    const fileKey = song.musicFile.toLowerCase();
+    if (!resultKeys.has(fileKey)) {
+      result.push(song);
+      resultKeys.add(fileKey);
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -178,14 +291,20 @@ export async function loadAndMergeSongs(
     `loadAndMergeSongs: scanned=${scanned.length}, persisted=${persisted.length}`,
   );
   const merged = mergeSongs(scanned, persisted);
-  log.info(`loadAndMergeSongs: merged=${merged.length}, saving songs.json…`);
+  const finalSongs = await applyConservativeOrphanCleanup(
+    merged,
+    scanned,
+    persisted,
+    dirHandle,
+  );
+  log.info(`loadAndMergeSongs: merged=${finalSongs.length}, saving songs.json…`);
 
   // Persist the merged result so new songs are saved
   try {
-    await saveSongsJson(dirHandle, merged);
+    await saveSongsJson(dirHandle, finalSongs);
     log.info("loadAndMergeSongs: songs.json saved");
   } catch (err) {
     log.warn("loadAndMergeSongs: could not save songs.json:", err);
   }
-  return merged;
+  return finalSongs;
 }
