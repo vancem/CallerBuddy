@@ -679,12 +679,7 @@ export class SongPlay extends LitElement {
     if (this.firstPlayTime === null) {
       this.firstPlayTime = Date.now();
       this.startElapsedTimer();
-      if (
-        this.song &&
-        isPatter(this.song) &&
-        this.patterTimerEnabled &&
-        !this.patterTimerRunning
-      ) {
+      if (this.song && isPatter(this.song) && !this.patterTimerRunning) {
         this.startPatterTimer();
       }
     }
@@ -1262,7 +1257,7 @@ export class SongPlay extends LitElement {
     callerBuddy.audio.seek(0);
     this.currentTime = 0;
     this.resetPatterTimer();
-    if (this.patterTimerEnabled && this.playing && this.song && isPatter(this.song)) {
+    if (this.playing && this.song && isPatter(this.song)) {
       this.startPatterTimer();
     }
   }
@@ -1450,7 +1445,7 @@ export class SongPlay extends LitElement {
   private onPatterMinutesChange(e: Event) {
     this.patterMinutes = Number((e.target as HTMLInputElement).value) || 6;
     this.resetPatterTimer();
-    if (this.patterTimerEnabled && this.playing && this.song && isPatter(this.song)) {
+    if (this.playing && this.song && isPatter(this.song)) {
       this.startPatterTimer();
     }
     void callerBuddy.updateSetting("patterTimerMinutes", this.patterMinutes);
@@ -1468,12 +1463,13 @@ export class SongPlay extends LitElement {
     if (this.patterTimerEnabled === enabled) return;
     this.patterTimerEnabled = enabled;
     if (!enabled) {
-      this.stopPatterTimer();
-    } else {
-      this.resetPatterTimer();
-      if (this.playing && this.song && isPatter(this.song)) {
-        this.startPatterTimer();
-      }
+      this.stopPatterAlarm();
+    } else if (
+      this.patterTimerRunning &&
+      this.patterCountdown <= 0 &&
+      this.patterAlarmFired
+    ) {
+      this.playPatterAlarm();
     }
   }
 
@@ -1486,10 +1482,7 @@ export class SongPlay extends LitElement {
       clearInterval(this.patterInterval);
       this.patterInterval = null;
     }
-    if (this.patterAlarmInterval !== null) {
-      clearInterval(this.patterAlarmInterval);
-      this.patterAlarmInterval = null;
-    }
+    this.stopPatterAlarm();
   }
 
   private startPatterTimer() {
@@ -1508,7 +1501,9 @@ export class SongPlay extends LitElement {
       this.patterCountdown--;
       if (this.patterCountdown === 0 && !this.patterAlarmFired) {
         this.patterAlarmFired = true;
-        this.playPatterAlarm();
+        if (this.patterTimerEnabled) {
+          this.playPatterAlarm();
+        }
       }
     }, 1000);
   }
@@ -1519,6 +1514,10 @@ export class SongPlay extends LitElement {
       clearInterval(this.patterInterval);
       this.patterInterval = null;
     }
+    this.stopPatterAlarm();
+  }
+
+  private stopPatterAlarm() {
     if (this.patterAlarmInterval !== null) {
       clearInterval(this.patterAlarmInterval);
       this.patterAlarmInterval = null;
@@ -1526,6 +1525,7 @@ export class SongPlay extends LitElement {
   }
 
   private playPatterAlarm() {
+    if (!this.patterTimerEnabled) return;
     callerBuddy.audio.playBeep();
     // Replay every 15 seconds (matches break timer)
     this.patterAlarmInterval = window.setInterval(() => {
@@ -1535,7 +1535,7 @@ export class SongPlay extends LitElement {
 
   /** Resume countdown when music resumes. */
   private resumePatterTimer() {
-    if (this.patterTimerEnabled && this.patterTimerRunning && this.playing && this.patterInterval === null) {
+    if (this.patterTimerRunning && this.playing && this.patterInterval === null) {
       this.startPatterTick();
     }
   }
@@ -1546,10 +1546,7 @@ export class SongPlay extends LitElement {
       clearInterval(this.patterInterval);
       this.patterInterval = null;
     }
-    if (this.patterAlarmInterval !== null) {
-      clearInterval(this.patterAlarmInterval);
-      this.patterAlarmInterval = null;
-    }
+    this.stopPatterAlarm();
   }
 
   // -- Elapsed timer --------------------------------------------------------

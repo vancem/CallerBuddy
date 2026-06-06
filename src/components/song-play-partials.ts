@@ -93,14 +93,15 @@ export function renderPatterControls(ctx: PatterControlsCtx): TemplateResult {
       ${ctx.showPatterTimerHelp ? html`
         <div class="ctx-help-panel">
           The patter timer counts down while the music plays. Set the
-          duration in minutes. When it reaches zero a chime sounds once,
-          and the counter continues into negative (red) so you can see
-          how far over time you are. Your duration setting is saved.
+          duration in minutes. When enabled, a chime sounds at zero and
+          repeats while overtime; the counter continues into negative
+          (red) either way so you can see how far over time you are.
+          Your duration setting is saved.
         </div>` : nothing}
-      <div class="patter-timer-controls ${ctx.patterTimerEnabled ? "" : "timer-disabled"}">
+      <div class="patter-timer-controls">
         <div class="patter-toggle-row">
           <label class="patter-toggle"
-            title="When enabled, the patter timer counts down while music plays (Ctrl+T)">
+            title="When enabled, plays a chime at zero and while overtime (Ctrl+T)">
             <input
               type="checkbox"
               .checked=${ctx.patterTimerEnabled}
@@ -121,7 +122,7 @@ export function renderPatterControls(ctx: PatterControlsCtx): TemplateResult {
             @keydown=${ctx.onPatterMinutesKeydown}
           />
         </div>
-        <div class="patter-countdown ${!ctx.patterTimerEnabled ? "disabled" : ""} ${ctx.patterCountdown <= 0 ? "overtime" : ""}">
+        <div class="patter-countdown ${ctx.patterCountdown <= 0 ? "overtime" : ""}">
           ${formatCountdown(ctx.patterCountdown)}
         </div>
       </div>

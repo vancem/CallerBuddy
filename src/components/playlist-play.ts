@@ -134,7 +134,7 @@ export class PlaylistPlay extends LitElement {
       this.toggleBreakTimerEnabled();
       return;
     }
-    if (e.key.toLowerCase() === "s" && this.breakTimerEnabled) {
+    if (e.key.toLowerCase() === "s") {
       e.preventDefault();
       this.onBreakStartStopClick();
       return;
@@ -281,12 +281,12 @@ export class PlaylistPlay extends LitElement {
             <span class="clock-value">${this.clockTime}</span>
           </div>
 
-          <div class="break-section ${this.breakTimerEnabled ? "" : "timer-disabled"}">
+          <div class="break-section">
             <h3>Break Timer</h3>
             <div class="break-controls">
               <div class="break-toggle-row">
                 <label class="break-toggle"
-                  title="When enabled, the break timer counts down automatically after each song ends (Ctrl+T)">
+                  title="When enabled, plays a chime at zero and while overtime (Ctrl+T)">
                   <input
                     type="checkbox"
                     .checked=${this.breakTimerEnabled}
@@ -298,7 +298,6 @@ export class PlaylistPlay extends LitElement {
                   type="button"
                   class="break-start-stop"
                   title="Start or stop break timer (S)"
-                  ?disabled=${!this.breakTimerEnabled}
                   @click=${this.onBreakStartStopClick}
                 >
                   ${this.breakTimerRunning ? "Stop" : "Start"}
@@ -314,13 +313,12 @@ export class PlaylistPlay extends LitElement {
                   .value=${String(this.breakMinutes)}
                   @change=${this.onBreakMinutesChange}
                   @keydown=${this.onBreakMinutesKeydown}
-                  ?disabled=${!this.breakTimerEnabled}
                 />
               </div>
-              <div class="countdown time-row ${this.breakTimerRunning && this.breakTimerEnabled ? "" : "countdown-idle"}">
+              <div class="countdown time-row ${this.breakTimerRunning ? "" : "countdown-idle"}">
                 <span class="time-label">Time left</span>
                 <span class="time-value ${this.breakTimerRunning && this.breakCountdown <= 0 ? "alarm" : ""}">
-                 ${this.breakTimerRunning && this.breakTimerEnabled
+                 ${this.breakTimerRunning
                     ? formatCountdown(this.breakCountdown)
                     : formatCountdown(Math.round(this.breakMinutes * 60))}
                 </span>
@@ -379,9 +377,7 @@ export class PlaylistPlay extends LitElement {
   }
 
   private onSongEnded = () => {
-    if (this.breakTimerEnabled) {
-      this.startBreakTimer();
-    }
+    this.startBreakTimer();
   };
 
   private resetPlayedSongs() {
@@ -411,14 +407,16 @@ export class PlaylistPlay extends LitElement {
     if (this.breakTimerEnabled === enabled) return;
     this.breakTimerEnabled = enabled;
     if (!enabled) {
-      this.stopBreakTimer();
+      this.stopBreakAlarm();
+    } else if (this.breakTimerRunning && this.breakCountdown <= 0) {
+      this.playBreakAlarm();
     }
   }
 
   private onBreakStartStopClick() {
     if (this.breakTimerRunning) {
       this.stopBreakTimer();
-    } else if (this.breakTimerEnabled) {
+    } else {
       this.startBreakTimer();
     }
   }
@@ -446,13 +444,18 @@ export class PlaylistPlay extends LitElement {
     this.breakCountdown = Math.round(this.breakMinutes * 60);
     this.breakTimerRunning = true;
     this.breakPausedByBlur = false;
+    this.startBreakTick();
+    void this.breakWakeLock.acquire();
+  }
+
+  private startBreakTick() {
+    if (this.breakInterval !== null) return;
     this.breakInterval = window.setInterval(() => {
       this.breakCountdown--;
-      if (this.breakCountdown === 0) {
+      if (this.breakCountdown === 0 && this.breakTimerEnabled) {
         this.playBreakAlarm();
       }
     }, 1000);
-    void this.breakWakeLock.acquire();
   }
 
   private stopBreakTimer() {
@@ -462,6 +465,11 @@ export class PlaylistPlay extends LitElement {
       clearInterval(this.breakInterval);
       this.breakInterval = null;
     }
+    this.stopBreakAlarm();
+    void this.breakWakeLock.release();
+  }
+
+  private stopBreakAlarm() {
     if (this.breakAlarmInterval !== null) {
       clearInterval(this.breakAlarmInterval);
       this.breakAlarmInterval = null;
@@ -470,7 +478,6 @@ export class PlaylistPlay extends LitElement {
       clearTimeout(this.breakAlarmStopTimeout);
       this.breakAlarmStopTimeout = null;
     }
-    void this.breakWakeLock.release();
   }
 
   /** Pause the break timer tick without resetting countdown (used on window blur). */
@@ -479,24 +486,17 @@ export class PlaylistPlay extends LitElement {
       clearInterval(this.breakInterval);
       this.breakInterval = null;
     }
-    if (this.breakAlarmInterval !== null) {
-      clearInterval(this.breakAlarmInterval);
-      this.breakAlarmInterval = null;
-    }
+    this.stopBreakAlarm();
   }
 
   /** Resume the break timer tick from where it left off (used on window focus). */
   private resumeBreakTimer() {
     if (!this.breakTimerRunning || this.breakInterval !== null) return;
-    this.breakInterval = window.setInterval(() => {
-      this.breakCountdown--;
-      if (this.breakCountdown === 0) {
-        this.playBreakAlarm();
-      }
-    }, 1000);
+    this.startBreakTick();
   }
 
   private playBreakAlarm() {
+    if (!this.breakTimerEnabled) return;
     callerBuddy.audio.playBeep();
     // Replay every 15 seconds; stop after break-length wall time so it cannot run forever.
     this.breakAlarmInterval = window.setInterval(() => {
