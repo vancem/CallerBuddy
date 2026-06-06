@@ -41,6 +41,10 @@ import {
   tempoRatioFromSong,
 } from "./utils/play-history.js";
 import { log } from "./services/logger.js";
+import {
+  normalizePlaylistRelPath,
+  normalizePlaylistRelPaths,
+} from "./utils/playlist-path.js";
 import JSZip from "jszip";
 import {
   analyzeZipForOnboarding,
@@ -315,6 +319,9 @@ export class CallerBuddy {
       playlistPaths: paths,
       playlistPlayedPaths: playedOut,
     };
+    // #region agent log
+    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:persistPlaylistPaths',message:'persisting paths',data:{paths,playedOut,rootName:rootHandle.name},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     await this.saveSettings();
     log.info(`Playlist persisted: ${paths.length} song(s), ${playedOut.length} marked played`);
   }
@@ -323,20 +330,37 @@ export class CallerBuddy {
    * Set {@link Song.playlistRelPath} from CallerBuddyRoot + song folder (same rules as persist).
    */
   async ensurePlaylistRelPathForSong(song: Song): Promise<void> {
-    if (song.playlistRelPath) return;
     const rootHandle = this.state.rootHandle;
     if (!rootHandle) return;
+    const rootName = rootHandle.name;
     const dirHandle = song.dirHandle ?? rootHandle;
+    let rawPath: string | undefined;
     try {
       const segments = await rootHandle.resolve(dirHandle);
+      // #region agent log
+      fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:ensurePlaylistRelPathForSong',message:'resolve segments',data:{musicFile:song.musicFile,segments,existingPath:song.playlistRelPath,rootName},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       if (segments && segments.length > 0) {
-        song.playlistRelPath = segments.join("/") + "/" + song.musicFile;
-      } else {
-        song.playlistRelPath = song.musicFile;
+        const decodedSegments = segments.map((s) => {
+          try {
+            return decodeURIComponent(s);
+          } catch {
+            return s;
+          }
+        });
+        rawPath = decodedSegments.join("/") + "/" + song.musicFile;
       }
     } catch {
-      song.playlistRelPath = song.musicFile;
+      /* fall through to normalize existing or musicFile */
     }
+
+    if (!rawPath) {
+      rawPath = song.playlistRelPath ?? song.musicFile;
+    }
+    song.playlistRelPath = normalizePlaylistRelPath(rawPath, rootName);
+    // #region agent log
+    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:ensurePlaylistRelPathForSong',message:'normalized path',data:{musicFile:song.musicFile,rawPath,normalized:song.playlistRelPath,rootName},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
   }
 
   /** Add to playlist after resolving {@link Song.playlistRelPath}. */
@@ -362,7 +386,32 @@ export class CallerBuddy {
    * each referenced subfolder to get full metadata.
    */
   private async restorePlaylist(rootHandle: FileSystemDirectoryHandle): Promise<void> {
-    const paths = this.state.settings.playlistPaths;
+    const rootName = rootHandle.name;
+    const rawPaths = this.state.settings.playlistPaths;
+    const rawPlayed = this.state.settings.playlistPlayedPaths;
+    const paths = normalizePlaylistRelPaths(rawPaths, rootName);
+    const playedPaths = normalizePlaylistRelPaths(rawPlayed, rootName);
+
+    // #region agent log
+    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:restorePlaylist',message:'path normalization',data:{rawPaths,paths,rawPlayed,playedPaths,rootName},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+
+    const pathsNeedMigration =
+      paths.length !== rawPaths.length ||
+      paths.some((p, i) => p !== rawPaths[i]);
+    const playedNeedMigration =
+      playedPaths.length !== rawPlayed.length ||
+      playedPaths.some((p, i) => p !== rawPlayed[i]);
+    if (pathsNeedMigration || playedNeedMigration) {
+      this.state.settings = {
+        ...this.state.settings,
+        playlistPaths: paths,
+        playlistPlayedPaths: playedPaths,
+      };
+      await this.saveSettings();
+      log.info("restorePlaylist: migrated playlist paths to CallerBuddyRoot-relative form");
+    }
+
     if (paths.length === 0) {
       this.state.clearPlaylist();
       return;
@@ -376,6 +425,10 @@ export class CallerBuddy {
       const slashIdx = p.lastIndexOf("/");
       foldersToLoad.add(slashIdx >= 0 ? p.substring(0, slashIdx) : "");
     }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:restorePlaylist',message:'folders to load',data:{folders:[...foldersToLoad]},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
 
     for (const folder of foldersToLoad) {
       try {
@@ -393,22 +446,31 @@ export class CallerBuddy {
         }
       } catch (err) {
         log.warn(`restorePlaylist: could not load folder "${folder}":`, err);
+        // #region agent log
+        fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:restorePlaylist',message:'folder load failed',data:{folder,error:String(err)},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
       }
     }
 
     const restored: Song[] = [];
+    const missed: string[] = [];
     for (const p of paths) {
       const song = songsByPath.get(p.toLowerCase());
       if (song) {
         restored.push({ ...song, playlistRelPath: p });
       } else {
+        missed.push(p);
         log.warn(`restorePlaylist: song not found for path "${p}", skipping`);
       }
     }
 
+    // #region agent log
+    fetch('http://127.0.0.1:7528/ingest/44534f91-bfe0-4d1b-a5e2-09852bf1275f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f72e88'},body:JSON.stringify({sessionId:'f72e88',location:'caller-buddy.ts:restorePlaylist',message:'restore result',data:{restoredCount:restored.length,total:paths.length,missed,availableKeys:[...songsByPath.keys()]},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+
     if (restored.length > 0) {
       this.state.playlist = restored;
-      this.state.hydratePlayedPlaylistFromPaths(this.state.settings.playlistPlayedPaths);
+      this.state.hydratePlayedPlaylistFromPaths(playedPaths);
       log.info(`restorePlaylist: restored ${restored.length} of ${paths.length} song(s)`);
     } else {
       this.state.clearPlaylist();
