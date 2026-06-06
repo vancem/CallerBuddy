@@ -140,8 +140,9 @@ export class AppShell extends LitElement {
       /* ignore */
     }
 
-    // Use in-app tab back navigation if available; otherwise ignore the press.
-    if (!callerBuddy.state.peekBackTarget()) {
+    // Song play: same as Esc/End (close player). Otherwise use tab back stack.
+    const active = callerBuddy.state.getActiveTab();
+    if (active?.type !== TabType.SongPlay && !callerBuddy.state.peekBackTarget()) {
       log.info(`[ui] back-button ignored (no in-app back target)`);
       return;
     }
@@ -341,14 +342,9 @@ export class AppShell extends LitElement {
 
   private async handleGoBack() {
     const active = callerBuddy.state.getActiveTab();
-    const targetId = callerBuddy.state.peekBackTarget();
-    if (
-      active?.type === TabType.SongPlay &&
-      targetId &&
-      targetId !== callerBuddy.state.activeTabId
-    ) {
-      const ok = await callerBuddy.runSongPlayUnsavedGuard();
-      if (!ok) return;
+    if (active?.type === TabType.SongPlay) {
+      await callerBuddy.closeSongPlay();
+      return;
     }
     callerBuddy.state.goBack();
   }
