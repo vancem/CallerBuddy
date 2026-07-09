@@ -184,6 +184,34 @@ describe("AppState", () => {
       expect(state.playlist).toEqual([]);
       expect(state.getPlayedSongPaths().size).toBe(0);
     });
+
+    it("clearPlaylistWithBackup saves then clears; restore recovers list and played state", () => {
+      const b = makeSong("b.mp3");
+      state.addToPlaylist(a);
+      state.addToPlaylist(b);
+      state.markSongPlayed(a);
+      state.clearPlaylistWithBackup();
+      expect(state.playlist).toEqual([]);
+      expect(state.hasClearedPlaylistBackup()).toBe(true);
+      state.restoreClearedPlaylist();
+      expect(state.playlist).toEqual([a, b]);
+      expect(state.isPlaylistEntryPlayed(a)).toBe(true);
+      expect(state.isPlaylistEntryPlayed(b)).toBe(false);
+    });
+
+    it("clearPlaylistWithBackup overwrites prior backup", () => {
+      state.addToPlaylist(a);
+      state.clearPlaylistWithBackup();
+      state.addToPlaylist(makeSong("c.mp3"));
+      state.clearPlaylistWithBackup();
+      state.restoreClearedPlaylist();
+      expect(state.playlist.map((s) => s.musicFile)).toEqual(["c.mp3"]);
+    });
+
+    it("clearPlaylistWithBackup is a no-op on an empty playlist", () => {
+      state.clearPlaylistWithBackup();
+      expect(state.hasClearedPlaylistBackup()).toBe(false);
+    });
   });
 
   // -----------------------------------------------------------------------

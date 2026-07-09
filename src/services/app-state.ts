@@ -91,6 +91,13 @@ export class AppState extends EventTarget {
   /** Lowercased CallerBuddyRoot-relative playlist keys (paths or musicFile). */
   private playedSongPaths = new Set<string>();
 
+  /**
+   * Snapshot from the last explicit Clear in the playlist editor (in-memory only).
+   * Overwritten on each Clear; used for one-step Restore when the playlist is empty.
+   */
+  private clearedPlaylistBackup: Song[] = [];
+  private clearedPlaylistPlayedPaths = new Set<string>();
+
   // -- Mutation helpers (fire events) ---------------------------------------
 
   emit(eventName: string): void {
@@ -194,6 +201,27 @@ export class AppState extends EventTarget {
   clearPlaylist(): void {
     this.playlist = [];
     this.playedSongPaths.clear();
+    this.emit(StateEvents.PLAYLIST_CHANGED);
+  }
+
+  /** True when the editor can offer Restore after a Clear. */
+  hasClearedPlaylistBackup(): boolean {
+    return this.clearedPlaylistBackup.length > 0;
+  }
+
+  /** Save the current playlist, then clear (overwrites any prior backup). */
+  clearPlaylistWithBackup(): void {
+    if (this.playlist.length === 0) return;
+    this.clearedPlaylistBackup = [...this.playlist];
+    this.clearedPlaylistPlayedPaths = new Set(this.playedSongPaths);
+    this.clearPlaylist();
+  }
+
+  /** Restore the playlist saved by {@link clearPlaylistWithBackup}. */
+  restoreClearedPlaylist(): void {
+    if (this.clearedPlaylistBackup.length === 0) return;
+    this.playlist = [...this.clearedPlaylistBackup];
+    this.playedSongPaths = new Set(this.clearedPlaylistPlayedPaths);
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 

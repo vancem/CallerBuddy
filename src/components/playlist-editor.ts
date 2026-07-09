@@ -280,7 +280,12 @@ export class PlaylistEditor extends LitElement {
     if (isClearShortcut && !inTypingControl && !this.loading) {
       if (callerBuddy.state.playlist.length > 0) {
         e.preventDefault();
-        callerBuddy.state.clearPlaylist();
+        callerBuddy.state.clearPlaylistWithBackup();
+        return;
+      }
+      if (callerBuddy.state.hasClearedPlaylistBackup()) {
+        e.preventDefault();
+        callerBuddy.state.restoreClearedPlaylist();
         return;
       }
     }
@@ -545,6 +550,8 @@ export class PlaylistEditor extends LitElement {
   render() {
     const songs = this.getFilteredSongs();
     const playlist = callerBuddy.state.playlist;
+    const canRestore =
+      playlist.length === 0 && callerBuddy.state.hasClearedPlaylistBackup();
 
     const isPortrait = this.isEditorPortraitLayout();
     const playlistPanelStyle = isPortrait
@@ -613,9 +620,20 @@ export class PlaylistEditor extends LitElement {
                   <button
                     class="secondary"
                     title="Clear playlist (Ctrl+C)"
-                    @click=${() => callerBuddy.state.clearPlaylist()}
+                    @click=${this.onClearPlaylist}
                   >
                     Clear
+                  </button>
+                `
+              : nothing}
+            ${canRestore
+              ? html`
+                  <button
+                    class="secondary"
+                    title="Restore cleared playlist (Ctrl+C)"
+                    @click=${this.onRestorePlaylist}
+                  >
+                    Restore
                   </button>
                 `
               : nothing}
@@ -1329,6 +1347,14 @@ export class PlaylistEditor extends LitElement {
 
   private onPlayPlaylist() {
     callerBuddy.openPlaylistPlay();
+  }
+
+  private onClearPlaylist() {
+    callerBuddy.state.clearPlaylistWithBackup();
+  }
+
+  private onRestorePlaylist() {
+    callerBuddy.state.restoreClearedPlaylist();
   }
 
   static styles = css`
