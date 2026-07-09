@@ -3,8 +3,9 @@
  *
  * Shows the playlist with selection highlighting, break timer, and clock.
  * Played songs show a checked checkbox. The selected song defaults to the first
- * unplayed song; clicking a song overrides the selection. Play/Enter/Space
- * plays the selected song. Ctrl+T toggles the break timer on/off; S starts/stops
+ * unplayed song; clicking a song overrides the selection. ArrowUp/ArrowDown
+ * move the selection. Play/Enter/Space plays the selected song. Ctrl+T toggles
+ * the break timer on/off; S starts/stops
  * the break timer countdown. Esc closes the tab.
  *
  * See CallerBuddySpec.md §"PlaylistPlay UI".
@@ -139,6 +140,10 @@ export class PlaylistPlay extends LitElement {
       this.onBreakStartStopClick();
       return;
     }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      this.moveSelection(e.key === "ArrowDown" ? 1 : -1, e);
+      return;
+    }
     if (e.key !== "Enter" && e.key !== " ") return;
     if (callerBuddy.state.playlist.length === 0 || callerBuddy.state.currentSong !== null || this.isStartingPlayback) return;
     e.preventDefault();
@@ -177,6 +182,31 @@ export class PlaylistPlay extends LitElement {
     const playlist = callerBuddy.state.playlist;
     const i = playlist.findIndex((s) => !callerBuddy.state.isPlaylistEntryPlayed(s));
     return i >= 0 ? i : -1; // -1 = all played
+  }
+
+  /** Move keyboard selection up or down in the playlist. */
+  private moveSelection(delta: 1 | -1, e: KeyboardEvent) {
+    const playlist = callerBuddy.state.playlist;
+    if (playlist.length === 0) return;
+    e.preventDefault();
+    let idx = this.getSelectedIndex();
+    if (idx < 0) {
+      idx = delta > 0 ? 0 : playlist.length - 1;
+    } else {
+      idx = Math.min(playlist.length - 1, Math.max(0, idx + delta));
+    }
+    this.selectedIndex = idx;
+    queueMicrotask(() => this.scrollSelectedItemIntoView());
+  }
+
+  private scrollSelectedItemIntoView() {
+    const idx = this.getSelectedIndex();
+    if (idx < 0) return;
+    const items = this.renderRoot.querySelectorAll(".pl-item");
+    (items[idx] as HTMLElement | undefined)?.scrollIntoView({
+      block: "nearest",
+      behavior: "auto",
+    });
   }
 
   render() {
