@@ -87,7 +87,6 @@ function generateLyricsTemplate(song: Song): string {
 
 @customElement("song-play")
 export class SongPlay extends LitElement {
-  @state() private currentTime = 0;
   @state() private duration = 0;
   @state() private playing = false;
   @state() private lyrics = "";
@@ -168,7 +167,8 @@ export class SongPlay extends LitElement {
   /** Playback position in seconds (source position / tempo ratio). */
   private getEffectiveCurrentTime(): number {
     const ratio = this.getTempoRatio();
-    return ratio > 0 ? this.currentTime / ratio : this.currentTime;
+    const position = callerBuddy.audio.getCurrentTime();
+    return ratio > 0 ? position / ratio : position;
   }
 
   /** Effective BPM (original + delta) for display. */
@@ -216,9 +216,8 @@ export class SongPlay extends LitElement {
       }
     }
 
-    // Listen for time updates from audio engine
-    callerBuddy.audio.onTimeUpdate((t) => {
-      this.currentTime = t;
+    // Re-render on position/duration updates; position lives in the audio engine.
+    callerBuddy.audio.onTimeUpdate(() => {
       const newDur = callerBuddy.audio.getDuration();
       const durChanged = newDur !== this.duration;
       this.duration = newDur;
@@ -227,6 +226,7 @@ export class SongPlay extends LitElement {
         this.syncImplicitPatterLoopIfNeeded();
       }
       callerBuddy.tickSongPlaySession(callerBuddy.audio.isPlaying());
+      this.requestUpdate();
     });
 
     callerBuddy.audio.onEnded(() => {
@@ -1255,7 +1255,6 @@ export class SongPlay extends LitElement {
 
   private onRestart() {
     callerBuddy.audio.seek(0);
-    this.currentTime = 0;
     this.resetPatterTimer();
     if (this.playing && this.song && isPatter(this.song)) {
       this.startPatterTimer();
@@ -1263,14 +1262,13 @@ export class SongPlay extends LitElement {
   }
 
   private onSeekDelta(seconds: number) {
-    const newTime = Math.max(0, Math.min(this.currentTime + seconds, this.duration));
+    const position = callerBuddy.audio.getCurrentTime();
+    const newTime = Math.max(0, Math.min(position + seconds, this.duration));
     callerBuddy.audio.seek(newTime);
-    this.currentTime = newTime;
   }
 
   private onGoToEnd() {
     callerBuddy.audio.seek(this.duration);
-    this.currentTime = this.duration;
     this.stopPatterTimer();
     callerBuddy.closeSongPlay();
   }
@@ -1280,7 +1278,6 @@ export class SongPlay extends LitElement {
     const ratio = this.getTempoRatio();
     const sourceTime = effectiveValue * ratio;
     callerBuddy.audio.seek(sourceTime);
-    this.currentTime = sourceTime;
   }
 
   // -- Adjustment handlers --------------------------------------------------
@@ -1375,10 +1372,11 @@ export class SongPlay extends LitElement {
   }
 
   private setLoopFromCurrent(which: "start" | "end") {
+    const position = callerBuddy.audio.getCurrentTime();
     if (which === "start") {
-      this.loopStart = this.currentTime;
+      this.loopStart = position;
     } else {
-      this.loopEnd = this.currentTime;
+      this.loopEnd = position;
     }
     this.clampPatterLoopIfNeeded();
     this.applyLoopPoints();

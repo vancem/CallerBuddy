@@ -123,6 +123,26 @@ const SHIFTER_BUFFER_SIZE = 4096;
  */
 const TIME_UPDATE_INTERVAL_MS = 100;
 
+/**
+ * Map linear playback time to the current position in the song file (seconds).
+ * Before the loop region, returns the actual file position; within the loop,
+ * wraps between loopStart and loopEnd.
+ */
+export function songPositionSeconds(
+  absoluteSeconds: number,
+  loopStart: number,
+  loopEnd: number,
+): number {
+  if (loopEnd <= 0 || loopEnd <= loopStart) {
+    return absoluteSeconds;
+  }
+  if (absoluteSeconds < loopStart) {
+    return absoluteSeconds;
+  }
+  const loopLen = loopEnd - loopStart;
+  return loopStart + ((absoluteSeconds - loopStart) % loopLen);
+}
+
 // ---------------------------------------------------------------------------
 // Web Audio + SoundTouchJS implementation
 // ---------------------------------------------------------------------------
@@ -159,8 +179,8 @@ export class WebAudioEngine implements AudioEngine {
   private timeUpdateIntervalId: ReturnType<typeof setInterval> | null = null;
 
   // --- Playback tracking ---
-  /** The most recent time (seconds) reported by the PitchShifter. */
-  private lastReportedTime = 0;
+  /** Current position in the song file (seconds). Single source of truth for UI. */
+  private positionSeconds = 0;
   /** Whether we have already fired the ended callback for the current playback. */
   private endedFired = false;
 
@@ -185,7 +205,7 @@ export class WebAudioEngine implements AudioEngine {
     const t0 = performance.now();
     this.audioBuffer = await this.context.decodeAudioData(audioData);
     const t1 = performance.now();
-    this.lastReportedTime = 0;
+    this.positionSeconds = 0;
     this.endedFired = false;
     log.info(
       `Audio loaded: ${this.audioBuffer.duration.toFixed(1)}s, ` +
@@ -239,9 +259,9 @@ export class WebAudioEngine implements AudioEngine {
       this.shifter.disconnect();
       this.connected = false;
     }
+    this.syncPositionFromPlayback();
     if (this.sourceNode) {
-      // Stopping the source is the only way to pause; remember current position.
-      this.lastReportedTime = this.getCurrentTime();
+      // Stopping the source is the only way to pause.
       try {
         this.sourceNode.onended = null;
         this.sourceNode.stop();
@@ -280,7 +300,7 @@ export class WebAudioEngine implements AudioEngine {
       this.sourceNode = null;
     }
     this.destroyShifter();
-    this.lastReportedTime = 0;
+    this.positionSeconds = 0;
     this.playing = false;
     this.endedFired = false;
     this.stopTimeUpdates();
@@ -295,7 +315,7 @@ export class WebAudioEngine implements AudioEngine {
       // PitchShifter.percentagePlayed setter expects 0–1 fraction
       const fraction = clampedTime / duration;
       this.shifter.percentagePlayed = fraction;
-      this.lastReportedTime = clampedTime;
+      this.positionSeconds = clampedTime;
       // Read-back uses getter which returns 0–100 (asymmetric API)
       const readBackPct = this.shifter.percentagePlayed;
       log.info(
@@ -303,7 +323,7 @@ export class WebAudioEngine implements AudioEngine {
           `set fraction=${fraction.toFixed(4)}, readBackPct=${readBackPct.toFixed(4)}`,
       );
     } else {
-      this.lastReportedTime = clampedTime;
+      this.positionSeconds = clampedTime;
     }
 
     // Raw mode: restart source at the desired offset when playing.
@@ -335,12 +355,7 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   getCurrentTime(): number {
-    if (this.sourceNode && this.playing) {
-      const elapsed = this.context.currentTime - this.rawStartContextTime;
-      const absolute = Math.max(0, this.rawStartOffsetSeconds + elapsed);
-      return this.wrapLoopPosition(absolute, this.rawStartOffsetSeconds, elapsed);
-    }
-    return this.lastReportedTime;
+    return this.positionSeconds;
   }
 
   getDuration(): number {
@@ -485,8 +500,8 @@ export class WebAudioEngine implements AudioEngine {
     // sourcePosition the single source of truth for playback position.
 
     // If we had a saved position, seek to it (setter expects 0–1 fraction)
-    if (this.lastReportedTime > 0 && this.getDuration() > 0) {
-      const fraction = this.lastReportedTime / this.getDuration();
+    if (this.positionSeconds > 0 && this.getDuration() > 0) {
+      const fraction = this.positionSeconds / this.getDuration();
       this.shifter.percentagePlayed = fraction;
     }
 
@@ -532,42 +547,29 @@ export class WebAudioEngine implements AudioEngine {
     this.stopTimeUpdates();
     const tick = () => {
       if (this.playing) {
-        if (this.shifter) {
-          // Read current position directly from the shifter's internal state.
-          // NOTE: SoundTouchJS has an asymmetric API:
-          //   - setter expects a 0–1 fraction (see seek())
-          //   - getter returns a 0–100 percentage
-          // So we divide by 100 here to convert to a fraction, then multiply by
-          // duration to get seconds.
-          const duration = this.getDuration();
-          if (duration > 0) {
-            const pctRaw = this.shifter.percentagePlayed; // 0–100
-            this.lastReportedTime = (pctRaw / 100) * duration;
+        this.syncPositionFromPlayback();
 
-            // Throttled position log (about once per second)
-            const now = Date.now();
-            if (now - this.lastPositionLogTime >= 1000) {
-              this.lastPositionLogTime = now;
-              log.info(
-                `position: pctRaw=${pctRaw.toFixed(4)}, time=${this.lastReportedTime.toFixed(2)}s, duration=${duration.toFixed(2)}s`,
-              );
-            }
-          }
+        // Throttled position log (about once per second)
+        const now = Date.now();
+        if (now - this.lastPositionLogTime >= 1000) {
+          this.lastPositionLogTime = now;
+          log.info(
+            `position: time=${this.positionSeconds.toFixed(2)}s, duration=${this.getDuration().toFixed(2)}s`,
+          );
+        }
 
-          // Check loop points
-          if (
-            this.loopEnd > 0 &&
-            this.loopEnd > this.loopStart &&
-            this.lastReportedTime >= this.loopEnd
-          ) {
-            this.seek(this.loopStart);
-          }
-        } else if (this.sourceNode) {
-          this.lastReportedTime = this.getCurrentTime();
+        // Shifter path: loop by seeking (raw path loops in the browser).
+        if (
+          this.shifter &&
+          this.loopEnd > 0 &&
+          this.loopEnd > this.loopStart &&
+          this.positionSeconds >= this.loopEnd
+        ) {
+          this.seek(this.loopStart);
         }
       }
 
-      this.timeUpdateCb?.(this.lastReportedTime);
+      this.timeUpdateCb?.(this.positionSeconds);
     };
     tick();
     this.timeUpdateIntervalId = window.setInterval(tick, TIME_UPDATE_INTERVAL_MS);
@@ -577,29 +579,29 @@ export class WebAudioEngine implements AudioEngine {
     return this.pitchHalfSteps === 0 && Math.abs(this.tempoRatio - 1.0) < 1e-6;
   }
 
-  /**
-   * Map monotonic elapsed playback time to the current position within the
-   * loop region. Raw AudioBufferSourceNode looping is handled by the browser;
-   * this keeps UI position and the progress bar in sync with what you hear.
-   */
-  private wrapLoopPosition(
-    absoluteSeconds: number,
-    startOffsetSeconds: number,
-    elapsedSeconds: number,
-  ): number {
-    if (this.loopEnd <= 0 || this.loopEnd <= this.loopStart) {
-      return absoluteSeconds;
+  /** Update {@link positionSeconds} from the active playback backend. */
+  private syncPositionFromPlayback(): void {
+    const duration = this.getDuration();
+    if (this.shifter && duration > 0) {
+      // SoundTouchJS: setter uses 0–1 fraction, getter returns 0–100 percentage.
+      const pctRaw = this.shifter.percentagePlayed;
+      this.positionSeconds = (pctRaw / 100) * duration;
+      return;
     }
-    const loopLen = this.loopEnd - this.loopStart;
-    const offsetInLoop = startOffsetSeconds - this.loopStart;
-    const positionInLoop =
-      (((offsetInLoop + elapsedSeconds) % loopLen) + loopLen) % loopLen;
-    return this.loopStart + positionInLoop;
+    if (this.sourceNode) {
+      const elapsed = this.context.currentTime - this.rawStartContextTime;
+      const absolute = Math.max(0, this.rawStartOffsetSeconds + elapsed);
+      this.positionSeconds = songPositionSeconds(
+        absolute,
+        this.loopStart,
+        this.loopEnd,
+      );
+    }
   }
 
   private startRawPlayback(offsetSeconds?: number): void {
     if (!this.audioBuffer) return;
-    const offset = offsetSeconds ?? this.lastReportedTime;
+    const offset = offsetSeconds ?? this.positionSeconds;
     const clamped = Math.max(0, Math.min(offset, this.audioBuffer.duration));
 
     // Ensure any shifter path is down before starting raw playback.
@@ -652,7 +654,7 @@ export class WebAudioEngine implements AudioEngine {
     this.sourceNode = src;
     this.rawStartOffsetSeconds = clamped;
     this.rawStartContextTime = this.context.currentTime;
-    this.lastReportedTime = clamped;
+    this.positionSeconds = clamped;
 
     try {
       src.start(0, clamped);
@@ -667,7 +669,8 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   private switchRawToShifterAtCurrentTime(): void {
-    const t = this.getCurrentTime();
+    this.syncPositionFromPlayback();
+    const t = this.positionSeconds;
     if (this.sourceNode) {
       try {
         this.sourceNode.onended = null;
@@ -682,7 +685,7 @@ export class WebAudioEngine implements AudioEngine {
       }
       this.sourceNode = null;
     }
-    this.lastReportedTime = t;
+    this.positionSeconds = t;
     this.createShifter();
     if (this.shifter && !this.connected) {
       this.shifter.connect(this.gainNode);
