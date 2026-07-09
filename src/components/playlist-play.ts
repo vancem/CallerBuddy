@@ -181,18 +181,22 @@ export class PlaylistPlay extends LitElement {
     this.requestUpdate();
   };
 
-  /** Remove a song from the shared playlist; keep selection index consistent with the new list. */
+  /** Remove a song from the shared playlist; keep selection on a nearby row. */
   private onRemovePlaylistItem(index: number): void {
     const playlist = callerBuddy.state.playlist;
     if (index < 0 || index >= playlist.length) return;
-    const sel = this.selectedIndex;
-    if (sel !== null) {
-      if (sel === index) {
-        this.selectedIndex = null;
-      } else if (sel > index) {
-        this.selectedIndex = sel - 1;
-      }
+
+    const selected = this.getSelectedIndex();
+    const nextLength = playlist.length - 1;
+
+    if (selected === index) {
+      this.selectedIndex =
+        nextLength === 0 ? null : Math.min(index, nextLength - 1);
+      queueMicrotask(() => this.scrollSelectedItemIntoView());
+    } else if (this.selectedIndex !== null && this.selectedIndex > index) {
+      this.selectedIndex = this.selectedIndex - 1;
     }
+
     callerBuddy.state.removeFromPlaylist(index);
   }
 
