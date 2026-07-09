@@ -1240,6 +1240,7 @@ export class PlaylistEditor extends LitElement {
         // Handle NaN consistently (push NaNs to the bottom in asc, top in desc via dir multiplier).
         const aNum = Number.isFinite(aVal) ? aVal : Number.POSITIVE_INFINITY;
         const bNum = Number.isFinite(bVal) ? bVal : Number.POSITIVE_INFINITY;
+        if (aNum === bNum) return 0;
         return aNum - bNum;
       }
       return String(aVal).localeCompare(String(bVal), undefined, { sensitivity: "base" });

@@ -41,6 +41,7 @@ import {
 } from "./models/song.js";
 import {
   daysSinceLastUsedMs,
+  lastUsedIsoFromMs,
   nextPlayWeight,
   qualifyingPlayWallSeconds,
   shouldRefreshPlayStats,
@@ -758,10 +759,9 @@ export class CallerBuddy {
       if (qualifies) {
         const nowMs = Date.now();
         if (shouldRefreshPlayStats(song.lastUsed, nowMs)) {
-          const nowIso = new Date().toISOString();
           const deltaDays = daysSinceLastUsedMs(song.lastUsed, nowMs);
           const wNew = nextPlayWeight(song.playWeight, deltaDays);
-          const updated = { ...song, lastUsed: nowIso, playWeight: wNew };
+          const updated = { ...song, lastUsed: lastUsedIsoFromMs(nowMs), playWeight: wNew };
           await this.updateSong(updated, {
             dirHandle: persistDirHandle ?? undefined,
           });

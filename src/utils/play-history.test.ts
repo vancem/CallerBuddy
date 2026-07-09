@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   PLAY_HISTORY_HALF_LIFE_DAYS,
-  PLAY_STATS_UPDATE_MIN_INTERVAL_MS,
   qualifyingPlayWallSeconds,
   nextPlayWeight,
   displayPlayWeight,
   tempoRatioFromSong,
   daysSinceLastUsedMs,
   shouldRefreshPlayStats,
+  lastUsedIsoFromMs,
+  roundPlayWeight,
 } from "./play-history.js";
 
 describe("qualifyingPlayWallSeconds", () => {
@@ -22,6 +23,14 @@ describe("qualifyingPlayWallSeconds", () => {
   it("returns infinity for non-positive duration", () => {
     expect(qualifyingPlayWallSeconds(0, 1)).toBe(Number.POSITIVE_INFINITY);
     expect(qualifyingPlayWallSeconds(-1, 1)).toBe(Number.POSITIVE_INFINITY);
+  });
+});
+
+describe("roundPlayWeight", () => {
+  it("rounds to nearest 1/100", () => {
+    expect(roundPlayWeight(1.234)).toBe(1.23);
+    expect(roundPlayWeight(1.235)).toBe(1.24);
+    expect(roundPlayWeight(2)).toBe(2);
   });
 });
 
@@ -41,6 +50,11 @@ describe("nextPlayWeight", () => {
 
   it("immediate replay adds 1 to previous weight", () => {
     expect(nextPlayWeight(2, 0)).toBe(3);
+  });
+
+  it("rounds stored weight to nearest 1/100", () => {
+    const w = nextPlayWeight(1.111, 14);
+    expect(w).toBe(Math.round((1 + Math.pow(2, -14 / PLAY_HISTORY_HALF_LIFE_DAYS) * 1.111) * 100) / 100);
   });
 });
 
@@ -81,32 +95,48 @@ describe("tempoRatioFromSong", () => {
   });
 });
 
+describe("lastUsedIsoFromMs", () => {
+  it("truncates to start of local calendar day", () => {
+    const afternoon = new Date(2020, 5, 15, 14, 30, 0).getTime();
+    const iso = lastUsedIsoFromMs(afternoon);
+    expect(Date.parse(iso)).toBe(new Date(2020, 5, 15, 0, 0, 0, 0).getTime());
+  });
+});
+
 describe("daysSinceLastUsedMs", () => {
   it("returns 0 for empty lastUsed", () => {
     expect(daysSinceLastUsedMs("", Date.now())).toBe(0);
   });
+
+  it("counts whole calendar days in local time", () => {
+    const morning = new Date(2020, 5, 1, 9, 0, 0).getTime();
+    const evening = new Date(2020, 5, 1, 20, 0, 0).getTime();
+    const lastUsed = lastUsedIsoFromMs(morning);
+    expect(daysSinceLastUsedMs(lastUsed, evening)).toBe(0);
+
+    const nextDay = new Date(2020, 5, 2, 10, 0, 0).getTime();
+    expect(daysSinceLastUsedMs(lastUsed, nextDay)).toBe(1);
+  });
 });
 
 describe("shouldRefreshPlayStats", () => {
-  const t0 = "2020-06-01T12:00:00.000Z";
-  const base = Date.parse(t0);
-
   it("is true when lastUsed is empty or invalid", () => {
-    expect(shouldRefreshPlayStats("", base)).toBe(true);
-    expect(shouldRefreshPlayStats("not-a-date", base)).toBe(true);
+    const now = new Date(2020, 5, 1, 12, 0, 0).getTime();
+    expect(shouldRefreshPlayStats("", now)).toBe(true);
+    expect(shouldRefreshPlayStats("not-a-date", now)).toBe(true);
   });
 
-  it("is false within the cooldown after lastUsed", () => {
-    expect(shouldRefreshPlayStats(t0, base)).toBe(false);
-    expect(shouldRefreshPlayStats(t0, base + PLAY_STATS_UPDATE_MIN_INTERVAL_MS - 1)).toBe(
-      false,
-    );
+  it("is false on the same local calendar day", () => {
+    const morning = new Date(2020, 5, 1, 9, 0, 0).getTime();
+    const evening = new Date(2020, 5, 1, 20, 0, 0).getTime();
+    const lastUsed = lastUsedIsoFromMs(morning);
+    expect(shouldRefreshPlayStats(lastUsed, evening)).toBe(false);
   });
 
-  it("is true at or after the cooldown", () => {
-    expect(shouldRefreshPlayStats(t0, base + PLAY_STATS_UPDATE_MIN_INTERVAL_MS)).toBe(true);
-    expect(shouldRefreshPlayStats(t0, base + PLAY_STATS_UPDATE_MIN_INTERVAL_MS + 60_000)).toBe(
-      true,
-    );
+  it("is true on a later local calendar day", () => {
+    const day1 = new Date(2020, 5, 1, 12, 0, 0).getTime();
+    const day2 = new Date(2020, 5, 2, 8, 0, 0).getTime();
+    const lastUsed = lastUsedIsoFromMs(day1);
+    expect(shouldRefreshPlayStats(lastUsed, day2)).toBe(true);
   });
 });
