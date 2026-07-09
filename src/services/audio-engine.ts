@@ -337,7 +337,8 @@ export class WebAudioEngine implements AudioEngine {
   getCurrentTime(): number {
     if (this.sourceNode && this.playing) {
       const elapsed = this.context.currentTime - this.rawStartContextTime;
-      return Math.max(0, this.rawStartOffsetSeconds + elapsed);
+      const absolute = Math.max(0, this.rawStartOffsetSeconds + elapsed);
+      return this.wrapLoopPosition(absolute, this.rawStartOffsetSeconds, elapsed);
     }
     return this.lastReportedTime;
   }
@@ -574,6 +575,26 @@ export class WebAudioEngine implements AudioEngine {
 
   private canUseRawPlayback(): boolean {
     return this.pitchHalfSteps === 0 && Math.abs(this.tempoRatio - 1.0) < 1e-6;
+  }
+
+  /**
+   * Map monotonic elapsed playback time to the current position within the
+   * loop region. Raw AudioBufferSourceNode looping is handled by the browser;
+   * this keeps UI position and the progress bar in sync with what you hear.
+   */
+  private wrapLoopPosition(
+    absoluteSeconds: number,
+    startOffsetSeconds: number,
+    elapsedSeconds: number,
+  ): number {
+    if (this.loopEnd <= 0 || this.loopEnd <= this.loopStart) {
+      return absoluteSeconds;
+    }
+    const loopLen = this.loopEnd - this.loopStart;
+    const offsetInLoop = startOffsetSeconds - this.loopStart;
+    const positionInLoop =
+      (((offsetInLoop + elapsedSeconds) % loopLen) + loopLen) % loopLen;
+    return this.loopStart + positionInLoop;
   }
 
   private startRawPlayback(offsetSeconds?: number): void {
