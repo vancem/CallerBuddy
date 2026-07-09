@@ -4,8 +4,9 @@
  * Shows the playlist with selection highlighting, break timer, and clock.
  * Played songs show a checked checkbox. The selected song defaults to the first
  * unplayed song; clicking a song overrides the selection. ArrowUp/ArrowDown
- * move the selection. Play/Enter/Space plays the selected song. Ctrl+T toggles
- * the break timer on/off; S starts/stops
+ * move the selection; Home/← and End/→ jump to the first/last song. Play/Enter/Space
+ * plays the selected song. Delete removes
+ * the selected song. Ctrl+T toggles the break timer on/off; S starts/stops
  * the break timer countdown. Esc closes the tab.
  *
  * See CallerBuddySpec.md §"PlaylistPlay UI".
@@ -144,6 +145,25 @@ export class PlaylistPlay extends LitElement {
       this.moveSelection(e.key === "ArrowDown" ? 1 : -1, e);
       return;
     }
+    if (
+      e.key === "Home" ||
+      e.key === "ArrowLeft" ||
+      e.key === "End" ||
+      e.key === "ArrowRight"
+    ) {
+      this.jumpSelection(
+        e.key === "Home" || e.key === "ArrowLeft" ? "first" : "last",
+        e,
+      );
+      return;
+    }
+    if (e.key === "Delete") {
+      const idx = this.getSelectedIndex();
+      if (idx < 0) return;
+      e.preventDefault();
+      this.onRemovePlaylistItem(idx);
+      return;
+    }
     if (e.key !== "Enter" && e.key !== " ") return;
     if (callerBuddy.state.playlist.length === 0 || callerBuddy.state.currentSong !== null || this.isStartingPlayback) return;
     e.preventDefault();
@@ -188,14 +208,25 @@ export class PlaylistPlay extends LitElement {
   private moveSelection(delta: 1 | -1, e: KeyboardEvent) {
     const playlist = callerBuddy.state.playlist;
     if (playlist.length === 0) return;
-    e.preventDefault();
     let idx = this.getSelectedIndex();
     if (idx < 0) {
       idx = delta > 0 ? 0 : playlist.length - 1;
     } else {
       idx = Math.min(playlist.length - 1, Math.max(0, idx + delta));
     }
-    this.selectedIndex = idx;
+    this.setKeyboardSelection(idx, e);
+  }
+
+  /** Jump keyboard selection to the first or last playlist row. */
+  private jumpSelection(which: "first" | "last", e: KeyboardEvent) {
+    const playlist = callerBuddy.state.playlist;
+    if (playlist.length === 0) return;
+    this.setKeyboardSelection(which === "first" ? 0 : playlist.length - 1, e);
+  }
+
+  private setKeyboardSelection(index: number, e: KeyboardEvent) {
+    e.preventDefault();
+    this.selectedIndex = index;
     queueMicrotask(() => this.scrollSelectedItemIntoView());
   }
 
