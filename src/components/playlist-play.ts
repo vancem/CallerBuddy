@@ -6,7 +6,7 @@
  * unplayed song; clicking a song overrides the selection. ArrowUp/ArrowDown
  * move the selection; Home/← and End/→ jump to the first/last song. Play/Enter/Space
  * plays the selected song. Delete removes
- * the selected song. M marks the selected song as played. Ctrl+T toggles the break timer on/off; S starts/stops
+ * the selected song. M toggles the selected song's played checkbox. Ctrl+T toggles the break timer on/off; S starts/stops
  * the break timer countdown. Esc closes the tab.
  *
  * See CallerBuddySpec.md §"PlaylistPlay UI".
@@ -143,7 +143,7 @@ export class PlaylistPlay extends LitElement {
     }
     if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "m") {
       e.preventDefault();
-      this.markSelectedPlayed();
+      this.toggleSelectedPlayed();
       return;
     }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -249,15 +249,13 @@ export class PlaylistPlay extends LitElement {
     });
   }
 
-  /** Mark the selected playlist row as played without starting playback. */
-  private markSelectedPlayed() {
+  /** Toggle the selected playlist row's played checkbox without starting playback. */
+  private toggleSelectedPlayed() {
     const playlist = callerBuddy.state.playlist;
     const idx = this.getSelectedIndex();
     if (idx < 0 || idx >= playlist.length) return;
     const song = playlist[idx];
-    if (!callerBuddy.state.isPlaylistEntryPlayed(song)) {
-      callerBuddy.state.setSongPlayed(song, true);
-    }
+    callerBuddy.state.setSongPlayed(song, !callerBuddy.state.isPlaylistEntryPlayed(song));
   }
 
   render() {
@@ -301,7 +299,7 @@ export class PlaylistPlay extends LitElement {
                           <input
                             type="checkbox"
                             .checked=${played}
-                            title=${played ? "Mark as unplayed" : "Mark as played (M)"}
+                            title=${played ? "Mark as unplayed (M)" : "Mark as played (M)"}
                             @change=${() =>
                               callerBuddy.state.setSongPlayed(song, !played)}
                           />
