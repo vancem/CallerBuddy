@@ -286,13 +286,9 @@ export const songPlayStyles = css`
     .desktop-splitter {
       grid-column: 2;
       grid-row: 1;
-      /* Make the hit target wider than the visible line (touch-friendly).
-         The extra width can overflow into adjacent grid columns. */
-      width: calc(var(--cb-song-vsplitter-w) + 24px);
-      margin-left: -12px;
-      margin-right: -12px;
-      padding: 0 12px;
-      box-sizing: border-box;
+      /* Keep the resize target aligned with the visible separator so it does
+         not block the lyrics panel's scrollbar. */
+      width: var(--cb-song-vsplitter-w);
       height: 100%;
       position: relative;
       z-index: 3;
