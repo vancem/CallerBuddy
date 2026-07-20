@@ -352,6 +352,9 @@ export class WebAudioEngine implements AudioEngine {
       this.shifter.connect(this.gainNode);
       this.connected = true;
     }
+
+    // Notify UI immediately (time-update polling is stopped while paused).
+    this.timeUpdateCb?.(this.positionSeconds);
   }
 
   getCurrentTime(): number {
