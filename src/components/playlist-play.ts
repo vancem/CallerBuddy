@@ -19,12 +19,17 @@ import { PlaylistReorderController } from "../controllers/playlist-reorder-contr
 import { PanelResizeController } from "../controllers/panel-resize-controller.js";
 import {
   DEFAULT_BREAK_TIMER_MINUTES,
+  DEFAULT_PLAYLIST_PANEL_HEIGHT,
   DEFAULT_PLAYLIST_PANEL_WIDTH,
 } from "../models/settings.js";
 import { WakeLockService } from "../services/wake-lock.js";
 import { StateEvents, TabType } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import { formatCountdown, formatClock } from "../utils/format.js";
+import {
+  HostLayoutResizeController,
+  isHostPortraitLayout,
+} from "../utils/host-portrait-layout.js";
 
 @customElement("playlist-play")
 export class PlaylistPlay extends LitElement {
@@ -49,7 +54,21 @@ export class PlaylistPlay extends LitElement {
   // Clock
   @state() private clockTime = "";
 
-  private resizer = new PanelResizeController(this, DEFAULT_PLAYLIST_PANEL_WIDTH);
+  private resizerX = new PanelResizeController(this, DEFAULT_PLAYLIST_PANEL_WIDTH, {
+    axis: "x",
+    min: 180,
+    max: 500,
+    settingKey: "playlistPanelWidth",
+  });
+  private resizerY = new PanelResizeController(this, DEFAULT_PLAYLIST_PANEL_HEIGHT, {
+    axis: "y",
+    min: 120,
+    max: 1200,
+    settingKey: "playlistPanelHeight",
+  });
+
+  /** Re-render when host box changes so width/height styles match @container aspect flip. */
+  private _hostLayoutRo = new HostLayoutResizeController(this);
 
   private reorder = new PlaylistReorderController(this, {
     onReorderComplete: () => {
@@ -70,9 +89,12 @@ export class PlaylistPlay extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    void this._hostLayoutRo;
     this.breakMinutes = callerBuddy.state.settings.breakTimerMinutes;
-    this.resizer.width =
+    this.resizerX.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
+    this.resizerY.size =
+      callerBuddy.state.settings.playlistPanelHeight ?? DEFAULT_PLAYLIST_PANEL_HEIGHT;
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.addEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
@@ -180,8 +202,10 @@ export class PlaylistPlay extends LitElement {
   };
 
   private onSettingsChanged = () => {
-    this.resizer.width =
+    this.resizerX.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
+    this.resizerY.size =
+      callerBuddy.state.settings.playlistPanelHeight ?? DEFAULT_PLAYLIST_PANEL_HEIGHT;
     this.breakMinutes = callerBuddy.state.settings.breakTimerMinutes;
     this.requestUpdate();
   };
@@ -263,10 +287,14 @@ export class PlaylistPlay extends LitElement {
     const isPlayingSong = callerBuddy.state.currentSong !== null;
     const isInactive = isPlayingSong || this.isStartingPlayback;
     const sel = this.getSelectedIndex();
+    const isPortrait = isHostPortraitLayout(this);
+    const playlistPanelStyle = isPortrait
+      ? `height: ${this.resizerY.size}px`
+      : `width: ${this.resizerX.width}px`;
 
     return html`
       <div class="play-view ${isInactive ? "inactive" : ""}">
-        <aside class="playlist-panel" style="width: ${this.resizer.width}px">
+        <aside class="playlist-panel" style="${playlistPanelStyle}">
           <h2>Playlist</h2>
           ${playlist.length === 0
             ? html`<p class="muted">Playlist is empty.</p>`
@@ -348,9 +376,11 @@ export class PlaylistPlay extends LitElement {
           title="Drag to resize playlist"
           @pointerdown=${(e: PointerEvent) => {
             (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-            this.resizer.onPointerDown(e);
+            if (isPortrait) this.resizerY.onPointerDown(e);
+            else this.resizerX.onPointerDown(e);
           }}
-          @mousedown=${(e: MouseEvent) => this.resizer.onMouseDown(e)}
+          @mousedown=${(e: MouseEvent) =>
+            isPortrait ? this.resizerY.onMouseDown(e) : this.resizerX.onMouseDown(e)}
         ></div>
 
         <!-- Right: Break timer and clock -->
@@ -604,11 +634,17 @@ export class PlaylistPlay extends LitElement {
     :host {
       display: block;
       height: 100%;
+      min-height: 0;
+      /* Viewport aspect MQs see bogus sizes on Samsung WebAPK; use host box. */
+      container-type: size;
+      container-name: cb-playlist-play;
     }
 
     .play-view {
       display: flex;
       height: 100%;
+      min-height: 0;
+      position: relative;
     }
 
     .play-view.inactive {
@@ -932,9 +968,9 @@ export class PlaylistPlay extends LitElement {
       font-size: 0.85rem;
     }
 
-    /* -- Narrow layout: playlist on top when width <= 1.2× height ---------- */
+    /* Narrow layout: playlist on top when host is taller than wide (not viewport MQ). */
 
-    @media (max-aspect-ratio: 6/5) {
+    @container cb-playlist-play (max-aspect-ratio: 6/5) {
       .play-view {
         flex-direction: column;
       }
@@ -942,19 +978,27 @@ export class PlaylistPlay extends LitElement {
       .playlist-panel {
         width: auto !important;
         min-width: 0;
-        max-height: 50vh;
-        max-height: 50dvh;
+        /* Fixed height via inline style; playlist list scrolls within. */
+        flex: 0 0 auto;
+        min-height: 0;
         border-right: none;
         border-bottom: 1px solid var(--cb-border);
       }
 
-      .resizer {
-        display: none;
-      }
-
       .info-panel {
+        flex: 2 1 0;
+        min-height: 0;
         padding: 12px;
         gap: 16px;
+      }
+
+      .resizer {
+        width: 100%;
+        height: 6px;
+        cursor: row-resize;
+        border-left: none;
+        border-top: 1px solid var(--cb-border);
+        touch-action: none;
       }
     }
   `;

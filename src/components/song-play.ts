@@ -43,6 +43,10 @@ import {
 } from "../utils/lyrics-html.js";
 import { tempoRatioFromSong } from "../utils/play-history.js";
 import { bumpLyricsScale } from "../utils/lyrics-scale.js";
+import {
+  HostLayoutResizeController,
+  isHostPortraitLayout,
+} from "../utils/host-portrait-layout.js";
 import "./lyrics-editor.js";
 
 /**
@@ -139,8 +143,11 @@ export class SongPlay extends LitElement {
   private clockInterval: number | null = null;
   private elapsedInterval: number | null = null;
 
-  /** Re-run split math when host width/height changes (ResizeObserver; viewport MQs lie on WebAPK). */
-  private _layoutResizeObs: ResizeObserver | null = null;
+  /** Re-run split math + re-render when host box changes (aspect flip; WebAPK-safe). */
+  private _hostLayoutRo = new HostLayoutResizeController(this, () => {
+    this.applyMobileSplitLayoutVars();
+    this.applyDesktopSplitLayoutVars();
+  });
 
   /** Root `.song-play` surface — capture pointerdown to blur editor before focus moves to a control. */
   private _songPlaySurface: HTMLElement | null = null;
@@ -181,6 +188,7 @@ export class SongPlay extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    void this._hostLayoutRo;
     callerBuddy.beginSongPlaySession();
     callerBuddy.setSongPlayUnsavedGuard(() => this.runSongPlayUnsavedGuard());
     this.clockInterval = window.setInterval(() => this.updateClock(), 1000);
@@ -191,12 +199,6 @@ export class SongPlay extends LitElement {
     window.addEventListener("blur", this._boundWindowBlur);
     window.addEventListener("resize", this._boundWindowResize);
     document.addEventListener("visibilitychange", this._boundVisibilityChange);
-
-    this._layoutResizeObs = new ResizeObserver(() => {
-      this.applyMobileSplitLayoutVars();
-      this.applyDesktopSplitLayoutVars();
-    });
-    this._layoutResizeObs.observe(this);
 
     const saved = window.localStorage.getItem("cbSongPlayMobileControlsSplitPct");
     if (saved) {
@@ -249,8 +251,6 @@ export class SongPlay extends LitElement {
       { capture: true },
     );
     this._songPlaySurface = null;
-    this._layoutResizeObs?.disconnect();
-    this._layoutResizeObs = null;
     document.removeEventListener("keydown", this._boundKeydown);
     document.removeEventListener("keydown", this._boundLyricsExitDialogKeydown, true);
     window.removeEventListener("blur", this._boundWindowBlur);
@@ -409,16 +409,7 @@ export class SongPlay extends LitElement {
   };
 
   private isNarrowLayout(): boolean {
-    const w = this.getBoundingClientRect().width;
-    if (w >= 16) {
-      return w <= 700;
-    }
-    const short = Math.min(screen.width, screen.height);
-    const inner = window.innerWidth;
-    if (inner > short * 1.2 && window.matchMedia("(orientation: portrait)").matches) {
-      return true;
-    }
-    return window.matchMedia("(max-width: 700px)").matches;
+    return isHostPortraitLayout(this);
   }
 
   private applyMobileSplitLayoutVars() {

@@ -9,9 +9,9 @@ export const songPlayStyles = css`
       display: block;
       height: 100%;
       min-height: 0;
-      /* Viewport MQs use layout width (~980 on stuck Samsung WebAPK); use container
-       * width so stacked controls/lyrics match the real shell width (~360). */
-      container-type: inline-size;
+      /* Viewport MQs use layout width (~980 on stuck Samsung WebAPK); use host box
+       * so stacked controls/lyrics match the real shell (aspect, not viewport MQ). */
+      container-type: size;
       container-name: cb-song-play;
     }
 
@@ -709,8 +709,8 @@ export const songPlayStyles = css`
       border: 1px solid var(--cb-border-strong);
     }
 
-    /* Narrow / phone layout (container width — not viewport; fixes WebAPK innerW≈980) */
-    @container cb-song-play (max-width: 700px) {
+    /* Narrow / phone layout (host aspect — not viewport; fixes WebAPK; matches editor) */
+    @container cb-song-play (max-aspect-ratio: 6/5) {
       .song-play {
         grid-template-columns: 1fr;
         grid-template-rows: var(--cb-song-controls-h) var(--cb-song-splitter-h) 1fr auto;

@@ -38,6 +38,10 @@ import { loadAndMergeSongs, loadSongsJson } from "../services/song-library.js";
 import { listDirectory, type DirEntry } from "../services/file-system-service.js";
 import { log } from "../services/logger.js";
 import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js";
+import {
+  HostLayoutResizeController,
+  isHostPortraitLayout,
+} from "../utils/host-portrait-layout.js";
 
 type SortField =
   | "title"
@@ -73,8 +77,8 @@ export class PlaylistEditor extends LitElement {
   /** This editor tab's id; used to close via the button or Esc. */
   @property({ type: String }) tabId = "";
 
-  /** Re-render when host box changes (orientation; viewport MQs lie on WebAPK). */
-  private _editorLayoutRo: ResizeObserver | null = null;
+  /** Re-render when host box changes so width/height styles match @container aspect flip. */
+  private _hostLayoutRo = new HostLayoutResizeController(this);
 
   @state() private filterText = "";
   /** When true, rank filter uses >= threshold; when false, uses < threshold. */
@@ -159,6 +163,7 @@ export class PlaylistEditor extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    void this._hostLayoutRo;
     this.resizerX.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     this.resizerY.size =
@@ -169,15 +174,10 @@ export class PlaylistEditor extends LitElement {
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onAppStateChanged);
     this.lastSeenActiveTabId = callerBuddy.state.activeTabId;
     document.addEventListener("keydown", this._boundKeydown);
-
-    this._editorLayoutRo = new ResizeObserver(() => this.requestUpdate());
-    this._editorLayoutRo.observe(this);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this._editorLayoutRo?.disconnect();
-    this._editorLayoutRo = null;
     document.removeEventListener("keydown", this._boundKeydown);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
     callerBuddy.state.removeEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
@@ -207,15 +207,10 @@ export class PlaylistEditor extends LitElement {
   };
 
   /**
-   * Stacked playlist-on-top layout. Prefer host `getBoundingClientRect()` — viewport
-   * aspect MQs see bogus ~980×2053 on Samsung WebAPK while the shell is ~360 wide.
+   * Stacked playlist-on-top layout. Prefer host box — viewport aspect MQs lie on WebAPK.
    */
   private isEditorPortraitLayout(): boolean {
-    const r = this.getBoundingClientRect();
-    if (r.width >= 16 && r.height >= 16) {
-      return r.width / r.height <= 6 / 5;
-    }
-    return window.matchMedia("(max-aspect-ratio: 6/5)").matches;
+    return isHostPortraitLayout(this);
   }
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
