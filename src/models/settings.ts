@@ -39,7 +39,7 @@ export interface Settings {
    */
   playlistPlayedPaths: string[];
   /**
-   * Lyrics body font scale in the player (0.5–2.5). Used when the layout is
+   * Lyrics body font scale in the player (0.7–1.3). Used when the layout is
    * wide (viewport &gt; ~700px). Persisted in settings.json.
    */
   lyricsFontScaleDesktop: number;

@@ -15,9 +15,43 @@ but redesigned from scratch as a modern, cross-platform PWA.
 
 ### Prerequisites
 
-- **Node.js** 20 or later
-- **npm** (comes with Node)
-- **Chrome or Edge** (the File System Access API is Chromium-only)
+- **Git**
+- **Node.js** 20 or later (includes **npm**)
+- **Chrome or Edge** (the File System Access API is Chromium-only; also used for
+  manual app testing)
+
+### Install Node.js (Windows)
+
+If `node` / `npm` are not already on your PATH, install the LTS build with
+winget (expect a UAC / administrator prompt):
+
+```powershell
+winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
+```
+
+If winget is unavailable, download the Windows LTS installer from
+[https://nodejs.org](https://nodejs.org) instead.
+
+Then **close and reopen** your terminal (and Cursor / VS Code, if the
+integrated terminal still cannot find `npm`) so the updated PATH is picked up.
+
+Confirm:
+
+```powershell
+node -v
+npm -v
+```
+
+### PowerShell execution policy (Windows)
+
+PowerShell may block `npm.ps1` with an error like “running scripts is disabled
+on this system.” Allow local scripts for your user account:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+Open a new terminal afterward, then retry `npm` commands.
 
 ### Clone and install
 
@@ -27,11 +61,18 @@ cd CallerBuddy
 npm install
 ```
 
-### Install Playwright browsers (for E2E tests)
+### Install Playwright browsers (required for `npm run ci` / E2E)
+
+`npm install` pulls in the Playwright package, but you still need the browser
+binaries once per machine. Run this in a normal developer terminal (same place
+you run `npm` commands):
 
 ```bash
 npx playwright install chromium
 ```
+
+Without this step, `npm run ci` and `npm run e2e` fail because Chromium is
+missing.
 
 ### Generate test audio files (optional)
 
