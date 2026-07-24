@@ -15,10 +15,78 @@ but redesigned from scratch as a modern, cross-platform PWA.
 
 ### Prerequisites
 
-- **Git**
+- **Git** (Git for Windows includes Git Credential Manager for GitHub sign-in)
 - **Node.js** 20 or later (includes **npm**)
 - **Chrome or Edge** (the File System Access API is Chromium-only; also used for
   manual app testing)
+- **A GitHub account, authenticated on this machine** (see below) — required to
+  push changes; the **GitHub CLI (`gh`)** is the easiest way to set this up
+
+### Configure Git identity
+
+Git refuses to commit until your name and email are set. Run these once per
+machine (use the email on your GitHub account):
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
+
+Confirm:
+
+```bash
+git config --global --get user.name
+git config --global --get user.email
+```
+
+### Authenticate with GitHub (required to push; also lets Cursor run Git)
+
+Setting your identity is **not** enough to push. You must also authenticate so
+Git — and Cursor, which shells out to your local Git — can talk to GitHub on
+your behalf.
+
+**Option A — GitHub CLI (recommended):**
+
+```powershell
+winget install GitHub.cli --accept-package-agreements --accept-source-agreements
+```
+
+`gh` is added to the PATH by the installer, but **already-running** terminals
+(and Cursor itself) keep their old PATH. If `gh` is “not recognized”, fully
+**quit and restart Cursor** — opening a new terminal tab in the same window is
+not enough. Then:
+
+```bash
+gh auth login
+```
+
+Answer the prompts:
+
+1. **What account do you want to log into?** → `GitHub.com`
+2. **Preferred protocol for Git operations?** → `HTTPS`
+3. **Authenticate Git with your GitHub credentials?** → `Yes`
+4. **How would you like to authenticate?** → `Login with a web browser`
+
+`gh` then shows a **one-time code** and opens
+`https://github.com/login/device`. Sign in, enter the code, and authorize the
+GitHub CLI. If the browser does not open automatically, paste that URL into
+Chrome or Edge yourself.
+
+**Option B — Personal Access Token (PAT):**
+
+1. On GitHub: **Settings → Developer settings → Personal access tokens**
+   (fine-grained or classic). Create a token with repo access.
+2. On first `git push` / `git pull` over HTTPS, when Windows asks for a
+   password, paste the **token** (not your GitHub password). Git Credential
+   Manager will store it for later.
+
+Verify authentication succeeded:
+
+```bash
+gh auth status
+```
+
+After either option, Cursor can run Git commands using the same credentials.
 
 ### Install Node.js (Windows)
 
