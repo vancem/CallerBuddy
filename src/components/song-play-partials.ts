@@ -141,7 +141,7 @@ export type TransportCtx = {
 export function renderTransport(ctx: TransportCtx): TemplateResult {
   return html`
     <div class="transport">
-      <button class="ctrl-btn" title="Restart (Home)" @click=${ctx.onRestart}>⏮</button>
+      <button class="ctrl-btn" title="Restart (Home or .)" @click=${ctx.onRestart}>⏮</button>
       <button class="ctrl-btn" title="Back 5s (Ctrl+←)" @click=${() => ctx.onSeekDelta(-5)}>⏪</button>
       <button class="ctrl-btn" title="Back 2s (←)" @click=${() => ctx.onSeekDelta(-2)}>◄</button>
       <button class="ctrl-btn play-btn" title="${ctx.playing ? "Pause (Space)" : "Play (Space)"}"

@@ -781,6 +781,13 @@ export class PlaylistEditor extends LitElement {
                         Categories ${this.sortIndicator("categories")}
                       </th>
                       <th
+                        class="sortable order-col-head"
+                        title="The order that the song was added to the database of songs. Recent songs have high numbers."
+                        @click=${() => this.toggleSort("orderAdded")}
+                      >
+                        Order ${this.sortIndicator("orderAdded")}
+                      </th>
+                      <th
                         class="sortable"
                         title="Publisher label and catalog number from the filename (e.g. RYL 607)."
                         @click=${() => this.toggleSort("label")}
@@ -839,6 +846,12 @@ export class PlaylistEditor extends LitElement {
                             ${this.formatPlayedDisplay(song)}
                           </td>
                           ${this.renderCategoriesCell(song)}
+                          <td
+                            class="order-cell"
+                            title="The order that the song was added to the database of songs. Recent songs have high numbers."
+                          >
+                            ${song.orderAdded}
+                          </td>
                           <td class="label-cell">${song.label}</td>
                           <td class="type-cell">
                             <span
@@ -906,7 +919,7 @@ export class PlaylistEditor extends LitElement {
           title="Click to open in new tab, right-click for options"
         >
           <td class="folder-icon-cell" colspan="2">📁</td>
-          <td colspan="7" class="folder-name">${entry.name}</td>
+          <td colspan="8" class="folder-name">${entry.name}</td>
         </tr>
       `,
     );
@@ -1799,6 +1812,23 @@ export class PlaylistEditor extends LitElement {
     }
 
     .song-table th.played-col-head {
+      text-align: right;
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+
+    .song-table td.order-cell {
+      text-align: right;
+      /* Narrow column: up to ~4 digit sequence numbers */
+      width: 4ch;
+      min-width: 4ch;
+      padding-left: 4px;
+      padding-right: 4px;
+      font-variant-numeric: tabular-nums;
+      box-sizing: border-box;
+    }
+
+    .song-table th.order-col-head {
       text-align: right;
       padding-left: 4px;
       padding-right: 4px;
