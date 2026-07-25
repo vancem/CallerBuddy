@@ -67,6 +67,11 @@ describe("formatClock", () => {
     const result = formatClock();
     expect(result).toMatch(/\d{1,2}:\d{2}/);
   });
+
+  it("formats a given timestamp as HH:MM", () => {
+    const result = formatClock(new Date(2025, 0, 15, 9, 5, 0).getTime());
+    expect(result).toMatch(/\d{1,2}:\d{2}/);
+  });
 });
 
 describe("formatUnknownError", () => {

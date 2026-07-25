@@ -377,4 +377,15 @@ describe("AppState", () => {
       expect(handler).toHaveBeenCalledOnce();
     });
   });
+
+  describe("setLastSongEndedMs", () => {
+    it("starts null and records a session-only end time", () => {
+      expect(state.lastSongEndedMs).toBeNull();
+      const handler = spyOn(state, StateEvents.CHANGED);
+      const ms = Date.now();
+      state.setLastSongEndedMs(ms);
+      expect(state.lastSongEndedMs).toBe(ms);
+      expect(handler).toHaveBeenCalledOnce();
+    });
+  });
 });

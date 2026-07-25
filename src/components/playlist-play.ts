@@ -385,9 +385,15 @@ export class PlaylistPlay extends LitElement {
 
         <!-- Right: Break timer and clock -->
         <section class="info-panel">
-          <div class="clock-display">
-            <span class="clock-label">Time</span>
-            <span class="clock-value">${this.clockTime}</span>
+          <div class="clock-block">
+            <div class="clock-display">
+              <span class="clock-label">Time:</span>
+              <span class="clock-value">${this.clockTime}</span>
+            </div>
+            <div class="last-song time-row">
+              <span class="time-label">Last Song:</span>
+              <span class="time-value">${this.formatLastSongEnded()}</span>
+            </div>
           </div>
 
           <div class="break-section">
@@ -425,7 +431,7 @@ export class PlaylistPlay extends LitElement {
                 />
               </div>
               <div class="countdown time-row ${this.breakTimerRunning ? "" : "countdown-idle"}">
-                <span class="time-label">Time left</span>
+                <span class="time-label">Time left:</span>
                 <span class="time-value ${this.breakTimerRunning && this.breakCountdown <= 0 ? "alarm" : ""}">
                  ${this.breakTimerRunning
                     ? formatCountdown(this.breakCountdown)
@@ -630,6 +636,12 @@ export class PlaylistPlay extends LitElement {
     this.clockTime = formatClock();
   }
 
+  /** HH:MM when the last qualifying play ended, or em dash if none yet. */
+  private formatLastSongEnded(): string {
+    const ms = callerBuddy.state.lastSongEndedMs;
+    return ms !== null ? formatClock(ms) : "—";
+  }
+
   static styles = css`
     :host {
       display: block;
@@ -817,6 +829,12 @@ export class PlaylistPlay extends LitElement {
       gap: 24px;
     }
 
+    .clock-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
     .clock-display {
       display: flex;
       align-items: baseline;
@@ -824,14 +842,31 @@ export class PlaylistPlay extends LitElement {
     }
 
     .clock-label {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--cb-fg-secondary);
     }
 
     .clock-value {
       font-size: 2rem;
-      font-weight: 300;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
+    }
+
+    .last-song.time-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .last-song .time-label {
+      font-size: 0.9rem;
+      color: var(--cb-fg-secondary);
+    }
+
+    .last-song .time-value {
+      font-variant-numeric: tabular-nums;
+      font-size: 1rem;
+      color: var(--cb-fg-secondary);
     }
 
     .break-section h3 {
@@ -914,7 +949,6 @@ export class PlaylistPlay extends LitElement {
     }
 
     .break-section .time-label {
-      width: 3.75rem;
       font-size: 0.9rem;
     }
 

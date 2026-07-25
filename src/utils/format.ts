@@ -19,9 +19,10 @@ export function formatCountdown(totalSeconds: number): string {
   return `${sign}${min}:${sec.toString().padStart(2, "0")}`;
 }
 
-/** Return the current time as a localized "HH:MM" string. */
-export function formatClock(): string {
-  return new Date().toLocaleTimeString([], {
+/** Return a time as a localized "HH:MM" string (now, or `atMs` if given). */
+export function formatClock(atMs?: number): string {
+  const date = atMs !== undefined ? new Date(atMs) : new Date();
+  return date.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });

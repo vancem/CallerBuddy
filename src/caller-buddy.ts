@@ -749,7 +749,7 @@ export class CallerBuddy {
     const session = this.songPlaySession;
     this.songPlaySession = null;
 
-    if (song && session && !this.practiceMode) {
+    if (song && session) {
       const duration = this.audio.getDuration();
       const ratio = tempoRatioFromSong(song);
       const threshold = qualifyingPlayWallSeconds(duration, ratio);
@@ -758,7 +758,8 @@ export class CallerBuddy {
         (Number.isFinite(threshold) && session.accumulatedPlayingWallSec >= threshold);
       if (qualifies) {
         const nowMs = Date.now();
-        if (shouldRefreshPlayStats(song.lastUsed, nowMs)) {
+        this.state.setLastSongEndedMs(nowMs);
+        if (!this.practiceMode && shouldRefreshPlayStats(song.lastUsed, nowMs)) {
           const deltaDays = daysSinceLastUsedMs(song.lastUsed, nowMs);
           const wNew = nextPlayWeight(song.playWeight, deltaDays);
           const updated = { ...song, lastUsed: lastUsedIsoFromMs(nowMs), playWeight: wNew };

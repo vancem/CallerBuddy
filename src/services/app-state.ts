@@ -88,6 +88,12 @@ export class AppState extends EventTarget {
   /** The song currently being played, or null. */
   currentSong: Song | null = null;
 
+  /**
+   * Wall-clock ms when the last qualifying song play ended, or null if none yet.
+   * Session-only (not persisted across reloads); survives Now Playing tab close/reopen.
+   */
+  lastSongEndedMs: number | null = null;
+
   /** Lowercased CallerBuddyRoot-relative playlist keys (paths or musicFile). */
   private playedSongPaths = new Set<string>();
 
@@ -422,5 +428,11 @@ export class AppState extends EventTarget {
     } else {
       this.emit(StateEvents.SONG_ENDED);
     }
+  }
+
+  /** Record when a qualifying song play ended (HH:MM source for Now Playing). */
+  setLastSongEndedMs(ms: number): void {
+    this.lastSongEndedMs = ms;
+    this.emit(StateEvents.CHANGED);
   }
 }
