@@ -235,8 +235,7 @@ export class SongOnboard extends LitElement {
   }
 
   private onCancel() {
-    const tab = callerBuddy.state.tabs.find((t) => t.type === TabType.SongOnboard);
-    if (tab) callerBuddy.state.closeTab(tab.id);
+    callerBuddy.state.closeTabByType(TabType.SongOnboard);
   }
 
   // ---------------------------------------------------------------------------

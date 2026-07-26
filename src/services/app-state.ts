@@ -120,12 +120,21 @@ export class AppState extends EventTarget {
 
   /** Update closable on all PlaylistEditor tabs based on current root. Call after setRoot. */
   async updateEditorTabsClosable(): Promise<void> {
+    const next: TabInfo[] = [];
     for (const tab of this.tabs) {
-      if (tab.type !== TabType.PlaylistEditor) continue;
+      if (tab.type !== TabType.PlaylistEditor) {
+        next.push(tab);
+        continue;
+      }
       const data = tab.data as EditorTabData | undefined;
-      if (!data?.dirHandle) continue;
-      tab.closable = !(await this.isRootHandle(data.dirHandle));
+      if (!data?.dirHandle) {
+        next.push(tab);
+        continue;
+      }
+      const closable = !(await this.isRootHandle(data.dirHandle));
+      next.push(closable === tab.closable ? tab : { ...tab, closable });
     }
+    this.setTabs(next);
     this.emit(StateEvents.CHANGED);
   }
 
@@ -260,10 +269,26 @@ export class AppState extends EventTarget {
   }
 
   // -- Tab management -------------------------------------------------------
+  //
+  // Contract: `tabs` is the single source of truth for which UI surfaces exist.
+  // Views are mounted from that list (PlaylistPlay is keep-alive while its tab
+  // exists; other types mount only when active). Closing a surface MUST go
+  // through closeTab / closeTabByType so the tab and its view die together.
+  //
+  // Lit binds `.tabs` by reference. Mutating the array in place (push/splice)
+  // while leaving `activeTabId` unchanged makes the tab bar skip re-render —
+  // classic ghost-tab bug when closing an inactive tab. Every mutation below
+  // therefore assigns a new `tabs` array (and new TabInfo objects when fields
+  // change).
+
+  /** Replace the tab list with a new array reference and notify listeners. */
+  private setTabs(next: TabInfo[]): void {
+    this.tabs = next;
+  }
 
   openTab(type: TabType, title: string, closable = true, data?: unknown): string {
     const id = `tab-${nextTabId++}`;
-    this.tabs.push({ id, type, title, closable, data });
+    this.setTabs([...this.tabs, { id, type, title, closable, data }]);
     if (this.activeTabId) {
       this.tabBackStack.push(this.activeTabId);
       this.tabForwardStack = [];
@@ -282,7 +307,11 @@ export class AppState extends EventTarget {
         this.tabForwardStack = [];
       }
       this.activeTabId = existing.id;
-      if (data !== undefined) existing.data = data;
+      if (data !== undefined) {
+        this.setTabs(
+          this.tabs.map((t) => (t.id === existing.id ? { ...t, data } : t)),
+        );
+      }
       this.emit(StateEvents.CHANGED);
       return existing.id;
     }
@@ -331,12 +360,17 @@ export class AppState extends EventTarget {
     return this.tabForwardStack[this.tabForwardStack.length - 1] ?? null;
   }
 
+  /**
+   * Remove a closable tab. Idempotent for unknown ids.
+   * Always assigns a new `tabs` array so Lit-bound tab UI stays in sync even
+   * when the closed tab was not active.
+   */
   closeTab(id: string): void {
     const idx = this.tabs.findIndex((t) => t.id === id);
     if (idx < 0) return;
     const tab = this.tabs[idx];
     if (!tab.closable) return;
-    this.tabs.splice(idx, 1);
+    this.setTabs(this.tabs.filter((t) => t.id !== id));
     this.tabBackStack = this.tabBackStack.filter((tid) => tid !== id);
     this.tabForwardStack = this.tabForwardStack.filter((tid) => tid !== id);
     if (this.activeTabId === id) {
@@ -344,6 +378,12 @@ export class AppState extends EventTarget {
       this.activeTabId = newIdx >= 0 ? this.tabs[newIdx].id : "";
     }
     this.emit(StateEvents.CHANGED);
+  }
+
+  /** Close the first tab of the given type, if present and closable. */
+  closeTabByType(type: TabType): void {
+    const tab = this.tabs.find((t) => t.type === type);
+    if (tab) this.closeTab(tab.id);
   }
 
   getActiveTab(): TabInfo | undefined {

@@ -2,6 +2,11 @@
  * Chrome-like tab bar component.
  * Renders a row of tabs with click-to-activate and close buttons.
  * See CallerBuddySpec.md §"Basic UI layout" for the Chrome-browser analogy.
+ *
+ * Tabs come from AppState; the list must be a new array reference whenever it
+ * changes (see AppState tab-management contract). This bar does not own
+ * lifecycle — closing always goes through AppState.closeTab so the tab and
+ * its underlying view die together.
  */
 
 import { LitElement, css, html } from "lit";

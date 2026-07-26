@@ -429,9 +429,11 @@ export class AppShell extends LitElement {
           </div>
         </header>
         <main class="content">
-          ${/* PlaylistPlay is kept alive (hidden when inactive) so its break
+          ${/* PlaylistPlay is keep-alive (hidden when inactive) so its break
               timer, clock, and SONG_ENDED listener survive tab switches.
-              All other tabs use normal create/destroy on tab switch. */
+              Presence is gated on the PlaylistPlay tab in AppState — when that
+              tab is closed, this pane unmounts. All other tabs use normal
+              create/destroy on tab switch. */
             ''}
           ${tabs.some((t) => t.type === TabType.PlaylistPlay)
             ? html`<div class="keep-alive-pane"

@@ -504,8 +504,7 @@ export class PlaylistPlay extends LitElement {
 
   /** Same as closing the "Now Playing" tab from the tab bar or pressing Esc. */
   private onCloseNowPlayingTab() {
-    const tab = callerBuddy.state.tabs.find((t) => t.type === TabType.PlaylistPlay);
-    if (tab) callerBuddy.state.closeTab(tab.id);
+    callerBuddy.state.closeTabByType(TabType.PlaylistPlay);
   }
 
   // -- Break timer ----------------------------------------------------------

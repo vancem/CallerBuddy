@@ -285,6 +285,36 @@ describe("AppState", () => {
       expect(state.tabs).toHaveLength(0);
     });
 
+    it("closeTab replaces the tabs array reference when closing an inactive tab", () => {
+      // Lit binds .tabs by !== ; in-place splice left a ghost tab in the bar.
+      const id1 = state.openTab(TabType.PlaylistEditor, "Root");
+      const id2 = state.openSingletonTab(TabType.PlaylistPlay, "Now Playing");
+      state.activateTab(id1);
+      expect(state.activeTabId).toBe(id1);
+
+      const before = state.tabs;
+      state.closeTab(id2);
+
+      expect(state.tabs).not.toBe(before);
+      expect(state.tabs.map((t) => t.id)).toEqual([id1]);
+      expect(state.activeTabId).toBe(id1);
+      expect(state.tabs.some((t) => t.type === TabType.PlaylistPlay)).toBe(false);
+    });
+
+    it("closeTabByType closes the matching closable tab", () => {
+      state.openTab(TabType.PlaylistEditor, "Root");
+      state.openSingletonTab(TabType.PlaylistPlay, "Now Playing");
+      state.closeTabByType(TabType.PlaylistPlay);
+      expect(state.tabs).toHaveLength(1);
+      expect(state.tabs[0].type).toBe(TabType.PlaylistEditor);
+    });
+
+    it("openTab assigns a new tabs array reference", () => {
+      const before = state.tabs;
+      state.openTab(TabType.PlaylistEditor, "Editor");
+      expect(state.tabs).not.toBe(before);
+    });
+
     it("closeTab does nothing for non-closable tabs", () => {
       const id = state.openTab(TabType.Welcome, "Welcome", false);
       state.closeTab(id);
@@ -312,6 +342,15 @@ describe("AppState", () => {
       const id2 = state.openSingletonTab(TabType.PlaylistPlay, "Play2");
       expect(id1).toBe(id2);
       expect(state.tabs).toHaveLength(1);
+    });
+
+    it("openSingletonTab replaces tabs array when updating data on existing tab", () => {
+      const id = state.openSingletonTab(TabType.SongPlay, "Song", true, { song: "a" });
+      const before = state.tabs;
+      state.openSingletonTab(TabType.SongPlay, "Song", true, { song: "b" });
+      expect(state.tabs).not.toBe(before);
+      expect(state.tabs[0].id).toBe(id);
+      expect(state.tabs[0].data).toEqual({ song: "b" });
     });
   });
 

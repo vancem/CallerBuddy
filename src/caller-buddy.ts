@@ -773,14 +773,11 @@ export class CallerBuddy {
     this.lastLoadedSongDirHandle = null;
     this.audio.stop();
     this.state.setCurrentSong(null);
-    if (tab) {
-      this.state.closeTab(tab.id);
-    }
+    this.state.closeTabByType(TabType.SongPlay);
 
     if (alsoCloseNowPlaying) {
       this.closeNowPlayingWhenSongPlayCloses = false;
-      const nowPlayingTab = this.state.tabs.find((t) => t.type === TabType.PlaylistPlay);
-      if (nowPlayingTab) this.state.closeTab(nowPlayingTab.id);
+      this.state.closeTabByType(TabType.PlaylistPlay);
     }
   }
 
@@ -928,8 +925,7 @@ export class CallerBuddy {
     this.onboardingSource = null;
 
     // Close the onboard tab
-    const tab = this.state.tabs.find((t) => t.type === TabType.SongOnboard);
-    if (tab) this.state.closeTab(tab.id);
+    this.state.closeTabByType(TabType.SongOnboard);
 
     this.state.emit(StateEvents.SONGS_LOADED);
     log.info("importSong: complete");
