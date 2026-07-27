@@ -177,12 +177,14 @@ describe("songForPersistence", () => {
     const result = songForPersistence(song);
     expect(result).not.toHaveProperty("dirHandle");
     expect(result).not.toHaveProperty("playlistRelPath");
+    expect(result).not.toHaveProperty("lyricsFile");
     expect(result.label).toBe("RYL 607");
     expect(result.title).toBe("Come Sail Away");
     expect(result.categories).toBe("Pop");
     expect(result.rank).toBe(30);
     expect(JSON.stringify(songForPersistence(song))).toContain('"categories"');
     expect(JSON.stringify(songForPersistence(song))).not.toContain('"category"');
+    expect(JSON.stringify(songForPersistence(song))).not.toContain('"lyricsFile"');
   });
 });
 
@@ -234,16 +236,12 @@ describe("normalizeSongFromJson", () => {
     expect(song!.playWeight).toBe(1.5);
   });
 
-  it("coerces string numbers for legacy or hand-edited JSON", () => {
+  it("ignores legacy lyricsFile from JSON (runtime scan supplies it)", () => {
     const song = normalizeSongFromJson({
       musicFile: "a.mp3",
-      rank: "30",
-      playWeight: "1.25",
-      loopStartTime: "0",
+      lyricsFile: "a.md",
     });
-    expect(song!.rank).toBe(30);
-    expect(song!.playWeight).toBe(1.25);
-    expect(song!.loopStartTime).toBe(0);
+    expect(song!.lyricsFile).toBe("");
   });
 });
 

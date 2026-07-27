@@ -15,7 +15,8 @@ export interface Song {
   title: string;
   /** Relative path to the music file within CallerBuddyRoot */
   musicFile: string;
-  /** Relative path to lyrics Markdown file within CallerBuddyRoot, empty if none */
+  /** Relative path to lyrics Markdown file within CallerBuddyRoot, empty if none.
+   * Runtime-only: set by directory scan / create-lyrics; not stored in songs.json. */
   lyricsFile: string;
   /** User-defined category tags (e.g. semicolon-separated: "Christmas; Patriotic") */
   categories: string;
@@ -66,11 +67,18 @@ export interface Song {
 }
 
 /**
- * Strip runtime-only fields (dirHandle) from a Song for JSON serialization.
- * Returns a shallow copy without non-persistable properties.
+ * Strip runtime-only fields from a Song for JSON serialization.
+ * Omits dirHandle, playlistRelPath, and lyricsFile (lyrics pairing comes from scan).
  */
-export function songForPersistence(song: Song): Omit<Song, "dirHandle" | "playlistRelPath"> {
-  const { dirHandle: _, playlistRelPath: __, ...persistable } = song;
+export function songForPersistence(
+  song: Song,
+): Omit<Song, "dirHandle" | "playlistRelPath" | "lyricsFile"> {
+  const {
+    dirHandle: _dh,
+    playlistRelPath: _pr,
+    lyricsFile: _lf,
+    ...persistable
+  } = song;
   return persistable;
 }
 
@@ -104,9 +112,7 @@ export function normalizeSongFromJson(raw: unknown): Song | null {
   const o = raw as Record<string, unknown>;
   if (typeof o.musicFile !== "string" || !o.musicFile) return null;
 
-  const lyricsFile =
-    typeof o.lyricsFile === "string" ? o.lyricsFile : "";
-  const base = createSongFromFile(o.musicFile, lyricsFile);
+  const base = createSongFromFile(o.musicFile, "");
 
   const categories =
     typeof o.categories === "string"
@@ -119,7 +125,8 @@ export function normalizeSongFromJson(raw: unknown): Song | null {
     ...base,
     label: pickStr(o, "label", base.label),
     title: pickStr(o, "title", base.title),
-    lyricsFile: pickStr(o, "lyricsFile", base.lyricsFile),
+    // lyricsFile is runtime-only (directory scan); ignore any legacy JSON field
+    lyricsFile: "",
     categories,
     rank: pickNum(o, "rank", base.rank),
     orderAdded: pickNum(o, "orderAdded", PLACEHOLDER_ORDER_ADDED),

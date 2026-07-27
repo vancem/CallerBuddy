@@ -358,6 +358,7 @@ describe("saveSongsJson", () => {
     expect(filename).toBe("songs.json");
     const parsed = JSON.parse(content);
     expect(parsed[0]).not.toHaveProperty("dirHandle");
+    expect(parsed[0]).not.toHaveProperty("lyricsFile");
     expect(parsed[0].musicFile).toBe("a.mp3");
     expect(parsed[0]).toHaveProperty("categories");
     expect(parsed[0]).not.toHaveProperty("category");
