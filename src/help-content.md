@@ -1,6 +1,35 @@
 <div id="tutorial"></div>
 
-# Your First Dance with CallerBuddy
+# Welcome to CallerBuddy
+
+CallerBuddy is a web-based program that Square Dance Callers can use to play music during performances.   Its main features are 
+
+## Where you can use CallerBuddy
+
+ 1. Can run in your browser or as a desktop lauched application.   The app
+    is tiny can downloads in seconds.  
+ 2. It is cloud storage friendly, meaning you can have your songs 'in the cloud'
+    where they are backed up, and accessible from multiple machines yet kept in
+    sync (you logically only have one collection of songs).
+ 3. While very network cloud friendly, CallerBuddy can run completely 'offline' 
+    so it works fine in venues without any network connectivity.  
+ 4. Works on a wide variety of platforms.  It works on Windows, 
+    Macs (with Chrome Browser), Chromebooks, Linux, and Android phones (sadly 
+    IPhone browsers do not support needed functionalty, and are unsupported)
+ 5. CallerBuddy works well on Android phones, using just touch and allowing both
+    landscape and portrait orientions.   Your phone can definately be your 
+    primary performance tool.  
+
+## What CallerBuddy can do for you
+
+  1
+
+    You can immediately play songs, but it encourages you to generate
+    a list of songs (a playlist) that you will perform at a dance and have them ready to go to perorm in seauence.  
+ 2. You can modify the pitch and tempo and volume of a song and these
+    preference are remembers so the song is always ready to sing 
+ 3. 
+
 
 This walkthrough takes you from a fresh install all the way through
 calling a complete square dance. By the end you will have picked a

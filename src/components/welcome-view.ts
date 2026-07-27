@@ -166,7 +166,7 @@ export class WelcomeView extends LitElement {
     if (typeof window.showDirectoryPicker !== "function") {
       log.warn(`[ui] pickFolder: showDirectoryPicker not supported`);
       this.pickerError =
-        "Folder picker is not supported in this browser. Use Chrome or Edge.";
+        "Critical Missing Functionalty: CallerBuddy needs Chrome or Edge to run, will not work on IPhone.";
       return;
     }
 

@@ -43,5 +43,7 @@ copyrighten stuff.
 music/
 demoMusic/*.zip
 demoMusic/songArchiveHtml/
+demoMusic/songArchiveMd/
+demoMusic/tests/
 # Backup directories
 bak/
