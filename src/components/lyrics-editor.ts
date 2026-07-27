@@ -111,7 +111,7 @@ export class LyricsEditor extends LitElement {
     );
   }
 
-  /** Plain-text paste: filter + preserve newlines as Markdown hard breaks. */
+  /** Plain-text paste: filter, bold calls, preserve newlines as Markdown hard breaks. */
   private onPaste(e: ClipboardEvent) {
     const plain = e.clipboardData?.getData("text/plain");
     if (plain == null || plain === "") return;

@@ -5,7 +5,10 @@
  * Producer HTML is often windows-1252; decode bytes with the declared charset
  * before scraping. {@link filterLyricsText} is the shared post-decode pass
  * (newlines, controls, light cleanup) used by HTML import and paste.
+ * {@link plainTextToMarkdownHardBreaks} also bolds square-dance calls.
  */
+
+import { emphasizeCallsAsMarkdown } from "./lyrics-call-bold.js";
 
 /** Map U+0080–U+009F to Windows-1252 characters (recovery if bytes were kept as C1). */
 const WIN1252_C1: Record<number, string> = {
@@ -80,7 +83,8 @@ export function filterLyricsText(text: string): string {
 }
 
 /**
- * Turn filtered plain text into Markdown body lines with trailing `\`.
+ * Turn filtered plain text into Markdown body lines with trailing `\`,
+ * and bold square-dance call names (same conversion as lyrics import).
  * Blank lines become paragraph breaks (empty line, no backslash).
  */
 export function plainTextToMarkdownHardBreaks(text: string): string {
@@ -91,11 +95,10 @@ export function plainTextToMarkdownHardBreaks(text: string): string {
     const trimmed = line.replace(/[ \t]+$/g, "");
     if (trimmed === "") {
       out.push("");
-    } else if (trimmed.endsWith("\\")) {
-      out.push(trimmed);
-    } else {
-      out.push(`${trimmed}\\`);
+      continue;
     }
+    const bolded = emphasizeCallsAsMarkdown(trimmed);
+    out.push(bolded.endsWith("\\") ? bolded : `${bolded}\\`);
   }
   // Trim trailing blank lines
   while (out.length && out[out.length - 1] === "") out.pop();

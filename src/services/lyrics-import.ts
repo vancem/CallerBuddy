@@ -5,6 +5,7 @@
  */
 
 import { toTitleCase } from "./html-scraper.js";
+import { emphasizeCallsAsMarkdown } from "../utils/lyrics-call-bold.js";
 import { filterLyricsText } from "../utils/lyrics-text-filter.js";
 
 const SECTION_KEYWORD_RE =
@@ -12,85 +13,6 @@ const SECTION_KEYWORD_RE =
 
 const COMBINED_SECTION_RE =
   /^(opener\s*[,/&]\s*(break\s*[,/&]\s*)*(closer?)?|opener\s*[,/&]\s*closer?)/i;
-
-/** Longest-first so multi-word calls match before short ones. */
-const CALL_NAMES = [
-  "right and left thru",
-  "chain down the line",
-  "double pass thru",
-  "touch a quarter",
-  "touch one quarter",
-  "sweep a quarter",
-  "california twirl",
-  "split circulate",
-  "wheel and deal",
-  "pass the ocean",
-  "ladies chain",
-  "spin the top",
-  "partner trade",
-  "tag the line",
-  "courtesy turn",
-  "bend the line",
-  "box the gnat",
-  "grand square",
-  "half sashay",
-  "sides face",
-  "star right",
-  "men sashay",
-  "square thru",
-  "eight chain",
-  "lead right",
-  "scoot back",
-  "swing thru",
-  "pass thru",
-  "do sa do",
-  "flutterwheel",
-  "ferris wheel",
-  "slide thru",
-  "star thru",
-  "veer left",
-  "allemande",
-  "circulate",
-  "cloverleaf",
-  "promenade",
-  "dive thru",
-  "half tag",
-  "cast off",
-  "reverse",
-  "recycle",
-  "trade by",
-  "ladies",
-  "dosado",
-  "extend",
-  "circle",
-  "weave",
-  "heads",
-  "girls",
-  "hinge",
-  "three",
-  "four",
-  "right",
-  "swing",
-  "trade",
-  "left",
-  "star",
-  "boys",
-  "ends",
-  "zoom",
-  "men",
-  "run",
-  "4",
-  "3",
-];
-
-const CALL_REGEX = new RegExp(
-  `\\b(${CALL_NAMES.map((n) =>
-    n
-      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-      .replace(/\s+and\s+/gi, "\\s+(?:and|&)\\s+"),
-  ).join("|")})\\b`,
-  "gi",
-);
 
 const BLOCK_TAGS = new Set([
   "p",
@@ -280,7 +202,7 @@ function emitMarkdown(
   let bodyRun: string[] = [];
   const flushBody = () => {
     if (!bodyRun.length) return;
-    parts.push(bodyRun.map((l) => `${emphasizeCalls(l)}\\`).join("\n"));
+    parts.push(bodyRun.map((l) => `${emphasizeCallsAsMarkdown(l)}\\`).join("\n"));
     bodyRun = [];
   };
 
@@ -329,21 +251,6 @@ function normalizeHeader(text: string): string {
   }
   // Drop trailing colon from "Opener:"
   return t.replace(/:\s*$/, "");
-}
-
-function emphasizeCalls(line: string): string {
-  let result = normalizeAllCaps(line);
-  CALL_REGEX.lastIndex = 0;
-  result = result.replace(CALL_REGEX, (m) => `**${m}**`);
-  return result;
-}
-
-function normalizeAllCaps(line: string): string {
-  let result = line.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
-  if (result === line) return line;
-  result = result.replace(/^([^a-zA-Z]*)([a-z])/, (_, pre, ch) => pre + ch.toUpperCase());
-  result = result.replace(/\bi\b/g, "I");
-  return result;
 }
 
 function collapseWs(text: string): string {

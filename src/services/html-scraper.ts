@@ -9,87 +9,13 @@
  */
 
 import { DEFAULT_LYRICS_STYLE } from "../lyrics-default-style.js";
+import { emphasizeCallsAsHtml } from "../utils/lyrics-call-bold.js";
 
 const SECTION_KEYWORD_RE =
   /^(opener|figure|breaks?|middle\s*break|closer?|tag|verse|bridge)\b/i;
 
 const COMBINED_SECTION_RE =
   /^(opener\s*[,/&]\s*(break\s*[,/&]\s*)*(closer?)?|opener\s*[,/&]\s*closer?)/i;
-
-/**
- * Square dance call names (from calls.txt).
- * Sorted longest-first so the compiled regex prefers longer matches.
- */
-const CALL_NAMES: string[] = [
-  "right and left thru",
-  "chain down the line",
-  "double pass thru",
-  "touch a quarter",
-  "touch one quarter",
-  "sweep a quarter",
-  "california twirl",
-  "split circulate",
-  "wheel and deal",
-  "pass the ocean",
-  "ladies chain",
-  "spin the top",
-  "partner trade",
-  "tag the line",
-  "courtesy turn",
-  "bend the line",
-  "box the gnat",
-  "grand square",
-  "half sashay",
-  "sides face",
-  "star right",
-  "men sashay",
-  "square thru",
-  "eight chain",
-  "lead right",
-  "scoot back",
-  "swing thru",
-  "pass thru",
-  "do sa do",
-  "flutterwheel",
-  "ferris wheel",
-  "slide thru",
-  "star thru",
-  "veer left",
-  "allemande",
-  "circulate",
-  "cloverleaf",
-  "promenade",
-  "dive thru",
-  "half tag",
-  "cast off",
-  "reverse",
-  "recycle",
-  "trade by",
-  "ladies",
-  "dosado",
-  "extend",
-  "circle",
-  "weave",
-  "heads",
-  "girls",
-  "hinge",
-  "three",
-  "four",
-  "right",
-  "swing",
-  "trade",
-  "left",
-  "star",
-  "boys",
-  "ends",
-  "zoom",
-  "men",
-  "run",
-  "4",
-  "3",
-];
-
-const CALL_REGEX = buildCallRegex(CALL_NAMES);
 
 interface TextBlock {
   type: "header" | "text";
@@ -460,39 +386,9 @@ function postProcessBlocks(blocks: TextBlock[]): void {
     if (block.type !== "text") continue;
 
     const lines = block.content.split("<br>\n");
-    const processed = lines.map((line) => {
-      let result = normalizeAllCapsLine(line);
-      CALL_REGEX.lastIndex = 0;
-      result = result.replace(CALL_REGEX, (m) => `<b>${m}</b>`);
-      return result;
-    });
+    const processed = lines.map((line) => emphasizeCallsAsHtml(line));
     block.content = processed.join("<br>\n");
   }
-}
-
-/**
- * Lowercase any ALL CAPS word longer than 1 character, then ensure
- * the first alpha character of the line is capitalized.
- * Single-char words like "I" are preserved.
- */
-function normalizeAllCapsLine(line: string): string {
-  let result = line.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
-  if (result === line) return line;
-  // Capitalize the first alpha character of the line
-  result = result.replace(/^([^a-zA-Z]*)([a-z])/, (_, pre, ch) => pre + ch.toUpperCase());
-  // Preserve standalone pronoun "I"
-  result = result.replace(/\bi\b/g, "I");
-  return result;
-}
-
-function buildCallRegex(callNames: string[]): RegExp {
-  const patterns = callNames.map((name) => {
-    let escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    // Match both "and" and "&" / "&amp;" interchangeably
-    escaped = escaped.replace(/\s+and\s+/gi, "\\s+(?:and|&(?:amp;)?)\\s+");
-    return escaped;
-  });
-  return new RegExp(`\\b(${patterns.join("|")})\\b`, "gi");
 }
 
 // ---------------------------------------------------------------------------

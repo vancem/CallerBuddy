@@ -37,6 +37,12 @@ describe("plainTextToMarkdownHardBreaks", () => {
   it("keeps blank lines as paragraph breaks", () => {
     expect(plainTextToMarkdownHardBreaks("a\n\nb")).toBe("a\\\n\nb\\\n");
   });
+
+  it("bolds square-dance calls like import conversion", () => {
+    expect(plainTextToMarkdownHardBreaks("Heads square thru 4\nPass thru")).toBe(
+      "**Heads** **square thru** **4**\\\n**Pass thru**\\\n",
+    );
+  });
 });
 
 describe("decodeHtmlBytes", () => {
