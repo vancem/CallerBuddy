@@ -127,8 +127,11 @@ export class SongOnboard extends LitElement {
     if (path) {
       try {
         this.lyricsMarkdown = await rescrapeHtml(
-          path, (p) => callerBuddy.readOnboardingEntry(p),
-          this.label, this.songTitle,
+          path,
+          (p) => callerBuddy.readOnboardingEntry(p),
+          this.label,
+          this.songTitle,
+          (p) => callerBuddy.readOnboardingBinary(p),
         );
         this.updateDestNames();
       } catch {
@@ -149,9 +152,16 @@ export class SongOnboard extends LitElement {
     const win = window.open("", "_blank");
     if (!win) return;
     try {
-      const raw = await callerBuddy.readOnboardingEntry(path);
+      const lower = path.toLowerCase();
+      let raw: string;
+      if (lower.endsWith(".html") || lower.endsWith(".htm")) {
+        const { decodeHtmlBytes } = await import("../utils/lyrics-text-filter.js");
+        raw = decodeHtmlBytes(await callerBuddy.readOnboardingBinary(path));
+      } else {
+        raw = await callerBuddy.readOnboardingEntry(path);
+      }
       win.document.open();
-      if (path.toLowerCase().endsWith(".md")) {
+      if (lower.endsWith(".md")) {
         win.document.write(
           `<pre style="white-space:pre-wrap;font-family:monospace;padding:16px">${raw
             .replace(/&/g, "&amp;")

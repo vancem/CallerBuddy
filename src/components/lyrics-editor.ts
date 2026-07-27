@@ -15,6 +15,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { bumpLyricsScale } from "../utils/lyrics-scale.js";
 import { parseLyricsMarkdown } from "../utils/lyrics-markdown.js";
+import { plainTextToMarkdownHardBreaks } from "../utils/lyrics-text-filter.js";
 import {
   LYRICS_BODY_FONT_SIZE,
   LYRICS_H1_SIZE,
@@ -89,6 +90,7 @@ export class LyricsEditor extends LitElement {
             .value=${this.draft}
             @input=${this.onInput}
             @keydown=${this.onKeydown}
+            @paste=${this.onPaste}
           ></textarea>
           <div class="lyrics-preview lyrics-content">
             ${unsafeHTML(previewHtml)}
@@ -100,6 +102,32 @@ export class LyricsEditor extends LitElement {
 
   private onInput(e: Event) {
     this.draft = (e.target as HTMLTextAreaElement).value;
+    this.dispatchEvent(
+      new CustomEvent("lyrics-input", {
+        detail: { markdown: this.draft },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  /** Plain-text paste: filter + preserve newlines as Markdown hard breaks. */
+  private onPaste(e: ClipboardEvent) {
+    const plain = e.clipboardData?.getData("text/plain");
+    if (plain == null || plain === "") return;
+    // If the clipboard already looks like our Markdown, leave it alone.
+    if (/^#{1,2}\s/m.test(plain) || /\\\s*$/m.test(plain)) return;
+
+    e.preventDefault();
+    const ta = e.target as HTMLTextAreaElement;
+    const inserted = plainTextToMarkdownHardBreaks(plain).replace(/\n$/, "");
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? ta.value.length;
+    const next = ta.value.slice(0, start) + inserted + ta.value.slice(end);
+    ta.value = next;
+    this.draft = next;
+    const caret = start + inserted.length;
+    ta.setSelectionRange(caret, caret);
     this.dispatchEvent(
       new CustomEvent("lyrics-input", {
         detail: { markdown: this.draft },

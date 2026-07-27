@@ -25,6 +25,7 @@ const CALL_NAMES: string[] = [
   "chain down the line",
   "double pass thru",
   "touch a quarter",
+  "touch one quarter",
   "sweep a quarter",
   "california twirl",
   "split circulate",
@@ -37,6 +38,9 @@ const CALL_NAMES: string[] = [
   "courtesy turn",
   "bend the line",
   "box the gnat",
+  "grand square",
+  "half sashay",
+  "sides face",
   "star right",
   "men sashay",
   "square thru",
@@ -44,6 +48,7 @@ const CALL_NAMES: string[] = [
   "lead right",
   "scoot back",
   "swing thru",
+  "pass thru",
   "do sa do",
   "flutterwheel",
   "ferris wheel",
@@ -68,6 +73,8 @@ const CALL_NAMES: string[] = [
   "heads",
   "girls",
   "hinge",
+  "three",
+  "four",
   "right",
   "swing",
   "trade",
@@ -78,6 +85,8 @@ const CALL_NAMES: string[] = [
   "zoom",
   "men",
   "run",
+  "4",
+  "3",
 ];
 
 const CALL_REGEX = buildCallRegex(CALL_NAMES);

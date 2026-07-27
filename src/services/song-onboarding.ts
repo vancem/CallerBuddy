@@ -13,6 +13,7 @@
 
 import { toTitleCase } from "./html-scraper.js";
 import { importHtmlToMarkdown, importTextToMarkdown } from "./lyrics-import.js";
+import { decodeHtmlBytes, filterLyricsText } from "../utils/lyrics-text-filter.js";
 import { scoreMp3Candidates, type Mp3Candidate } from "./mp3-candidate-scoring.js";
 
 // ---------------------------------------------------------------------------
@@ -58,11 +59,13 @@ export interface OnboardingProposal {
  * @param zipName     Original ZIP filename (e.g. "BS 2469 - WITCH DOCTOR.zip")
  * @param entryPaths  All paths in the ZIP (files only, no directories)
  * @param readEntry   Async callback to read a specific entry's text content
+ * @param readBinary  Optional binary reader — preferred for HTML (charset decode)
  */
 export async function analyzeZipForOnboarding(
   zipName: string,
   entryPaths: string[],
   readEntry: (path: string) => Promise<string>,
+  readBinary?: (path: string) => Promise<ArrayBuffer>,
 ): Promise<OnboardingProposal> {
   const mp3Paths = entryPaths.filter((p) => isMusicExt(p));
   const htmlPaths = entryPaths.filter((p) => isHtmlExt(p));
@@ -92,13 +95,13 @@ export async function analyzeZipForOnboarding(
   let lyricsMarkdown = "";
   if (selectedMd) {
     try {
-      lyricsMarkdown = await readEntry(selectedMd);
+      lyricsMarkdown = filterLyricsText(await readEntry(selectedMd));
     } catch {
       // fall through
     }
   } else if (selectedHtml) {
     try {
-      const raw = await readEntry(selectedHtml);
+      const raw = await readHtmlSource(selectedHtml, readEntry, readBinary);
       lyricsMarkdown = importHtmlToMarkdown(raw, label, title).markdown;
     } catch {
       // HTML read failed; try TXT fallback below
@@ -164,15 +167,31 @@ export async function rescrapeHtml(
   readEntry: (path: string) => Promise<string>,
   label: string,
   title: string,
+  readBinary?: (path: string) => Promise<ArrayBuffer>,
 ): Promise<string> {
-  const raw = await readEntry(htmlPath);
   if (htmlPath.toLowerCase().endsWith(".md")) {
-    return raw;
+    return filterLyricsText(await readEntry(htmlPath));
   }
   if (htmlPath.toLowerCase().endsWith(".txt")) {
-    return importTextToMarkdown(raw, label, title).markdown;
+    return importTextToMarkdown(await readEntry(htmlPath), label, title).markdown;
   }
+  const raw = await readHtmlSource(htmlPath, readEntry, readBinary);
   return importHtmlToMarkdown(raw, label, title).markdown;
+}
+
+async function readHtmlSource(
+  path: string,
+  readEntry: (path: string) => Promise<string>,
+  readBinary?: (path: string) => Promise<ArrayBuffer>,
+): Promise<string> {
+  if (readBinary) {
+    try {
+      return decodeHtmlBytes(await readBinary(path));
+    } catch {
+      // fall through to text
+    }
+  }
+  return readEntry(path);
 }
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@
  */
 
 import { toTitleCase } from "./html-scraper.js";
+import { filterLyricsText } from "../utils/lyrics-text-filter.js";
 
 const SECTION_KEYWORD_RE =
   /^(opener|figure|breaks?|middle\s*break|closer?|tag|verse|bridge)\b/i;
@@ -18,6 +19,7 @@ const CALL_NAMES = [
   "chain down the line",
   "double pass thru",
   "touch a quarter",
+  "touch one quarter",
   "sweep a quarter",
   "california twirl",
   "split circulate",
@@ -30,6 +32,9 @@ const CALL_NAMES = [
   "courtesy turn",
   "bend the line",
   "box the gnat",
+  "grand square",
+  "half sashay",
+  "sides face",
   "star right",
   "men sashay",
   "square thru",
@@ -37,6 +42,7 @@ const CALL_NAMES = [
   "lead right",
   "scoot back",
   "swing thru",
+  "pass thru",
   "do sa do",
   "flutterwheel",
   "ferris wheel",
@@ -61,6 +67,8 @@ const CALL_NAMES = [
   "heads",
   "girls",
   "hinge",
+  "three",
+  "four",
   "right",
   "swing",
   "trade",
@@ -71,6 +79,8 @@ const CALL_NAMES = [
   "zoom",
   "men",
   "run",
+  "4",
+  "3",
 ];
 
 const CALL_REGEX = new RegExp(
@@ -122,7 +132,11 @@ export function importTextToMarkdown(
   label: string,
   title: string,
 ): ImportLyricsResult {
-  const lines = rawText.split(/\r?\n/).map((l) => sanitizeText(l).trim()).filter(Boolean);
+  const filtered = filterLyricsText(rawText);
+  const lines = filtered
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   return linesToMarkdown(lines, label, title);
 }
 
@@ -141,7 +155,7 @@ function flattenHtmlToLines(rawHtml: string): string[] {
   let buf = "";
 
   const flush = () => {
-    const t = collapseWs(buf);
+    const t = collapseWs(filterLyricsText(buf));
     if (t) lines.push(t);
     buf = "";
   };
@@ -330,17 +344,6 @@ function normalizeAllCaps(line: string): string {
   result = result.replace(/^([^a-zA-Z]*)([a-z])/, (_, pre, ch) => pre + ch.toUpperCase());
   result = result.replace(/\bi\b/g, "I");
   return result;
-}
-
-function sanitizeText(text: string): string {
-  return text
-    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
-    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
-    .replace(/[\u2013\u2014]/g, "-")
-    .replace(/[\u2026]/g, "...")
-    .replace(/\uFFFD/g, "")
-    // eslint-disable-next-line no-control-regex -- strip non-printable
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "");
 }
 
 function collapseWs(text: string): string {

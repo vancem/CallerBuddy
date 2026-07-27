@@ -827,7 +827,10 @@ export class CallerBuddy {
     };
 
     const proposal = await analyzeZipForOnboarding(
-      file.name, entryPaths, this.onboardingSource.readText,
+      file.name,
+      entryPaths,
+      this.onboardingSource.readText,
+      this.onboardingSource.readBinary,
     );
     log.info(`openSongOnboard: proposal — label="${proposal.label}", title="${proposal.title}"`);
 
@@ -863,7 +866,10 @@ export class CallerBuddy {
 
     const folderName = dirHandle.name;
     const proposal = await analyzeZipForOnboarding(
-      folderName, entryPaths, this.onboardingSource.readText,
+      folderName,
+      entryPaths,
+      this.onboardingSource.readText,
+      this.onboardingSource.readBinary,
     );
     log.info(`openSongOnboardFromFolder: proposal — label="${proposal.label}", title="${proposal.title}"`);
 
@@ -957,6 +963,12 @@ export class CallerBuddy {
   async readOnboardingEntry(path: string): Promise<string> {
     if (!this.onboardingSource) throw new Error("No onboarding source loaded");
     return this.onboardingSource.readText(path);
+  }
+
+  /** Read a binary entry from the current onboarding source (ZIP or folder). */
+  async readOnboardingBinary(path: string): Promise<ArrayBuffer> {
+    if (!this.onboardingSource) throw new Error("No onboarding source loaded");
+    return this.onboardingSource.readBinary(path);
   }
 }
 
