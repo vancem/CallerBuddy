@@ -82,29 +82,27 @@ describe("isMusicFile", () => {
   it("rejects non-music extensions", () => {
     expect(isMusicFile("song.ogg")).toBe(false);
     expect(isMusicFile("song.txt")).toBe(false);
-    expect(isMusicFile("song.html")).toBe(false);
+    expect(isMusicFile("song.md")).toBe(false);
   });
 });
 
 describe("isLyricsFile", () => {
-  it("recognizes .html", () => expect(isLyricsFile("lyrics.html")).toBe(true));
-  it("recognizes .htm", () => expect(isLyricsFile("lyrics.htm")).toBe(true));
   it("recognizes .md", () => expect(isLyricsFile("lyrics.md")).toBe(true));
-  it("recognizes .txt", () => expect(isLyricsFile("lyrics.txt")).toBe(true));
 
-  it("is case-insensitive", () => {
-    expect(isLyricsFile("LYRICS.HTML")).toBe(true);
-    expect(isLyricsFile("Lyrics.TXT")).toBe(true);
+  it("is case-insensitive for .md", () => {
+    expect(isLyricsFile("Lyrics.MD")).toBe(true);
   });
 
   it("rejects non-lyrics extensions", () => {
+    expect(isLyricsFile("lyrics.html")).toBe(false);
+    expect(isLyricsFile("lyrics.txt")).toBe(false);
     expect(isLyricsFile("file.mp3")).toBe(false);
     expect(isLyricsFile("file.pdf")).toBe(false);
   });
 });
 
 describe("isSingingCall / isPatter", () => {
-  const withLyrics = { lyricsFile: "song.html" } as Song;
+  const withLyrics = { lyricsFile: "song.md" } as Song;
   const noLyrics = { lyricsFile: "" } as Song;
 
   it("isSingingCall returns true when song has lyrics", () => {
@@ -120,7 +118,7 @@ describe("isSingingCall / isPatter", () => {
 
 describe("effectiveAudioLoopPoints / patterDefaultLoopEndSec / clampPatterLoopRegion", () => {
   it("singing call passes through stored loop times", () => {
-    const singing = createSongFromFile("S.MP3", "S.html");
+    const singing = createSongFromFile("S.MP3", "S.md");
     singing.loopStartTime = 1;
     singing.loopEndTime = 0;
     expect(effectiveAudioLoopPoints(singing, 100)).toEqual({ start: 1, end: 0 });
@@ -160,7 +158,7 @@ describe("songForPersistence", () => {
       label: "RYL 607",
       title: "Come Sail Away",
       musicFile: "RYL 607 - Come Sail Away.MP3",
-      lyricsFile: "RYL 607 - Come Sail Away.html",
+      lyricsFile: "RYL 607 - Come Sail Away.md",
       categories: "Pop",
       rank: 30,
       orderAdded: 3,
@@ -272,8 +270,8 @@ describe("createSongFromFile", () => {
   });
 
   it("accepts an optional lyrics file", () => {
-    const song = createSongFromFile("Test.mp3", "Test.html");
-    expect(song.lyricsFile).toBe("Test.html");
+    const song = createSongFromFile("Test.mp3", "Test.md");
+    expect(song.lyricsFile).toBe("Test.md");
   });
 
   it("uses a placeholder orderAdded until merge assigns a real value", () => {

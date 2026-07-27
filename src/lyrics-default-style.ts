@@ -4,10 +4,8 @@
  * One absolute root size; all other sizes are em ratios of that base so that
  * changing LYRICS_BODY_FONT_SIZE scales the entire lyric surface uniformly.
  *
- * These constants are used in three places that must stay in sync:
- *   1. DEFAULT_LYRICS_STYLE  – the <style> block written into lyric HTML files
- *   2. lyrics-editor.ts      – the shadow-DOM fallback CSS for the editor view
- *   3. music/orig/*.html     – the static HTML assets (bulk-updated from here)
+ * Used by in-app lyrics CSS (song-play + lyrics-editor preview) and by the
+ * HTML scraper when building an intermediate document before Markdown conversion.
  */
 
 // ── Typography tokens ────────────────────────────────────────────────────────

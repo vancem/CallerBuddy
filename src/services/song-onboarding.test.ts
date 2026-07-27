@@ -274,18 +274,18 @@ describe("selectBestHtml", () => {
 
 describe("computeDestNames", () => {
   it("generates standard LABEL - Title names", () => {
-    const { destMp3Name, destHtmlName } = computeDestNames(
+    const { destMp3Name, destLyricsName } = computeDestNames(
       "BS 2469",
       "Witch Doctor",
       true,
     );
     expect(destMp3Name).toBe("BS 2469 - Witch Doctor.mp3");
-    expect(destHtmlName).toBe("BS 2469 - Witch Doctor.html");
+    expect(destLyricsName).toBe("BS 2469 - Witch Doctor.md");
   });
 
   it("omits HTML name when no lyrics", () => {
-    const { destHtmlName } = computeDestNames("RR 104", "Rocky Top", false);
-    expect(destHtmlName).toBe("");
+    const { destLyricsName } = computeDestNames("RR 104", "Rocky Top", false);
+    expect(destLyricsName).toBe("");
   });
 
   it("handles missing label", () => {
@@ -330,8 +330,8 @@ describe("analyzeZipForOnboarding", () => {
     expect(proposal.title).toBe("Singing in the Rain");
     expect(proposal.mp3Candidates.length).toBe(2);
     expect(proposal.selectedMp3).toBe("BS 2634 - SINGING IN THE RAIN.mp3");
-    expect(proposal.normalizedHtml).toContain("Opener");
-    expect(proposal.normalizedHtml).toContain("Figure");
+    expect(proposal.lyricsMarkdown).toContain("Opener");
+    expect(proposal.lyricsMarkdown).toContain("Figure");
     expect(proposal.destMp3Name).toBe("BS 2634 - Singing in the Rain.mp3");
   });
 
@@ -355,7 +355,7 @@ describe("analyzeZipForOnboarding", () => {
     );
 
     expect(proposal.label).toBe("RR 104");
-    expect(proposal.normalizedHtml).toContain("Opener");
-    expect(proposal.normalizedHtml).toContain("Rocky Top Tennessee");
+    expect(proposal.lyricsMarkdown).toContain("Opener");
+    expect(proposal.lyricsMarkdown).toContain("Rocky Top Tennessee");
   });
 });

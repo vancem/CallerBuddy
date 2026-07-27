@@ -61,7 +61,7 @@ export function isSuspiciousScan(
 /**
  * Scan a directory for music and lyrics files and produce a Song list.
  * Filenames come verbatim from the directory listing. Lyrics are paired by
- * base name (see {@link baseName}) so ".MP3" / ".html" extension case can differ.
+ * base name (see {@link baseName}) so ".MP3" / ".md" extension case can differ.
  *
  * Does NOT recurse into subdirectories (playlist editor handles folder
  * navigation; scanner operates on one folder at a time).

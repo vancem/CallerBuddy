@@ -530,8 +530,10 @@ export class AppShell extends LitElement {
         return html`<song-play></song-play>`;
       case TabType.SongOnboard:
         return html`<song-onboard></song-onboard>`;
-      case TabType.Help:
-        return html`<help-view></help-view>`;
+      case TabType.Help: {
+        const data = tab.data as { sectionId?: string } | undefined;
+        return html`<help-view .sectionId=${data?.sectionId ?? ""}></help-view>`;
+      }
       default:
         return html`<p>Unknown tab type</p>`;
     }

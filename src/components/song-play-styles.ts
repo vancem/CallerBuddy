@@ -60,13 +60,16 @@ export const songPlayStyles = css`
 
     .lyrics-content h1 {
       font-size: 1.25em;
-      display: inline;
+      display: block;
+      margin: 0 0 0.15em;
     }
 
-    .lyrics-content .info {
+    .lyrics-content .info,
+    .lyrics-content em.info {
       color: blue;
       font-size: 0.75em;
       font-weight: normal;
+      font-style: italic;
     }
 
     .lyrics-content h2 {

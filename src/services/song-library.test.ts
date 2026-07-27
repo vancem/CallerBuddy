@@ -87,10 +87,10 @@ describe("mergeSongs", () => {
   });
 
   it("refreshes lyricsFile from scan on overlap", () => {
-    const scanned = [makeSong({ musicFile: "a.mp3", lyricsFile: "a.html" })];
+    const scanned = [makeSong({ musicFile: "a.mp3", lyricsFile: "a.md" })];
     const persisted = [makeSong({ musicFile: "a.mp3", lyricsFile: "" })];
     const result = mergeSongs(scanned, persisted);
-    expect(result[0].lyricsFile).toBe("a.html");
+    expect(result[0].lyricsFile).toBe("a.md");
   });
 
   it("reconciles persisted metadata by label when musicFile differs", () => {
@@ -106,14 +106,14 @@ describe("mergeSongs", () => {
     const scanned = [
       makeSong({
         musicFile: "BS 579 - CANDY GIRL.mp3",
-        lyricsFile: "BS 579 - CANDY GIRL.html",
+        lyricsFile: "BS 579 - CANDY GIRL.md",
         label: "BS 579",
       }),
     ];
     const persisted = [
       makeSong({
         musicFile: "BS 579 - Candy Girl.mp3",
-        lyricsFile: "BS 579 - Candy Girl.html",
+        lyricsFile: "BS 579 - Candy Girl.md",
         label: "BS 579",
         rank: 10,
       }),
@@ -122,7 +122,7 @@ describe("mergeSongs", () => {
     expect(result).toHaveLength(1);
     expect(result[0].rank).toBe(10);
     expect(result[0].musicFile).toBe("BS 579 - CANDY GIRL.mp3");
-    expect(result[0].lyricsFile).toBe("BS 579 - CANDY GIRL.html");
+    expect(result[0].lyricsFile).toBe("BS 579 - CANDY GIRL.md");
   });
 
   it("adds new scanned songs and omits persisted songs missing from scan", () => {
@@ -247,7 +247,7 @@ describe("scanDirectory", () => {
   it("creates songs from music files and pairs lyrics by base name", async () => {
     vi.mocked(listDirectory).mockResolvedValue([
       { name: "RYL 607 - Come Sail Away.MP3", kind: "file" },
-      { name: "RYL 607 - Come Sail Away.html", kind: "file" },
+      { name: "RYL 607 - Come Sail Away.md", kind: "file" },
       { name: "Another Track.wav", kind: "file" },
     ]);
 
@@ -255,7 +255,7 @@ describe("scanDirectory", () => {
     expect(songs).toHaveLength(2);
 
     const sail = songs.find((s) => s.musicFile === "RYL 607 - Come Sail Away.MP3")!;
-    expect(sail.lyricsFile).toBe("RYL 607 - Come Sail Away.html");
+    expect(sail.lyricsFile).toBe("RYL 607 - Come Sail Away.md");
     expect(sail.label).toBe("RYL 607");
     expect(sail.title).toBe("Come Sail Away");
     expect(sail.orderAdded).toBe(0);

@@ -21,14 +21,7 @@ import {
   type Mp3Candidate,
   type HtmlCandidate,
 } from "../services/song-onboarding.js";
-import { escapeHtml } from "../services/html-scraper.js";
 import { formatUnknownError } from "../utils/format.js";
-import {
-  extractStyleBlock,
-  extractBodyContent,
-  rewriteBodySelectors,
-  wrapLyricsHtml,
-} from "../utils/lyrics-html.js";
 import "./lyrics-editor.js";
 import type { LyricsEditor } from "./lyrics-editor.js";
 
@@ -44,9 +37,9 @@ export class SongOnboard extends LitElement {
   @state() private songTitle = "";
   @state() private selectedMp3 = "";
   @state() private selectedHtml = "";
-  @state() private normalizedHtml = "";
+  @state() private lyricsMarkdown = "";
   @state() private destMp3Name = "";
-  @state() private destHtmlName = "";
+  @state() private destLyricsName = "";
   @state() private mp3Candidates: Mp3Candidate[] = [];
   @state() private htmlCandidates: HtmlCandidate[] = [];
   @state() private allEntries: string[] = [];
@@ -91,9 +84,9 @@ export class SongOnboard extends LitElement {
       this.songTitle = data.proposal.title;
       this.selectedMp3 = data.proposal.selectedMp3;
       this.selectedHtml = data.proposal.selectedHtml;
-      this.normalizedHtml = data.proposal.normalizedHtml;
+      this.lyricsMarkdown = data.proposal.lyricsMarkdown;
       this.destMp3Name = data.proposal.destMp3Name;
-      this.destHtmlName = data.proposal.destHtmlName;
+      this.destLyricsName = data.proposal.destLyricsName;
       this.mp3Candidates = data.proposal.mp3Candidates;
       this.htmlCandidates = data.proposal.htmlCandidates;
       this.allEntries = data.proposal.allEntries;
@@ -105,11 +98,11 @@ export class SongOnboard extends LitElement {
   // -- Field handlers --------------------------------------------------------
 
   private updateDestNames() {
-    const { destMp3Name, destHtmlName } = computeDestNames(
-      this.label, this.songTitle, !!this.normalizedHtml,
+    const { destMp3Name, destLyricsName } = computeDestNames(
+      this.label, this.songTitle, !!this.lyricsMarkdown,
     );
     this.destMp3Name = destMp3Name;
-    this.destHtmlName = destHtmlName;
+    this.destLyricsName = destLyricsName;
   }
 
   private onLabelInput(e: Event) {
@@ -131,16 +124,16 @@ export class SongOnboard extends LitElement {
     this.selectedHtml = path;
     if (path) {
       try {
-        this.normalizedHtml = await rescrapeHtml(
+        this.lyricsMarkdown = await rescrapeHtml(
           path, (p) => callerBuddy.readOnboardingEntry(p),
           this.label, this.songTitle,
         );
         this.updateDestNames();
       } catch {
-        this.normalizedHtml = "";
+        this.lyricsMarkdown = "";
       }
     } else {
-      this.normalizedHtml = "";
+      this.lyricsMarkdown = "";
       this.updateDestNames();
     }
   }
@@ -154,9 +147,18 @@ export class SongOnboard extends LitElement {
     const win = window.open("", "_blank");
     if (!win) return;
     try {
-      const rawHtml = await callerBuddy.readOnboardingEntry(path);
+      const raw = await callerBuddy.readOnboardingEntry(path);
       win.document.open();
-      win.document.write(rawHtml);
+      if (path.toLowerCase().endsWith(".md")) {
+        win.document.write(
+          `<pre style="white-space:pre-wrap;font-family:monospace;padding:16px">${raw
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")}</pre>`,
+        );
+      } else {
+        win.document.write(raw);
+      }
       win.document.close();
     } catch (err) {
       win.document.open();
@@ -165,21 +167,11 @@ export class SongOnboard extends LitElement {
     }
   }
 
-  /**
-   * Build the full HTML document from the editor's current body content,
-   * preserving the style block from the original normalizedHtml.
-   * Called at import time instead of on every keystroke — updating
-   * normalizedHtml on every input would trigger a Lit re-render that
-   * replaces the contenteditable content, destroying cursor position
-   * and the browser's native undo stack.
-   */
-  private buildNormalizedHtmlFromEditor(): string {
-    if (!this.normalizedHtml) return "";
+  private lyricsMarkdownFromEditor(): string {
+    if (!this.lyricsMarkdown) return "";
     const editor = this.shadowRoot?.querySelector("lyrics-editor") as LyricsEditor | null;
-    if (!editor) return this.normalizedHtml;
-    const bodyContent = editor.getEditorHtml();
-    const styleText = extractStyleBlock(this.normalizedHtml);
-    return wrapLyricsHtml(bodyContent, styleText, escapeHtml(this.songTitle));
+    if (!editor) return this.lyricsMarkdown;
+    return editor.getEditorMarkdown();
   }
 
   // -- Splitter drag ---------------------------------------------------------
@@ -219,10 +211,10 @@ export class SongOnboard extends LitElement {
       selectedMp3: this.selectedMp3,
       htmlCandidates: this.htmlCandidates,
       selectedHtml: this.selectedHtml,
-      normalizedHtml: this.buildNormalizedHtmlFromEditor(),
+      lyricsMarkdown: this.lyricsMarkdownFromEditor(),
       allEntries: this.allEntries,
       destMp3Name: this.destMp3Name,
-      destHtmlName: this.destHtmlName,
+      destLyricsName: this.destLyricsName,
     };
 
     try {
@@ -260,7 +252,7 @@ export class SongOnboard extends LitElement {
   }
 
   private renderLeftPanel() {
-    if (!this.normalizedHtml) {
+    if (!this.lyricsMarkdown) {
       return html`
         <div class="left-panel">
           <div class="no-lyrics">
@@ -271,19 +263,20 @@ export class SongOnboard extends LitElement {
       `;
     }
 
-    const body = extractBodyContent(this.normalizedHtml);
-    const cssText = extractStyleBlock(this.normalizedHtml);
-    const rewrittenCss = rewriteBodySelectors(cssText);
-
     return html`
       <div class="left-panel">
         <lyrics-editor
-          .bodyHtml=${body}
-          .editorCss=${rewrittenCss}
-          .showSaveExit=${false}
+          .lyricsMarkdown=${this.lyricsMarkdown}
+          @lyrics-help=${this.onLyricsMarkdownHelp}
         ></lyrics-editor>
       </div>
     `;
+  }
+
+  private onLyricsMarkdownHelp() {
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
+      sectionId: "howto-lyrics-markdown",
+    });
   }
 
   private renderRightPanel() {
@@ -346,10 +339,10 @@ export class SongOnboard extends LitElement {
           </div>
         </div>
 
-        ${this.normalizedHtml
-          ? html`<p class="explain">Source lyrics were extracted and placed
+        ${this.lyricsMarkdown
+          ? html`<p class="explain">Source lyrics were converted to Markdown and placed
               in the editor — please review and update as desired.
-              You can open the original HTML file by double clicking on it
+              You can open the original file by double-clicking it
               in the file list below to compare or cut and paste.</p>`
           : nothing}
 
@@ -364,7 +357,7 @@ export class SongOnboard extends LitElement {
             ? html`
               <div class="contents-list">
                 ${this.allEntries.map((e) =>
-                  /\.html?$/i.test(e)
+                  /\.(html?|md)$/i.test(e)
                     ? html`<div class="contents-entry"><a href="#" @click=${(ev: Event) => this.openHtmlPreview(e, ev)}>${e}</a></div>`
                     : html`<div class="contents-entry">${e}</div>`,
                 )}
@@ -418,9 +411,9 @@ export class SongOnboard extends LitElement {
           <div class="dest-line">
             Music: <strong>${this.destMp3Name}</strong>
           </div>
-          ${this.destHtmlName
+          ${this.destLyricsName
             ? html`<div class="dest-line">
-                Lyrics: <strong>${this.destHtmlName}</strong>
+                Lyrics: <strong>${this.destLyricsName}</strong>
               </div>`
             : html`<div class="dest-line muted">No lyrics file will be created</div>`}
         </div>

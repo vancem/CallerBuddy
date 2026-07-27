@@ -54,16 +54,19 @@ function setupMockFileSystem() {
     return buffer;
   }
 
-  const lyricsHtml = `<!DOCTYPE html><html><body>
-    <h1>Test Lyrics</h1>
-    <p class="verse">Circle left and walk around the ring</p>
-  </body></html>`;
+  const lyricsMd = `# Sunny Side Singing
+_(SQD 101)_
+
+## Figure
+**Heads** promenade halfway\\
+Swing and promenade\\
+`;
 
   const files = new Map<string, ArrayBuffer | string>();
   files.set("SQD 101 - Sunny Side Singing.wav", generateWav(1, 440));
-  files.set("SQD 101 - Sunny Side Singing.html", lyricsHtml);
+  files.set("SQD 101 - Sunny Side Singing.md", lyricsMd);
   files.set("RYL 202 - Mountain Morning.wav", generateWav(1, 523));
-  files.set("RYL 202 - Mountain Morning.html", lyricsHtml);
+  files.set("RYL 202 - Mountain Morning.md", lyricsMd);
   files.set("PTR 301 - Steady Groove Patter.wav", generateWav(1, 330));
 
   function createMockFileHandle(

@@ -1,25 +1,20 @@
 /**
- * Shared lyrics editor component with formatting toolbar.
+ * Shared lyrics editor: Markdown textarea + live preview.
  *
- * Used by both song-play (editing existing lyrics) and song-onboard
- * (reviewing/editing scraped lyrics during import).
- *
- * The component provides:
- *  - A formatting toolbar (Bold, Heading, Info, Paragraph)
- *  - A contenteditable div styled to match CallerBuddy lyrics format
- *  - Keyboard shortcuts (Ctrl+B/H/I/P)
- *  - Optional Save/Exit buttons (shown when showSaveExit is true)
+ * Used by song-play (edit/create) and song-onboard (import review).
  *
  * Events:
- *  - `lyrics-input`  — fires on every edit (detail: { html: string })
- *  - `lyrics-save`   — fires when Save is clicked or Ctrl+S pressed
- *  - `lyrics-exit`   — fires when Exit is clicked or Esc pressed
+ *  - `lyrics-input`  — detail: { markdown: string }
+ *  - `lyrics-save`   — Save clicked or Ctrl+S
+ *  - `lyrics-exit`   — Exit clicked or Esc
+ *  - `lyrics-help`   — Markdown help clicked
  */
 
 import { LitElement, css, html, nothing, unsafeCSS } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { bumpLyricsScale } from "../utils/lyrics-scale.js";
+import { parseLyricsMarkdown } from "../utils/lyrics-markdown.js";
 import {
   LYRICS_BODY_FONT_SIZE,
   LYRICS_H1_SIZE,
@@ -30,70 +25,84 @@ import {
 
 @customElement("lyrics-editor")
 export class LyricsEditor extends LitElement {
-  /** HTML body content to display in the editor. Set once on init; further
-   *  edits are tracked internally by the contenteditable div. */
-  @property({ type: String }) bodyHtml = "";
+  /** Markdown source. Set when opening the editor; further edits are local. */
+  @property({ type: String }) lyricsMarkdown = "";
 
-  /** Optional CSS to inject (rewritten from the lyrics file's <style>). */
-  @property({ type: String }) editorCss = "";
-
-  /** Show Save and Exit buttons in the toolbar (for song-play mode). */
+  /** Show Save and Exit buttons (song-play mode). */
   @property({ type: Boolean }) showSaveExit = false;
 
-  /** Get the current editor HTML content. */
-  getEditorHtml(): string {
-    const el = this.shadowRoot?.querySelector(".lyrics-editor") as HTMLElement | null;
-    return el?.innerHTML ?? "";
+  @state() private draft = "";
+
+  override willUpdate(changed: Map<string, unknown>) {
+    if (changed.has("lyricsMarkdown")) {
+      this.draft = this.lyricsMarkdown ?? "";
+    }
+  }
+
+  /** Current Markdown text in the textarea. */
+  getEditorMarkdown(): string {
+    const el = this.shadowRoot?.querySelector(
+      "textarea.lyrics-source",
+    ) as HTMLTextAreaElement | null;
+    return el?.value ?? this.draft;
   }
 
   render() {
+    const previewHtml = parseLyricsMarkdown(this.draft);
     return html`
-      ${this.editorCss ? html`<style>${this.editorCss}</style>` : nothing}
       <div class="editor-container">
         <div class="editor-toolbar">
-          <button class="toolbar-btn" title="Bold (Ctrl+B)"
-            @mousedown=${this.preventFocusLoss}
-            @click=${this.execBold}><b>B</b></button>
-          <button class="toolbar-btn section-btn" title="Section heading (Ctrl+H)"
-            @mousedown=${this.preventFocusLoss}
-            @click=${this.execSection}>Heading</button>
-          <button class="toolbar-btn info-btn" title="Info block \u2014 blue text (Ctrl+I)"
-            @mousedown=${this.preventFocusLoss}
-            @click=${this.execInfo}>Info</button>
-          <button class="toolbar-btn" title="Paragraph (Ctrl+P)"
-            @mousedown=${this.preventFocusLoss}
-            @click=${this.execParagraph}>P</button>
+          <button
+            type="button"
+            class="toolbar-btn help-btn"
+            title="Open Markdown help"
+            @click=${this.onHelp}
+          >
+            Markdown help
+          </button>
           <span class="toolbar-spacer"></span>
           ${this.showSaveExit
             ? html`
-              <button class="toolbar-btn save-btn" title="Save lyrics (Ctrl+S)"
-                @click=${this.onSave}>Save</button>
-              <button class="toolbar-btn cancel-btn" title="Exit editor (Esc)"
-                @click=${this.onExit}>Exit</button>`
+                <button
+                  type="button"
+                  class="toolbar-btn save-btn"
+                  title="Save lyrics (Ctrl+S)"
+                  @click=${this.onSave}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  class="toolbar-btn cancel-btn"
+                  title="Exit editor (Esc)"
+                  @click=${this.onExit}
+                >
+                  Exit
+                </button>
+              `
             : nothing}
         </div>
-        <div class="lyrics-editor lyrics-content" contenteditable="true"
-          @input=${this.onInput}
-          @keydown=${this.onKeydown}
-          @paste=${this.onPaste}>${unsafeHTML(this.bodyHtml)}</div>
+        <div class="editor-panes">
+          <textarea
+            class="lyrics-source"
+            spellcheck="true"
+            .value=${this.draft}
+            @input=${this.onInput}
+            @keydown=${this.onKeydown}
+          ></textarea>
+          <div class="lyrics-preview lyrics-content">
+            ${unsafeHTML(previewHtml)}
+          </div>
+        </div>
       </div>
     `;
   }
 
-  private preventFocusLoss(e: Event) {
-    e.preventDefault();
-  }
-
-  private onPaste(e: ClipboardEvent) {
-    e.preventDefault();
-    const text = e.clipboardData?.getData("text/plain") ?? "";
-    document.execCommand("insertText", false, text);
-  }
-
-  private onInput() {
+  private onInput(e: Event) {
+    this.draft = (e.target as HTMLTextAreaElement).value;
     this.dispatchEvent(
       new CustomEvent("lyrics-input", {
-        detail: { html: this.getEditorHtml() },
+        detail: { markdown: this.draft },
         bubbles: true,
         composed: true,
       }),
@@ -101,90 +110,20 @@ export class LyricsEditor extends LitElement {
   }
 
   private onKeydown(e: KeyboardEvent) {
-    e.stopPropagation();
-    if (e.altKey && !e.ctrlKey && !e.metaKey) {
-      const increase =
-        e.key === "+" ||
-        e.key === "=" ||
-        e.code === "Equal" ||
-        e.code === "NumpadAdd";
-      const decrease =
-        e.key === "-" ||
-        e.code === "Minus" ||
-        e.code === "NumpadSubtract";
-      if (increase) {
-        e.preventDefault();
-        void bumpLyricsScale(1.1);
-        return;
-      }
-      if (decrease) {
-        e.preventDefault();
-        void bumpLyricsScale(1 / 1.1);
-        return;
-      }
-    }
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      document.execCommand("insertLineBreak");
-      return;
-    }
     if (e.key === "Escape") {
       e.preventDefault();
       this.onExit();
       return;
     }
-    if (!e.ctrlKey && !e.metaKey) return;
-    switch (e.key.toLowerCase()) {
-      case "b":
-        e.preventDefault();
-        this.execBold();
-        break;
-      case "h":
-        e.preventDefault();
-        this.execSection();
-        break;
-      case "i":
-        e.preventDefault();
-        this.execInfo();
-        break;
-      case "p":
-        e.preventDefault();
-        this.execParagraph();
-        break;
-      case "s":
-        e.preventDefault();
-        this.onSave();
-        break;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      this.onSave();
+      return;
     }
-  }
-
-  private execBold() {
-    document.execCommand("bold");
-  }
-
-  private execSection() {
-    document.execCommand("formatBlock", false, "h2");
-  }
-
-  private execParagraph() {
-    document.execCommand("formatBlock", false, "p");
-  }
-
-  private execInfo() {
-    const sel =
-      ((this.shadowRoot as unknown as { getSelection?: () => Selection })
-        ?.getSelection?.() as Selection | undefined) ??
-      window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-    const range = sel.getRangeAt(0);
-    const span = document.createElement("span");
-    span.className = "info";
-    span.appendChild(range.extractContents());
-    range.insertNode(span);
-    sel.removeAllRanges();
-    const newRange = document.createRange();
-    newRange.selectNodeContents(span);
-    sel.addRange(newRange);
+    if (e.altKey && (e.key === "=" || e.key === "+" || e.key === "-")) {
+      e.preventDefault();
+      bumpLyricsScale(e.key === "-" ? -1 : 1);
+    }
   }
 
   private onSave() {
@@ -199,109 +138,126 @@ export class LyricsEditor extends LitElement {
     );
   }
 
+  private onHelp() {
+    this.dispatchEvent(
+      new CustomEvent("lyrics-help", {
+        detail: { sectionId: "howto-lyrics-markdown" },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
   static styles = css`
     :host {
-      display: flex;
-      flex-direction: column;
+      display: block;
       height: 100%;
+      min-height: 0;
     }
 
     .editor-container {
       display: flex;
       flex-direction: column;
       height: 100%;
+      min-height: 0;
     }
 
     .editor-toolbar {
       display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
       align-items: center;
-      gap: 4px;
       padding: 6px 8px;
       border-bottom: 1px solid var(--cb-border);
-      background: var(--cb-surface, var(--cb-bg));
+      background: var(--cb-panel-bg);
       flex-shrink: 0;
     }
 
     .toolbar-btn {
+      font: inherit;
+      font-size: 0.85rem;
       padding: 4px 10px;
       border: 1px solid var(--cb-border);
       border-radius: 4px;
-      background: var(--cb-input-bg);
-      color: var(--cb-fg);
+      background: var(--cb-surface);
+      color: var(--cb-text);
       cursor: pointer;
-      font-size: 0.85rem;
-      min-width: 2rem;
-      text-align: center;
     }
 
     .toolbar-btn:hover {
       background: var(--cb-hover);
     }
 
-    .toolbar-btn.section-btn {
-      color: red;
-      font-weight: 500;
+    .help-btn {
+      color: var(--cb-accent);
     }
 
-    .toolbar-btn.info-btn {
-      color: blue;
-      font-weight: 500;
-    }
-
-    .toolbar-btn.save-btn {
-      background: var(--cb-accent);
-      color: var(--cb-fg-on-accent);
-      border-color: transparent;
-      font-weight: 500;
-    }
-
-    .toolbar-btn.save-btn:hover {
-      background: var(--cb-accent-hover);
-    }
-
-    .toolbar-btn.cancel-btn {
-      color: var(--cb-fg-secondary);
+    .save-btn {
+      font-weight: 600;
     }
 
     .toolbar-spacer {
       flex: 1;
     }
 
-    .lyrics-editor {
+    .editor-panes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
       flex: 1;
-      overflow-y: auto;
-      outline: none;
-      cursor: text;
-      padding: 16px;
-      box-sizing: border-box;
-      min-height: 12.5rem;
+      min-height: 0;
     }
 
-    .lyrics-editor:focus {
+    textarea.lyrics-source {
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 12px;
+      border: none;
+      border-right: 1px solid var(--cb-border);
+      resize: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      background: var(--cb-surface);
+      color: var(--cb-text);
+    }
+
+    textarea.lyrics-source:focus {
       outline: 2px solid var(--cb-accent);
       outline-offset: -2px;
     }
 
-    /* Default lyrics styling (can be overridden by injected editorCss) */
+    .lyrics-preview {
+      overflow: auto;
+      min-height: 0;
+    }
+
     .lyrics-content {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 16px;
+      margin: 0 !important;
       background: lightyellow;
       font-family: ${unsafeCSS(LYRICS_UI_FONT_STACK)};
       font-size: var(--cb-lyrics-font-size, ${unsafeCSS(LYRICS_BODY_FONT_SIZE)});
       line-height: 140%;
       color: black;
-      /* Injected lyric CSS can set body margin (rewritten to .lyrics-content). */
-      margin: 0 !important;
     }
 
     .lyrics-content h1 {
       font-size: ${unsafeCSS(LYRICS_H1_SIZE)};
-      display: inline;
+      display: block;
+      margin: 0 0 0.15em;
     }
 
-    .lyrics-content .info {
+    .lyrics-content .info,
+    .lyrics-content em.info {
       color: blue;
       font-size: ${unsafeCSS(LYRICS_INFO_SIZE)};
       font-weight: normal;
+      font-style: italic;
     }
 
     .lyrics-content h2 {
@@ -313,6 +269,18 @@ export class LyricsEditor extends LitElement {
 
     .lyrics-content p {
       margin: 0 0 0.4em;
+    }
+
+    @container (max-width: 700px) {
+      .editor-panes {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+
+      textarea.lyrics-source {
+        border-right: none;
+        border-bottom: 1px solid var(--cb-border);
+      }
     }
   `;
 }

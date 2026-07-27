@@ -35,35 +35,21 @@ import {
 } from "./song-play-partials.js";
 import type { Song } from "../models/song.js";
 import type { LyricsEditor } from "./lyrics-editor.js";
-import { DEFAULT_LYRICS_STYLE } from "../lyrics-default-style.js";
 import {
-  extractStyleBlock,
-  extractBodyContent,
-  wrapLyricsHtml,
-} from "../utils/lyrics-html.js";
+  generateLyricsMarkdownTemplate,
+  parseLyricsMarkdown,
+} from "../utils/lyrics-markdown.js";
 import { tempoRatioFromSong } from "../utils/play-history.js";
 import { bumpLyricsScale } from "../utils/lyrics-scale.js";
 import {
   HostLayoutResizeController,
   isHostPortraitLayout,
 } from "../utils/host-portrait-layout.js";
+import { TabType } from "../services/app-state.js";
 import "./lyrics-editor.js";
 
-/**
- * Prepare authored HTML lyrics for embedding inside a `.lyrics-content` div.
- *
- * Lyrics files are standalone HTML documents (`<html>`, `<head>`, `<body>`).
- * When injected via `unsafeHTML`, structural tags are discarded by the browser,
- * so `body { … }` CSS rules target the page body instead of the lyrics area.
- * This function extracts the `<style>` and `<body>` content, rewrites `body`
- * selectors to `.lyrics-content`, and returns a fragment ready for injection.
- */
-function prepareLyricsHtml(raw: string): string {
-  const body = extractBodyContent(raw);
-  // CallerBuddy owns lyric styling at runtime. The lyric file may include a
-  // <style> block so that opening the HTML directly in a browser looks good,
-  // but in-app we treat lyrics as semantic markup only (h1/h2/p/.info/etc).
-  return body;
+function generateLyricsTemplate(song: Song): string {
+  return generateLyricsMarkdownTemplate(song.title || "Untitled", song.label || "");
 }
 
 /** Tooltip for practice checkbox + label (same text on both for reliable hover/focus hints). */
@@ -72,22 +58,6 @@ const PRACTICE_MODE_TOOLTIP =
 
 const AUTO_PAUSE_ON_BLUR_TOOLTIP =
   "When checked, playback pauses when this window loses focus (switching apps or tabs). Uncheck to keep playing in the background.";
-
-function generateLyricsTemplate(song: Song): string {
-  const title = song.title || "Untitled";
-  const label = song.label || "";
-  const labelHtml = label
-    ? `&nbsp;<span class="info">(${label})</span>`
-    : "";
-  const body =
-    `<p><h1>${title}</h1>${labelHtml}</p>\n\n` +
-    "<h2>Figure</h2>\n<p>\nEnter lyrics here\n</p>";
-  return wrapLyricsHtml(
-    body,
-    DEFAULT_LYRICS_STYLE,
-    `${title}${label ? " " + label : ""}`,
-  );
-}
 
 @customElement("song-play")
 export class SongPlay extends LitElement {
@@ -105,8 +75,8 @@ export class SongPlay extends LitElement {
   private lyricsExitPendingGuardResolve: ((allowed: boolean) => void) | null = null;
   private lyricsUnsavedGuardPromise: Promise<boolean> | null = null;
 
-  /** Body HTML snapshot when the editor was opened or last saved (browser-normalized). */
-  private lyricsEditorBaselineHtml = "";
+  /** Markdown snapshot when the editor was opened or last saved. */
+  private lyricsEditorBaselineMarkdown = "";
 
   // Total elapsed time while song has been playing (paused time not counted)
   @state() private totalElapsed = 0;
@@ -384,8 +354,8 @@ export class SongPlay extends LitElement {
     if (!this.editing) return;
     const le = this.getLyricsEditorComponent();
     const surface = le?.shadowRoot?.querySelector(
-      ".lyrics-editor.lyrics-content",
-    ) as HTMLElement | null;
+      "textarea.lyrics-source",
+    ) as HTMLTextAreaElement | null;
     surface?.focus();
   }
   /** When the window loses focus, pause audio but keep the player open (if auto-pause is on). */
@@ -874,13 +844,7 @@ export class SongPlay extends LitElement {
     if (!this.lyrics) {
       return html`<p class="muted centered">No lyrics available.</p>`;
     }
-    const song = this.song;
-    const isPlainText =
-      song?.lyricsFile?.toLowerCase().endsWith(".txt") ?? false;
-    if (isPlainText) {
-      return html`<div class="lyrics-content lyrics-plain">${this.lyrics}</div>`;
-    }
-    return html`<div class="lyrics-content">${unsafeHTML(prepareLyricsHtml(this.lyrics))}</div>`;
+    return html`<div class="lyrics-content">${unsafeHTML(parseLyricsMarkdown(this.lyrics))}</div>`;
   }
 
   // -- Lyrics editor --------------------------------------------------------
@@ -952,14 +916,20 @@ export class SongPlay extends LitElement {
   private renderLyricsEditor() {
     return html`
       <lyrics-editor
-        .bodyHtml=${this.lyrics ? extractBodyContent(this.lyrics) : ""}
-        .editorCss=${""}
+        .lyricsMarkdown=${this.lyrics}
         .showSaveExit=${true}
         @lyrics-input=${this.onLyricsEditorInput}
         @lyrics-save=${() => void this.onSaveLyrics()}
         @lyrics-exit=${() => void this.onExitLyricsEditor()}
+        @lyrics-help=${this.onLyricsMarkdownHelp}
       ></lyrics-editor>
     `;
+  }
+
+  private onLyricsMarkdownHelp() {
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
+      sectionId: "howto-lyrics-markdown",
+    });
   }
 
   /** Edit/create lyrics (when not editing) plus Close — same exit path as Esc / End or track end. */
@@ -1056,7 +1026,7 @@ export class SongPlay extends LitElement {
     if (!this.editing) return;
     const editor = this.getLyricsEditorComponent();
     if (!editor) return;
-    this.lyricsEditorBaselineHtml = editor.getEditorHtml();
+    this.lyricsEditorBaselineMarkdown = editor.getEditorMarkdown();
     this.lyricsModified = false;
   }
 
@@ -1064,7 +1034,7 @@ export class SongPlay extends LitElement {
     if (!this.editing) return;
     const editor = this.getLyricsEditorComponent();
     if (!editor) return;
-    const dirty = editor.getEditorHtml() !== this.lyricsEditorBaselineHtml;
+    const dirty = editor.getEditorMarkdown() !== this.lyricsEditorBaselineMarkdown;
     if (dirty !== this.lyricsModified) {
       this.lyricsModified = dirty;
     }
@@ -1093,18 +1063,12 @@ export class SongPlay extends LitElement {
     const editor = this.getLyricsEditorComponent();
     if (!editor) return;
 
-    const editedBody = editor.getEditorHtml();
-    const cssText = this.lyrics
-      ? extractStyleBlock(this.lyrics)
-      : DEFAULT_LYRICS_STYLE;
-    const title = `${song.title}${song.label ? " " + song.label : ""}`;
-    const fullHtml = wrapLyricsHtml(editedBody, cssText, title);
-
+    const markdown = editor.getEditorMarkdown();
     const lyricsFile = song.lyricsFile || lyricsFilenameFor(song.musicFile);
-    await callerBuddy.saveLyrics(song, lyricsFile, fullHtml);
+    await callerBuddy.saveLyrics(song, lyricsFile, markdown);
 
-    this.lyrics = fullHtml;
-    this.lyricsEditorBaselineHtml = editedBody;
+    this.lyrics = markdown;
+    this.lyricsEditorBaselineMarkdown = markdown;
     this.lyricsModified = false;
   }
 

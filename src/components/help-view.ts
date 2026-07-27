@@ -12,7 +12,7 @@
  */
 
 import { LitElement, css, html } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { html as helpHtml } from "../help-content.md";
 
@@ -35,6 +35,7 @@ const TOC: TocEntry[] = [
   { id: "howto-loops", title: "Set up loop points for patter", indent: true },
   { id: "howto-break-timer", title: "Use the break timer", indent: true },
   { id: "howto-lyrics", title: "Edit or create lyrics", indent: true },
+  { id: "howto-lyrics-markdown", title: "Lyrics Markdown", indent: true },
   { id: "howto-categories", title: "Categories, rank, and filtering", indent: true },
   { id: "shortcuts", title: "Keyboard Shortcuts" },
   { id: "glossary", title: "Glossary" },
@@ -42,7 +43,16 @@ const TOC: TocEntry[] = [
 
 @customElement("help-view")
 export class HelpView extends LitElement {
+  /** Optional section id to scroll to when the Help tab opens (e.g. from Markdown help). */
+  @property({ type: String }) sectionId = "";
+
   @state() private activeSection = "";
+
+  override updated(changed: Map<string, unknown>) {
+    if (changed.has("sectionId") && this.sectionId) {
+      requestAnimationFrame(() => this.scrollToSection(this.sectionId));
+    }
+  }
 
   private scrollToSection(id: string) {
     this.activeSection = id;

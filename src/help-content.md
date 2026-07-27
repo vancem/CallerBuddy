@@ -57,7 +57,7 @@ your collection stays synced across devices.
 `LABEL - Title.mp3` (for example
 `RYL 607 - Come Sail Away.mp3`). CallerBuddy reads the
 label and title from the filename automatically. Lyrics files use
-the same base name with an `.html` or `.md` extension.
+the same base name with a `.md` extension.
 
 <div id="tut-playlist"></div>
 
@@ -122,7 +122,7 @@ have CallerBuddy set up with a folder.
 ## Import songs from a ZIP file
 
 Songs from square-dance music publishers usually come as ZIP
-archives containing MP3 files and HTML lyrics.
+archives containing MP3 files and HTML or Markdown lyrics.
 
 1. Click the **☰ menu** (upper right)
    and choose **Import Song from ZIP…**
@@ -253,16 +253,46 @@ While a singing call is playing, click
 the song has no lyrics file yet, the button reads
 **Create Lyrics** and generates a template.
 
-- The editor is a rich-text area. Use the toolbar buttons
-  to add headings (for figure and section headers) and
-  formatting.
+- The editor shows Markdown on the left and a live preview on
+  the right (same look as during playback).
+- Click **Markdown help** for the syntax CallerBuddy
+  understands.
 - Click **Save** to write changes to disk.
-- Click **Exit Editor** to return to the
-  read-only lyrics view. If you have unsaved changes,
-  you will be prompted to save or discard.
+- Click **Exit** to return to the read-only lyrics view.
+  If you have unsaved changes, you will be prompted to save
+  or discard.
 
-Lyrics are saved as HTML files alongside the MP3, using the
-same `LABEL - Title.html` naming convention.
+Lyrics are saved as Markdown files alongside the MP3, using the
+same `LABEL - Title.md` naming convention.
+
+<div id="howto-lyrics-markdown"></div>
+
+## Lyrics Markdown
+
+CallerBuddy lyrics use a small Markdown subset:
+
+| Write this | What you get |
+|---|---|
+| `# Title` | Song title (large) |
+| `## Figure` | Section heading (red) |
+| `_authorship_` or `*note*` | Info text (blue, smaller) |
+| `**call name**` | Bold |
+| `\` at end of a line | Force a line break |
+| blank line | New paragraph |
+
+Example:
+
+```markdown
+# One Call Away
+_(NB 412)_
+
+## Opener
+**Sides** face **grand square**\
+I'm only one call away\
+```
+
+When you import a ZIP or folder that contains HTML lyrics,
+CallerBuddy converts them to this Markdown format automatically.
 
 <div id="howto-categories"></div>
 

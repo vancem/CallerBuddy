@@ -4,7 +4,7 @@
  *
  * Filenames follow the convention: LABEL - TITLE.MP3
  * e.g., "RYL 607 - Come Sail Away.MP3"
- * Lyrics use the same base name with .HTML, .MD, or .TXT extension.
+ * Lyrics use the same base name with a .md extension.
  */
 
 /** All per-song metadata persisted to songs.json. */
@@ -15,7 +15,7 @@ export interface Song {
   title: string;
   /** Relative path to the music file within CallerBuddyRoot */
   musicFile: string;
-  /** Relative path to lyrics file (HTML/MD/TXT) within CallerBuddyRoot, empty if none */
+  /** Relative path to lyrics Markdown file within CallerBuddyRoot, empty if none */
   lyricsFile: string;
   /** User-defined category tags (e.g. semicolon-separated: "Christmas; Patriotic") */
   categories: string;
@@ -161,7 +161,7 @@ export function nextOrderAdded(songs: Song[]): number {
 const MUSIC_EXTENSIONS = [".mp3", ".m4a", ".wav"];
 
 /** Supported lyrics file extensions (lower-case, with dot). */
-const LYRICS_EXTENSIONS = [".html", ".htm", ".md", ".txt"];
+const LYRICS_EXTENSIONS = [".md"];
 
 /** True if song has lyrics (and is therefore a singing call, not patter). */
 export function isSingingCall(song: Song): boolean {
@@ -284,11 +284,11 @@ export function baseName(filename: string): string {
   return base.toLowerCase();
 }
 
-/** Derive a lyrics HTML filename from a music filename (same basename + ".html"). */
+/** Derive a lyrics Markdown filename from a music filename (same basename + ".md"). */
 export function lyricsFilenameFor(musicFile: string): string {
   const dotIdx = musicFile.lastIndexOf(".");
   const base = dotIdx >= 0 ? musicFile.substring(0, dotIdx) : musicFile;
-  return base + ".html";
+  return base + ".md";
 }
 
 /** Create a Song with sensible defaults from a music filename and optional lyrics path. */

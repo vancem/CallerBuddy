@@ -12,6 +12,7 @@
  */
 
 import { scrapeAndNormalizeLyrics, scrapeTxtLyrics, toTitleCase } from "./html-scraper.js";
+import { htmlToLyricsMarkdown } from "../utils/html-to-lyrics-md.js";
 import { scoreMp3Candidates, type Mp3Candidate } from "./mp3-candidate-scoring.js";
 
 // ---------------------------------------------------------------------------
@@ -33,12 +34,13 @@ export interface OnboardingProposal {
   selectedMp3: string;
   htmlCandidates: HtmlCandidate[];
   selectedHtml: string;
-  /** Scraped + normalized lyrics HTML (full document), or empty */
-  normalizedHtml: string;
+  /** Normalized lyrics Markdown, or empty */
+  lyricsMarkdown: string;
   /** All entries in the ZIP for reference display */
   allEntries: string[];
   destMp3Name: string;
-  destHtmlName: string;
+  /** Destination lyrics filename (.md), or empty */
+  destLyricsName: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +61,7 @@ export async function analyzeZipForOnboarding(
 ): Promise<OnboardingProposal> {
   const mp3Paths = entryPaths.filter((p) => isMusicExt(p));
   const htmlPaths = entryPaths.filter((p) => isHtmlExt(p));
+  const mdPaths = entryPaths.filter((p) => p.toLowerCase().endsWith(".md"));
   const txtPaths = entryPaths.filter((p) => p.toLowerCase().endsWith(".txt"));
 
   // 1. Extract label
@@ -72,30 +75,39 @@ export async function analyzeZipForOnboarding(
 
   const selectedMp3 = mp3Candidates.length > 0 ? mp3Candidates[0].path : "";
 
-  // 4. Select best HTML
-  const htmlCandidates: HtmlCandidate[] = htmlPaths.map((p) => ({
-    path: p,
-    filename: basename(p),
-  }));
-  const selectedHtml = selectBestHtml(htmlPaths, label, title);
+  // 4. Select best lyrics source (prefer .md, then HTML, then TXT)
+  const htmlCandidates: HtmlCandidate[] = [
+    ...mdPaths.map((p) => ({ path: p, filename: basename(p) })),
+    ...htmlPaths.map((p) => ({ path: p, filename: basename(p) })),
+  ];
+  const selectedMd = selectBestMd(mdPaths, label, title);
+  const selectedHtml = selectedMd || selectBestHtml(htmlPaths, label, title);
 
-  // 5. Scrape lyrics
-  let normalizedHtml = "";
-  if (selectedHtml) {
+  // 5. Load / convert lyrics to Markdown
+  let lyricsMarkdown = "";
+  if (selectedMd) {
+    try {
+      lyricsMarkdown = await readEntry(selectedMd);
+    } catch {
+      // fall through
+    }
+  } else if (selectedHtml) {
     try {
       const raw = await readEntry(selectedHtml);
-      normalizedHtml = scrapeAndNormalizeLyrics(raw, label, title);
+      const normalizedHtml = scrapeAndNormalizeLyrics(raw, label, title);
+      lyricsMarkdown = htmlToLyricsMarkdown(normalizedHtml).markdown;
     } catch {
       // HTML read failed; try TXT fallback below
     }
   }
 
-  if (!normalizedHtml && txtPaths.length > 0) {
+  if (!lyricsMarkdown && txtPaths.length > 0) {
     const bestTxt = selectBestTxt(txtPaths, label, title);
     if (bestTxt) {
       try {
         const raw = await readEntry(bestTxt);
-        normalizedHtml = scrapeTxtLyrics(raw, label, title);
+        const normalizedHtml = scrapeTxtLyrics(raw, label, title);
+        lyricsMarkdown = htmlToLyricsMarkdown(normalizedHtml).markdown;
       } catch {
         // TXT read also failed
       }
@@ -105,7 +117,7 @@ export async function analyzeZipForOnboarding(
   // 6. Generate destination filenames
   const destBase = label && title ? `${label} - ${title}` : title || label || "Untitled";
   const destMp3Name = `${destBase}.mp3`;
-  const destHtmlName = normalizedHtml ? `${destBase}.html` : "";
+  const destLyricsName = lyricsMarkdown ? `${destBase}.md` : "";
 
   return {
     label,
@@ -114,10 +126,10 @@ export async function analyzeZipForOnboarding(
     selectedMp3,
     htmlCandidates,
     selectedHtml,
-    normalizedHtml,
+    lyricsMarkdown,
     allEntries: entryPaths,
     destMp3Name,
-    destHtmlName,
+    destLyricsName,
   };
 }
 
@@ -125,16 +137,16 @@ export async function analyzeZipForOnboarding(
 export function computeDestNames(
   label: string,
   title: string,
-  hasHtml: boolean,
-): { destMp3Name: string; destHtmlName: string } {
+  hasLyrics: boolean,
+): { destMp3Name: string; destLyricsName: string } {
   const destBase = label && title ? `${label} - ${title}` : title || label || "Untitled";
   return {
     destMp3Name: `${destBase}.mp3`,
-    destHtmlName: hasHtml ? `${destBase}.html` : "",
+    destLyricsName: hasLyrics ? `${destBase}.md` : "",
   };
 }
 
-/** Re-scrape when user selects a different HTML source. */
+/** Re-scrape when user selects a different HTML/MD source. */
 export async function rescrapeHtml(
   htmlPath: string,
   readEntry: (path: string) => Promise<string>,
@@ -142,7 +154,11 @@ export async function rescrapeHtml(
   title: string,
 ): Promise<string> {
   const raw = await readEntry(htmlPath);
-  return scrapeAndNormalizeLyrics(raw, label, title);
+  if (htmlPath.toLowerCase().endsWith(".md")) {
+    return raw;
+  }
+  const normalizedHtml = scrapeAndNormalizeLyrics(raw, label, title);
+  return htmlToLyricsMarkdown(normalizedHtml).markdown;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,6 +301,20 @@ function normalizeTitle(raw: string): string {
 // ---------------------------------------------------------------------------
 // HTML / TXT selection
 // ---------------------------------------------------------------------------
+
+function selectBestMd(mdPaths: string[], label: string, title: string): string {
+  if (mdPaths.length === 0) return "";
+  if (mdPaths.length === 1) return mdPaths[0];
+  const scored = mdPaths.map((p) => {
+    const name = basename(p).toLowerCase();
+    let score = 0;
+    if (label && name.includes(label.toLowerCase())) score -= 10;
+    if (title && name.includes(title.toLowerCase())) score -= 5;
+    return { path: p, score };
+  });
+  scored.sort((a, b) => a.score - b.score);
+  return scored[0].path;
+}
 
 function selectBestHtml(htmlPaths: string[], label: string, title: string): string {
   if (htmlPaths.length === 0) return "";

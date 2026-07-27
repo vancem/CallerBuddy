@@ -552,15 +552,15 @@ export class CallerBuddy {
   }
 
   /**
-   * Save lyrics HTML to the song's lyrics file.
+   * Save lyrics Markdown to the song's lyrics file.
    * If the song had no lyrics file (new creation), updates song.lyricsFile
    * in-memory and persists the change to songs.json.
    */
-  async saveLyrics(song: Song, lyricsFilename: string, htmlContent: string): Promise<void> {
+  async saveLyrics(song: Song, lyricsFilename: string, markdownContent: string): Promise<void> {
     const handle = song.dirHandle ?? this.state.rootHandle;
     if (!handle || !lyricsFilename) return;
 
-    await writeTextFile(handle, lyricsFilename, htmlContent);
+    await writeTextFile(handle, lyricsFilename, markdownContent);
     log.info(`Lyrics saved to "${lyricsFilename}"`);
 
     if (song.lyricsFile !== lyricsFilename) {
@@ -907,9 +907,9 @@ export class CallerBuddy {
     }
 
     // Write the normalized HTML lyrics
-    if (proposal.normalizedHtml && proposal.destHtmlName) {
-      await writeTextFile(dirHandle, proposal.destHtmlName, proposal.normalizedHtml);
-      log.info(`importSong: wrote "${proposal.destHtmlName}"`);
+    if (proposal.lyricsMarkdown && proposal.destLyricsName) {
+      await writeTextFile(dirHandle, proposal.destLyricsName, proposal.lyricsMarkdown);
+      log.info(`importSong: wrote "${proposal.destLyricsName}"`);
     }
 
     // Refresh the song list for the target folder
