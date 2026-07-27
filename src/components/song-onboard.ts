@@ -38,6 +38,7 @@ export class SongOnboard extends LitElement {
   @state() private selectedMp3 = "";
   @state() private selectedHtml = "";
   @state() private lyricsMarkdown = "";
+  @state() private lyricsHint = "";
   @state() private destMp3Name = "";
   @state() private destLyricsName = "";
   @state() private mp3Candidates: Mp3Candidate[] = [];
@@ -85,6 +86,7 @@ export class SongOnboard extends LitElement {
       this.selectedMp3 = data.proposal.selectedMp3;
       this.selectedHtml = data.proposal.selectedHtml;
       this.lyricsMarkdown = data.proposal.lyricsMarkdown;
+      this.lyricsHint = data.proposal.lyricsHint ?? "";
       this.destMp3Name = data.proposal.destMp3Name;
       this.destLyricsName = data.proposal.destLyricsName;
       this.mp3Candidates = data.proposal.mp3Candidates;
@@ -215,6 +217,7 @@ export class SongOnboard extends LitElement {
       allEntries: this.allEntries,
       destMp3Name: this.destMp3Name,
       destLyricsName: this.destLyricsName,
+      lyricsHint: this.lyricsHint,
     };
 
     try {
@@ -257,7 +260,13 @@ export class SongOnboard extends LitElement {
         <div class="left-panel">
           <div class="no-lyrics">
             <p>No lyrics found in source.</p>
-            <p class="muted">The song will be imported without a lyrics file.</p>
+            ${this.lyricsHint
+              ? html`<p class="muted">${this.lyricsHint}</p>
+                  <button class="secondary-btn" type="button" @click=${this.startBlankLyrics}
+                    title="Open an empty lyrics editor so you can paste from a PDF">
+                    Open editor to paste
+                  </button>`
+              : html`<p class="muted">The song will be imported without a lyrics file.</p>`}
           </div>
         </div>
       `;
@@ -271,6 +280,14 @@ export class SongOnboard extends LitElement {
         ></lyrics-editor>
       </div>
     `;
+  }
+
+  private startBlankLyrics() {
+    const t = this.songTitle || "Untitled";
+    const info = this.label ? `_(${this.label})_\n\n` : "";
+    this.lyricsMarkdown = `# ${t}\n${info}## Figure\nPaste lyrics here\\\n`;
+    this.lyricsHint = "";
+    this.updateDestNames();
   }
 
   private onLyricsMarkdownHelp() {
@@ -500,6 +517,21 @@ export class SongOnboard extends LitElement {
     }
 
     .no-lyrics p { margin: 0; }
+
+    .secondary-btn {
+      margin-top: 12px;
+      padding: 6px 12px;
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--cb-border, #666);
+      border-radius: 4px;
+      background: var(--cb-input-bg, #2a2a2a);
+      color: var(--cb-fg, #eee);
+    }
+
+    .secondary-btn:hover {
+      border-color: var(--cb-accent, #6af);
+    }
 
     /* -- Right panel -------------------------------------------------------- */
 

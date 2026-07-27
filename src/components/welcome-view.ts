@@ -171,11 +171,13 @@ export class WelcomeView extends LitElement {
     }
 
     try {
-      this.loading = true;
+      // Call the picker before any await/state update so the user-activation
+      // gesture stays intact (File System Access API).
       log.info(
         `[ui] pickFolder: starting fsApi=${!!document.fullscreenElement} opening directory picker…`,
       );
       const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+      this.loading = true;
       this.folderName = handle.name;
       log.info(
         `[ui] pickFolder: user chose "${handle.name}" fsApi=${!!document.fullscreenElement}, calling setRoot…`,
@@ -185,8 +187,14 @@ export class WelcomeView extends LitElement {
         `[ui] pickFolder: setRoot done fsApi=${!!document.fullscreenElement}`,
       );
     } catch (err) {
+      // Chromium uses AbortError for real Cancel and for some failed
+      // selections (OneDrive/network folders, focus loss, permission quirks).
       if (err instanceof Error && err.name === "AbortError") {
-        log.info(`[ui] pickFolder: user cancelled the picker`);
+        log.warn(
+          `[ui] pickFolder: AbortError message="${err.message}" fsApi=${!!document.fullscreenElement}`,
+        );
+        this.pickerError =
+          "Folder picker closed without granting access. ";
         return;
       }
       log.error(

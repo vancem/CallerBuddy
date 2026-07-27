@@ -11,8 +11,8 @@
  * rules, derived from 90+ real-world square-dance song archives.
  */
 
-import { scrapeAndNormalizeLyrics, scrapeTxtLyrics, toTitleCase } from "./html-scraper.js";
-import { htmlToLyricsMarkdown } from "../utils/html-to-lyrics-md.js";
+import { toTitleCase } from "./html-scraper.js";
+import { importHtmlToMarkdown, importTextToMarkdown } from "./lyrics-import.js";
 import { scoreMp3Candidates, type Mp3Candidate } from "./mp3-candidate-scoring.js";
 
 // ---------------------------------------------------------------------------
@@ -41,6 +41,11 @@ export interface OnboardingProposal {
   destMp3Name: string;
   /** Destination lyrics filename (.md), or empty */
   destLyricsName: string;
+  /**
+   * Hint when auto-convert found nothing useful (e.g. PDF-only archive).
+   * Shown in the onboard UI so the user can paste lyrics.
+   */
+  lyricsHint: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +88,7 @@ export async function analyzeZipForOnboarding(
   const selectedMd = selectBestMd(mdPaths, label, title);
   const selectedHtml = selectedMd || selectBestHtml(htmlPaths, label, title);
 
-  // 5. Load / convert lyrics to Markdown
+  // 5. Load / convert lyrics to Markdown (MD → HTML → TXT; PDF = paste hint)
   let lyricsMarkdown = "";
   if (selectedMd) {
     try {
@@ -94,8 +99,7 @@ export async function analyzeZipForOnboarding(
   } else if (selectedHtml) {
     try {
       const raw = await readEntry(selectedHtml);
-      const normalizedHtml = scrapeAndNormalizeLyrics(raw, label, title);
-      lyricsMarkdown = htmlToLyricsMarkdown(normalizedHtml).markdown;
+      lyricsMarkdown = importHtmlToMarkdown(raw, label, title).markdown;
     } catch {
       // HTML read failed; try TXT fallback below
     }
@@ -106,12 +110,19 @@ export async function analyzeZipForOnboarding(
     if (bestTxt) {
       try {
         const raw = await readEntry(bestTxt);
-        const normalizedHtml = scrapeTxtLyrics(raw, label, title);
-        lyricsMarkdown = htmlToLyricsMarkdown(normalizedHtml).markdown;
+        lyricsMarkdown = importTextToMarkdown(raw, label, title).markdown;
       } catch {
         // TXT read also failed
       }
     }
+  }
+
+  const pdfPaths = entryPaths.filter((p) => p.toLowerCase().endsWith(".pdf"));
+  let lyricsHint = "";
+  if (!lyricsMarkdown && pdfPaths.length > 0) {
+    lyricsHint =
+      "No HTML/Markdown lyrics found, but this archive has a PDF. " +
+      "Open the PDF, copy the text, and paste it into the lyrics editor.";
   }
 
   // 6. Generate destination filenames
@@ -130,6 +141,7 @@ export async function analyzeZipForOnboarding(
     allEntries: entryPaths,
     destMp3Name,
     destLyricsName,
+    lyricsHint,
   };
 }
 
@@ -157,8 +169,10 @@ export async function rescrapeHtml(
   if (htmlPath.toLowerCase().endsWith(".md")) {
     return raw;
   }
-  const normalizedHtml = scrapeAndNormalizeLyrics(raw, label, title);
-  return htmlToLyricsMarkdown(normalizedHtml).markdown;
+  if (htmlPath.toLowerCase().endsWith(".txt")) {
+    return importTextToMarkdown(raw, label, title).markdown;
+  }
+  return importHtmlToMarkdown(raw, label, title).markdown;
 }
 
 // ---------------------------------------------------------------------------
