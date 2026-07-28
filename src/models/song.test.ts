@@ -15,6 +15,7 @@ import {
   patterDefaultLoopEndSec,
   clampPatterLoopRegion,
   PATTER_LOOP_TAIL_EPSILON_SEC,
+  musicFilenameFromParts,
   type Song,
 } from "./song.js";
 
@@ -41,6 +42,22 @@ describe("parseMusicFilename", () => {
   it("uses first ' - ' as separator when multiple exist", () => {
     const result = parseMusicFilename("A - B - C.mp3");
     expect(result).toEqual({ label: "A", title: "B - C" });
+  });
+});
+
+describe("musicFilenameFromParts", () => {
+  it("builds LABEL - TITLE.ext", () => {
+    expect(musicFilenameFromParts("RYL 607", "Come Sail Away", ".MP3")).toBe(
+      "RYL 607 - Come Sail Away.MP3",
+    );
+  });
+
+  it("uses title only when label is empty", () => {
+    expect(musicFilenameFromParts("", "Solo", ".m4a")).toBe("Solo.m4a");
+  });
+
+  it("strips illegal filename characters", () => {
+    expect(musicFilenameFromParts("A/B", 'C:D?"', ".mp3")).toBe("AB - CD.mp3");
   });
 });
 

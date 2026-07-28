@@ -214,6 +214,29 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
+  /**
+   * Replace playlist rows (and played marks) that match `oldSong` with `newSong`.
+   */
+  replaceSongInPlaylist(oldSong: Song, newSong: Song): void {
+    const oldKey = this.playlistEntryKey(oldSong);
+    const newKey = this.playlistEntryKey(newSong);
+    let changed = false;
+    this.playlist = this.playlist.map((s) => {
+      if (this.playlistEntryKey(s) !== oldKey) return s;
+      changed = true;
+      return {
+        ...newSong,
+        dirHandle: newSong.dirHandle ?? s.dirHandle,
+      };
+    });
+    if (this.playedSongPaths.has(oldKey)) {
+      this.playedSongPaths.delete(oldKey);
+      this.playedSongPaths.add(newKey);
+      changed = true;
+    }
+    if (changed) this.emit(StateEvents.PLAYLIST_CHANGED);
+  }
+
   moveInPlaylist(fromIndex: number, toIndex: number): void {
     if (
       fromIndex < 0 ||

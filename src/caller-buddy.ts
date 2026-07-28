@@ -19,6 +19,7 @@ import {
   readBinaryFile,
   writeTextFile,
   deleteFile,
+  renameFile,
   fileExists,
   listDirectory,
 } from "./services/file-system-service.js";
@@ -40,6 +41,9 @@ import {
   effectiveAudioLoopPoints,
   isMusicFile,
   lyricsFilenameFor,
+  musicFilenameFromParts,
+  extensionOf,
+  sanitizeFilenamePart,
 } from "./models/song.js";
 import {
   daysSinceLastUsedMs,
@@ -604,6 +608,156 @@ export class CallerBuddy {
 
     this.state.removeSongOccurrencesFromPlaylist(song);
     this.state.emit(StateEvents.SONG_UPDATED);
+  }
+
+  /**
+   * Rename a song's audio (and lyrics, if present) files and update songs.json.
+   * Preserves all other metadata (rank, play history, loop points, etc.).
+   *
+   * @returns `{ ok: true }` on success, or `{ ok: false, conflictName }` when
+   *   another file already uses the target name (dialog should ask again).
+   */
+  async renameSong(
+    song: Song,
+    newLabel: string,
+    newTitle: string,
+  ): Promise<{ ok: true } | { ok: false; conflictName: string }> {
+    const handle = song.dirHandle ?? this.state.rootHandle;
+    if (!handle) {
+      throw new Error("No folder is available to rename this song in.");
+    }
+
+    const granted = await ensurePermission(handle);
+    if (!granted) {
+      throw new Error("Write permission is required to rename a song.");
+    }
+
+    const label = sanitizeFilenamePart(newLabel);
+    const title = sanitizeFilenamePart(newTitle);
+    if (!label && !title) {
+      throw new Error("Enter a label and/or title for the new filename.");
+    }
+
+    const newMusicFile = musicFilenameFromParts(
+      label,
+      title,
+      extensionOf(song.musicFile) || ".mp3",
+    );
+    const oldMusicFile = song.musicFile;
+    const sameMusicName =
+      oldMusicFile.toLowerCase() === newMusicFile.toLowerCase();
+
+    if (!sameMusicName && (await fileExists(handle, newMusicFile))) {
+      return { ok: false, conflictName: newMusicFile };
+    }
+
+    const oldLyricsFile =
+      song.lyricsFile.trim() ||
+      ((await fileExists(handle, lyricsFilenameFor(oldMusicFile)))
+        ? lyricsFilenameFor(oldMusicFile)
+        : "");
+    const newLyricsFile = oldLyricsFile
+      ? lyricsFilenameFor(newMusicFile)
+      : "";
+    const sameLyricsName =
+      !oldLyricsFile ||
+      !newLyricsFile ||
+      oldLyricsFile.toLowerCase() === newLyricsFile.toLowerCase();
+
+    if (
+      oldLyricsFile &&
+      newLyricsFile &&
+      !sameLyricsName &&
+      (await fileExists(handle, newLyricsFile))
+    ) {
+      return { ok: false, conflictName: newLyricsFile };
+    }
+
+    await this.ensurePlaylistRelPathForSong(song);
+    const oldSongSnapshot: Song = { ...song };
+
+    // Rename files when the basename changes (including case-only changes).
+    if (oldMusicFile !== newMusicFile) {
+      await renameFile(handle, oldMusicFile, newMusicFile);
+      log.info(`renameSong: audio "${oldMusicFile}" → "${newMusicFile}"`);
+    }
+
+    if (oldLyricsFile && newLyricsFile && oldLyricsFile !== newLyricsFile) {
+      try {
+        if (await fileExists(handle, oldLyricsFile)) {
+          await renameFile(handle, oldLyricsFile, newLyricsFile);
+          log.info(`renameSong: lyrics "${oldLyricsFile}" → "${newLyricsFile}"`);
+        }
+      } catch (err) {
+        log.warn(`renameSong: could not rename lyrics "${oldLyricsFile}":`, err);
+      }
+    }
+
+    const updated: Song = {
+      ...song,
+      label,
+      title: title || label || song.title,
+      musicFile: newMusicFile,
+      lyricsFile: newLyricsFile || "",
+    };
+    // Clear path so ensurePlaylistRelPath rebuilds from the new filename.
+    delete updated.playlistRelPath;
+
+    const key = oldMusicFile.toLowerCase();
+    try {
+      const folderSongs = await loadSongsJson(handle);
+      const folderIdx = folderSongs.findIndex(
+        (s) => s.musicFile.toLowerCase() === key,
+      );
+      if (folderIdx >= 0) {
+        folderSongs[folderIdx] = {
+          ...folderSongs[folderIdx],
+          label: updated.label,
+          title: updated.title,
+          musicFile: updated.musicFile,
+        };
+      } else {
+        folderSongs.push(updated);
+      }
+      await saveSongsJson(handle, folderSongs);
+      log.info(`renameSong: updated songs.json for "${updated.musicFile}"`);
+    } catch (err) {
+      log.warn("renameSong: could not update songs.json:", err);
+      throw err;
+    }
+
+    await this.ensurePlaylistRelPathForSong(updated);
+    this.state.replaceSongInPlaylist(oldSongSnapshot, updated);
+
+    const current = this.state.currentSong;
+    if (current) {
+      const curKey = (current.playlistRelPath ?? current.musicFile).toLowerCase();
+      const oldKey = (
+        oldSongSnapshot.playlistRelPath ?? oldSongSnapshot.musicFile
+      ).toLowerCase();
+      if (curKey === oldKey) {
+        this.state.currentSong = {
+          ...current,
+          label: updated.label,
+          title: updated.title,
+          musicFile: updated.musicFile,
+          lyricsFile: updated.lyricsFile,
+          playlistRelPath: updated.playlistRelPath,
+          dirHandle: updated.dirHandle ?? current.dirHandle,
+        };
+      }
+    }
+
+    // Mutate the caller's song object so in-memory table rows stay consistent
+    // until SONG_UPDATED reloads from disk.
+    song.label = updated.label;
+    song.title = updated.title;
+    song.musicFile = updated.musicFile;
+    song.lyricsFile = updated.lyricsFile;
+    song.playlistRelPath = updated.playlistRelPath;
+
+    this.state.emit(StateEvents.SONG_UPDATED);
+    return { ok: true };
   }
 
   /** Read the lyrics file for a song. Returns the HTML/MD text or empty string. */

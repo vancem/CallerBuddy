@@ -291,6 +291,37 @@ export function baseName(filename: string): string {
   return base.toLowerCase();
 }
 
+/** File extension including the dot (e.g. ".MP3"), or "" if none. */
+export function extensionOf(filename: string): string {
+  const dotIdx = filename.lastIndexOf(".");
+  return dotIdx >= 0 ? filename.substring(dotIdx) : "";
+}
+
+/** Strip characters that are illegal in Windows / most FS filenames. */
+export function sanitizeFilenamePart(part: string): string {
+  return part.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim();
+}
+
+/**
+ * Build a music filename from label + title, preserving the given extension
+ * (including the dot). Same convention as onboarding: "LABEL - TITLE.ext".
+ */
+export function musicFilenameFromParts(
+  label: string,
+  title: string,
+  extensionWithDot: string,
+): string {
+  const l = sanitizeFilenamePart(label);
+  const t = sanitizeFilenamePart(title);
+  const base = l && t ? `${l} - ${t}` : t || l || "Untitled";
+  const ext = extensionWithDot.startsWith(".")
+    ? extensionWithDot
+    : extensionWithDot
+      ? `.${extensionWithDot}`
+      : "";
+  return `${base}${ext}`;
+}
+
 /** Derive a lyrics Markdown filename from a music filename (same basename + ".md"). */
 export function lyricsFilenameFor(musicFile: string): string {
   const dotIdx = musicFile.lastIndexOf(".");

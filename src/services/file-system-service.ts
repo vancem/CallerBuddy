@@ -200,3 +200,34 @@ export async function deleteFile(
   await dirHandle.removeEntry(filename);
   log.debug(`deleteFile: "${filename}" removed`);
 }
+
+/**
+ * Rename a file within the same directory.
+ * Uses FileSystemFileHandle.move when available; otherwise copy + delete.
+ */
+export async function renameFile(
+  dirHandle: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string,
+): Promise<void> {
+  if (oldName === newName) return;
+  log.debug(`renameFile: "${oldName}" → "${newName}" in "${dirHandle.name}"…`);
+  const fileHandle = await dirHandle.getFileHandle(oldName);
+  const movable = fileHandle as FileSystemFileHandle & {
+    move?: (name: string) => Promise<void>;
+  };
+  if (typeof movable.move === "function") {
+    await movable.move(newName);
+    log.debug(`renameFile: moved via FileSystemFileHandle.move`);
+    return;
+  }
+
+  const file = await fileHandle.getFile();
+  const data = await file.arrayBuffer();
+  const newHandle = await dirHandle.getFileHandle(newName, { create: true });
+  const writable = await newHandle.createWritable();
+  await writable.write(data);
+  await writable.close();
+  await dirHandle.removeEntry(oldName);
+  log.debug(`renameFile: copied then removed old file`);
+}

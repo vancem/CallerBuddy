@@ -31,6 +31,12 @@ interface FileSystemFileHandle extends FileSystemHandle {
   readonly kind: "file";
   getFile(): Promise<File>;
   createWritable(): Promise<FileSystemWritableFileStream>;
+  /** Chrome: rename within the same directory (or move into another). */
+  move?(name: string): Promise<void>;
+  move?(
+    directory: FileSystemDirectoryHandle,
+    name?: string,
+  ): Promise<void>;
 }
 
 interface FileSystemDirectoryHandle extends FileSystemHandle {

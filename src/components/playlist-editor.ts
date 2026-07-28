@@ -100,6 +100,13 @@ export class PlaylistEditor extends LitElement {
   @state() private deleteConfirmSong: Song | null = null;
   @state() private deleteInProgress = false;
 
+  /** Song being renamed (null when dialog closed). */
+  @state() private renameSongTarget: Song | null = null;
+  @state() private renameLabel = "";
+  @state() private renameTitle = "";
+  @state() private renameConflictName: string | null = null;
+  @state() private renameInProgress = false;
+
   @state() private editingCell: EditingCell | null = null;
   /** After Escape, skip one blur so we do not persist cancelled edits. */
   private skipNextBlurCommit = false;
@@ -221,6 +228,18 @@ export class PlaylistEditor extends LitElement {
 
   private onKeydown(e: KeyboardEvent) {
     if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
+
+    if (e.key === "Escape" && this.renameSongTarget) {
+      e.preventDefault();
+      this.cancelRenameSong();
+      return;
+    }
+    if (e.key === "Escape" && this.deleteConfirmSong) {
+      e.preventDefault();
+      this.cancelDeleteSong();
+      return;
+    }
+
     const inTypingControl =
       e.target instanceof HTMLInputElement ||
       e.target instanceof HTMLTextAreaElement ||
@@ -899,6 +918,7 @@ export class PlaylistEditor extends LitElement {
         <!-- Context menu -->
         ${this.renderContextMenu()}
         ${this.renderDeleteConfirm()}
+        ${this.renderRenameDialog()}
       </div>
     `;
   }
@@ -978,6 +998,9 @@ export class PlaylistEditor extends LitElement {
             @click=${() => this.playSongFromCtx()}
           >Play now</button>
           <hr />
+          <button class="menu-item" role="menuitem"
+            @click=${() => this.requestRenameSongFromCtx()}
+          >Rename…</button>
           <button class="menu-item menu-item-danger" role="menuitem"
             @click=${() => this.requestDeleteSongFromCtx()}
           >Delete song…</button>
@@ -1057,6 +1080,136 @@ export class PlaylistEditor extends LitElement {
     if (!this.contextTarget || this.contextTarget.kind !== "song") return;
     this.deleteConfirmSong = this.contextTarget.song;
     this.contextTarget = null;
+  }
+
+  private requestRenameSongFromCtx() {
+    if (!this.contextTarget || this.contextTarget.kind !== "song") return;
+    const song = this.contextTarget.song;
+    this.contextTarget = null;
+    this.renameSongTarget = song;
+    this.renameLabel = song.label;
+    this.renameTitle = song.title;
+    this.renameConflictName = null;
+    this.renameInProgress = false;
+  }
+
+  private cancelRenameSong() {
+    if (this.renameInProgress) return;
+    this.renameSongTarget = null;
+    this.renameConflictName = null;
+  }
+
+  private async submitRenameSong(e?: Event) {
+    e?.preventDefault();
+    const song = this.renameSongTarget;
+    if (!song || this.renameInProgress) return;
+    this.renameInProgress = true;
+    this.renameConflictName = null;
+    try {
+      const result = await callerBuddy.renameSong(
+        song,
+        this.renameLabel,
+        this.renameTitle,
+      );
+      if (!result.ok) {
+        this.renameConflictName = result.conflictName;
+        return;
+      }
+      this.renameSongTarget = null;
+    } catch (err) {
+      log.error(`Failed to rename song "${song.title}":`, err);
+      window.alert(
+        err instanceof Error
+          ? err.message
+          : "Could not rename the song. Check folder permissions and try again.",
+      );
+    } finally {
+      this.renameInProgress = false;
+    }
+  }
+
+  private renderRenameDialog() {
+    const song = this.renameSongTarget;
+    if (!song) return nothing;
+
+    return html`
+      <div
+        class="rename-dialog-overlay"
+        @click=${(e: MouseEvent) => {
+          if (e.target !== e.currentTarget) return;
+          this.cancelRenameSong();
+        }}
+      >
+        <div
+          class="rename-dialog-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rename-song-title"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <h2 id="rename-song-title" class="rename-dialog-title">Rename song</h2>
+          ${this.renameConflictName
+            ? html`<p class="rename-dialog-conflict" role="alert">
+                A file named <strong>${this.renameConflictName}</strong> already
+                exists. Choose a different label or title.
+              </p>`
+            : html`<p class="rename-dialog-body">
+                Edit the label and title. The audio file
+                ${song.lyricsFile ? "and lyrics file " : ""}will be renamed to
+                match.
+              </p>`}
+          <form
+            class="rename-dialog-form"
+            @submit=${(e: Event) => void this.submitRenameSong(e)}
+          >
+            <label class="rename-field">
+              <span>Label</span>
+              <input
+                type="text"
+                name="label"
+                .value=${this.renameLabel}
+                ?disabled=${this.renameInProgress}
+                autofocus
+                @input=${(e: Event) => {
+                  this.renameLabel = (e.target as HTMLInputElement).value;
+                  this.renameConflictName = null;
+                }}
+              />
+            </label>
+            <label class="rename-field">
+              <span>Title</span>
+              <input
+                type="text"
+                name="title"
+                .value=${this.renameTitle}
+                ?disabled=${this.renameInProgress}
+                @input=${(e: Event) => {
+                  this.renameTitle = (e.target as HTMLInputElement).value;
+                  this.renameConflictName = null;
+                }}
+              />
+            </label>
+            <div class="rename-dialog-actions">
+              <button
+                type="submit"
+                class="rename-dialog-primary"
+                ?disabled=${this.renameInProgress}
+              >
+                ${this.renameInProgress ? "Renaming…" : "Rename"}
+              </button>
+              <button
+                type="button"
+                class="rename-dialog-secondary"
+                ?disabled=${this.renameInProgress}
+                @click=${() => this.cancelRenameSong()}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
   }
 
   private cancelDeleteSong() {
@@ -2174,6 +2327,120 @@ export class PlaylistEditor extends LitElement {
     }
 
     .delete-confirm-secondary {
+      border-radius: 8px;
+      padding: 0.55em 1em;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      background: transparent;
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border-strong, var(--cb-border));
+    }
+
+    /* -- Rename dialog ----------------------------------------------------- */
+
+    .rename-dialog-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 2100;
+    }
+
+    .rename-dialog-modal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(92vw, 24rem);
+      box-sizing: border-box;
+      padding: 1.25rem 1.35rem;
+      background: var(--cb-bg);
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border);
+      border-radius: 10px;
+      box-shadow: 0 12px 40px var(--cb-shadow);
+      z-index: 2101;
+    }
+
+    .rename-dialog-title {
+      margin: 0 0 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .rename-dialog-body {
+      margin: 0 0 1rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .rename-dialog-conflict {
+      margin: 0 0 1rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--cb-danger, #c0392b);
+    }
+
+    .rename-dialog-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .rename-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .rename-field input {
+      font: inherit;
+      font-weight: 400;
+      font-size: 0.95rem;
+      padding: 0.5em 0.65em;
+      border: 1px solid var(--cb-border-strong, var(--cb-border));
+      border-radius: 6px;
+      background: var(--cb-panel-bg, var(--cb-bg));
+      color: var(--cb-fg);
+    }
+
+    .rename-field input:focus {
+      outline: 2px solid var(--cb-accent);
+      outline-offset: 1px;
+    }
+
+    .rename-dialog-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.35rem;
+    }
+
+    .rename-dialog-primary {
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 0.65em 1em;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
+    }
+
+    .rename-dialog-primary:hover:not(:disabled) {
+      background: var(--cb-accent-hover, var(--cb-accent));
+    }
+
+    .rename-dialog-primary:disabled,
+    .rename-dialog-secondary:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .rename-dialog-secondary {
       border-radius: 8px;
       padding: 0.55em 1em;
       font-size: 0.95rem;
