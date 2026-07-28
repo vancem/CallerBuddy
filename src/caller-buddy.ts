@@ -1160,6 +1160,38 @@ export class CallerBuddy {
   }
 
   /**
+   * Return destination filenames that already exist in the import target folder.
+   * Used by the onboard UI to warn before overwriting.
+   */
+  async findImportDestCollisions(
+    destMp3Name: string,
+    destLyricsName: string,
+  ): Promise<string[]> {
+    const dirHandle = this.getImportTargetDir();
+    if (!dirHandle) return [];
+    const conflicts: string[] = [];
+    if (destMp3Name.trim()) {
+      try {
+        if (await fileExists(dirHandle, destMp3Name)) {
+          conflicts.push(destMp3Name);
+        }
+      } catch (err) {
+        log.warn(`findImportDestCollisions: could not check "${destMp3Name}":`, err);
+      }
+    }
+    if (destLyricsName.trim()) {
+      try {
+        if (await fileExists(dirHandle, destLyricsName)) {
+          conflicts.push(destLyricsName);
+        }
+      } catch (err) {
+        log.warn(`findImportDestCollisions: could not check "${destLyricsName}":`, err);
+      }
+    }
+    return conflicts;
+  }
+
+  /**
    * Get the directory handle for the import target.
    * Uses the currently active playlist editor folder, falling back to rootHandle.
    */

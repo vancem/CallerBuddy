@@ -59,5 +59,11 @@ export function parseLyricsMarkdown(md: string): string {
 export function generateLyricsMarkdownTemplate(title: string, label: string): string {
   const t = title || "Untitled";
   const info = label ? `_(${label})_\n\n` : "";
-  return `# ${t}\n${info}## Figure\nEnter lyrics here\\\n`;
+  return (
+    `# ${t}\n` +
+    `${info}` +
+    `## Figure\n` +
+    `Paste lyrics here\\\n` +
+    `Lyrics can have **calls** in them\\\n`
+  );
 }

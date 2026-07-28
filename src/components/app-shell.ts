@@ -429,11 +429,10 @@ export class AppShell extends LitElement {
           </div>
         </header>
         <main class="content">
-          ${/* PlaylistPlay is keep-alive (hidden when inactive) so its break
-              timer, clock, and SONG_ENDED listener survive tab switches.
-              Presence is gated on the PlaylistPlay tab in AppState — when that
-              tab is closed, this pane unmounts. All other tabs use normal
-              create/destroy on tab switch. */
+          ${/* PlaylistPlay and SongPlay are keep-alive (hidden when inactive) so
+              timers / playback / lyrics editor survive tab switches (e.g. Markdown Help).
+              Presence is gated on the tab in AppState — when that tab is closed, the
+              pane unmounts. Other tabs use normal create/destroy on tab switch. */
             ''}
           ${tabs.some((t) => t.type === TabType.PlaylistPlay)
             ? html`<div class="keep-alive-pane"
@@ -441,7 +440,15 @@ export class AppShell extends LitElement {
                 <playlist-play .active=${activeTab?.type === TabType.PlaylistPlay}></playlist-play>
               </div>`
             : nothing}
-          ${activeTab && activeTab.type !== TabType.PlaylistPlay
+          ${tabs.some((t) => t.type === TabType.SongPlay)
+            ? html`<div class="keep-alive-pane"
+                ?hidden=${activeTab?.type !== TabType.SongPlay}>
+                <song-play .active=${activeTab?.type === TabType.SongPlay}></song-play>
+              </div>`
+            : nothing}
+          ${activeTab &&
+          activeTab.type !== TabType.PlaylistPlay &&
+          activeTab.type !== TabType.SongPlay
             ? this.renderTab(activeTab)
             : nothing}
           ${!activeTab ? this.renderEmpty() : nothing}
@@ -513,7 +520,7 @@ export class AppShell extends LitElement {
   }
 
   /** Render the content for a non-keep-alive tab.
-   *  PlaylistPlay is excluded — it is rendered by the keep-alive block above. */
+   *  PlaylistPlay and SongPlay are excluded — they use keep-alive panes above. */
   private renderTab(tab: TabInfo) {
     switch (tab.type) {
       case TabType.Welcome:
@@ -526,8 +533,6 @@ export class AppShell extends LitElement {
           .tabId=${tab.id}
         ></playlist-editor>`;
       }
-      case TabType.SongPlay:
-        return html`<song-play></song-play>`;
       case TabType.SongOnboard:
         return html`<song-onboard></song-onboard>`;
       case TabType.Help: {
@@ -907,8 +912,9 @@ export class AppShell extends LitElement {
       z-index: 0;
     }
 
-    /* PlaylistPlay is kept alive across tab switches so its break timer
-       and event listeners survive. Hidden via [hidden] when not active. */
+    /* PlaylistPlay / SongPlay are kept alive across tab switches so timers,
+       playback, and the lyrics editor survive (e.g. opening Markdown Help).
+       Hidden via [hidden] when not active. */
     .keep-alive-pane {
       height: 100%;
     }

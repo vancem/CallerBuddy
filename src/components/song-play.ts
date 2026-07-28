@@ -16,7 +16,7 @@
  */
 
 import { LitElement, html, nothing } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { callerBuddy } from "../caller-buddy.js";
 import {
@@ -61,6 +61,12 @@ const AUTO_PAUSE_ON_BLUR_TOOLTIP =
 
 @customElement("song-play")
 export class SongPlay extends LitElement {
+  /**
+   * True when the Song Play tab is the active shell tab.
+   * This component is keep-alive (hidden when inactive); ignore shortcuts while inactive.
+   */
+  @property({ type: Boolean }) active = false;
+
   @state() private duration = 0;
   @state() private playing = false;
   @state() private lyrics = "";
@@ -232,7 +238,7 @@ export class SongPlay extends LitElement {
     callerBuddy.setSongPlayUnsavedGuard(null);
     callerBuddy.audio.onTimeUpdate(() => {});
     callerBuddy.audio.onEnded(() => {});
-    // Tab switch already ran runSongPlayUnsavedGuard; teardown without prompting again.
+    // Keep-alive unmounts only when the Song Play tab is closed; tear down playback.
     void callerBuddy.finalizeSongPlayClose();
   }
 
@@ -280,7 +286,7 @@ export class SongPlay extends LitElement {
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   /** Capture phase: Esc / Del / Enter (when needed) while the unsaved-lyrics dialog is open. */
   private _boundLyricsExitDialogKeydown = (e: KeyboardEvent) => {
-    if (!this.lyricsExitConfirmOpen) return;
+    if (!this.active || !this.lyricsExitConfirmOpen) return;
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -464,6 +470,8 @@ export class SongPlay extends LitElement {
   }
 
   private onKeydown(e: KeyboardEvent) {
+    // Keep-alive: ignore shortcuts while another tab (e.g. Help) is active.
+    if (!this.active) return;
     /** Lyrics exit modal — focus may be on Save (inside shadow DOM); bubble reaches here and would otherwise steal Enter/Space/Esc for transport. */
     if (this.lyricsExitConfirmOpen) return;
     if (this.eventTargetIsInsideLyricsEditor(e)) return;

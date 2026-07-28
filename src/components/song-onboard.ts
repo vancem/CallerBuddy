@@ -22,6 +22,7 @@ import {
   type Mp3Candidate,
   type HtmlCandidate,
 } from "../services/song-onboarding.js";
+import { generateLyricsMarkdownTemplate } from "../utils/lyrics-markdown.js";
 import { formatUnknownError } from "../utils/format.js";
 import "./lyrics-editor.js";
 import type { LyricsEditor } from "./lyrics-editor.js";
@@ -131,25 +132,39 @@ export class SongOnboard extends LitElement {
   @state() private sourceType: "zip" | "folder" = "zip";
   @state() private importing = false;
   @state() private showImportHelp = false;
+  /** Destination filenames that already exist in the import folder. */
+  @state() private collisionNames: string[] = [];
+  /** Confirm dialog when Import is pressed while collisions remain. */
+  @state() private overwriteConfirmOpen = false;
 
   /** Left panel width fraction (0–1). Default: 2/3. */
   @state() private splitFraction = 2 / 3;
   private dragging = false;
+  /** Bumps so stale collision checks are ignored. */
+  private collisionCheckSeq = 0;
 
   private proposal: OnboardingProposal | null = null;
 
   connectedCallback() {
     super.connectedCallback();
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onStateChanged);
+    document.addEventListener("keydown", this.onDocKeydown);
     this.loadFromTabData();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onStateChanged);
+    document.removeEventListener("keydown", this.onDocKeydown);
     document.removeEventListener("mousemove", this.onSplitterMove);
     document.removeEventListener("mouseup", this.onSplitterUp);
   }
+
+  private onDocKeydown = (e: KeyboardEvent) => {
+    if (e.key !== "Escape" || !this.overwriteConfirmOpen) return;
+    e.preventDefault();
+    this.closeOverwriteConfirm();
+  };
 
   private onStateChanged = () => {
     this.loadFromTabData();
@@ -176,6 +191,7 @@ export class SongOnboard extends LitElement {
       this.allEntries = data.proposal.allEntries;
       this.sourceName = data.sourceName;
       this.sourceType = data.sourceType ?? "zip";
+      void this.refreshCollisions();
     }
   }
 
@@ -187,6 +203,21 @@ export class SongOnboard extends LitElement {
     );
     this.destMp3Name = destMp3Name;
     this.destLyricsName = destLyricsName;
+    void this.refreshCollisions();
+  }
+
+  private async refreshCollisions() {
+    const seq = ++this.collisionCheckSeq;
+    const mp3 = this.destMp3Name;
+    const lyrics = this.destLyricsName;
+    try {
+      const conflicts = await callerBuddy.findImportDestCollisions(mp3, lyrics);
+      if (seq !== this.collisionCheckSeq) return;
+      this.collisionNames = conflicts;
+    } catch {
+      if (seq !== this.collisionCheckSeq) return;
+      this.collisionNames = [];
+    }
   }
 
   private onLabelInput(e: Event) {
@@ -370,6 +401,25 @@ export class SongOnboard extends LitElement {
   // -- Import / cancel -------------------------------------------------------
 
   private async onImport() {
+    if (this.importing || !this.selectedMp3) return;
+    await this.refreshCollisions();
+    if (this.collisionNames.length > 0) {
+      this.overwriteConfirmOpen = true;
+      return;
+    }
+    await this.doImport();
+  }
+
+  private closeOverwriteConfirm() {
+    this.overwriteConfirmOpen = false;
+  }
+
+  private async onOverwriteConfirm() {
+    this.overwriteConfirmOpen = false;
+    await this.doImport();
+  }
+
+  private async doImport() {
     if (this.importing) return;
     this.importing = true;
 
@@ -400,6 +450,53 @@ export class SongOnboard extends LitElement {
     callerBuddy.state.closeTabByType(TabType.SongOnboard);
   }
 
+  private renderOverwriteConfirm() {
+    if (!this.overwriteConfirmOpen) return nothing;
+
+    const names = this.collisionNames.join(", ");
+    return html`
+      <div
+        class="overwrite-overlay"
+        @click=${(e: MouseEvent) => {
+          if (e.target !== e.currentTarget) return;
+          this.closeOverwriteConfirm();
+        }}
+      >
+        <div
+          class="overwrite-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="overwrite-title"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <h2 id="overwrite-title" class="overwrite-title">Overwrite existing song?</h2>
+          <p class="overwrite-body">
+            <strong>${names}</strong> already exists in the destination folder.
+            Importing will replace the existing file${this.collisionNames.length > 1 ? "s" : ""}.
+          </p>
+          <form
+            class="overwrite-actions"
+            @submit=${(e: Event) => {
+              e.preventDefault();
+              this.closeOverwriteConfirm();
+            }}
+          >
+            <button type="submit" class="overwrite-cancel" autofocus>
+              Cancel (Enter)
+            </button>
+            <button
+              type="button"
+              class="overwrite-confirm"
+              @click=${() => void this.onOverwriteConfirm()}
+            >
+              Overwrite
+            </button>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+
   // ---------------------------------------------------------------------------
   // Rendering
   // ---------------------------------------------------------------------------
@@ -418,6 +515,7 @@ export class SongOnboard extends LitElement {
         <div class="splitter" @mousedown=${this.onSplitterDown}></div>
         ${this.renderRightPanel()}
       </div>
+      ${this.renderOverwriteConfirm()}
     `;
   }
 
@@ -463,9 +561,10 @@ export class SongOnboard extends LitElement {
   }
 
   private startBlankLyrics() {
-    const t = this.songTitle || "Untitled";
-    const info = this.label ? `_(${this.label})_\n\n` : "";
-    this.lyricsMarkdown = `# ${t}\n${info}## Figure\nPaste lyrics here\\\n`;
+    this.lyricsMarkdown = generateLyricsMarkdownTemplate(
+      this.songTitle || "Untitled",
+      this.label || "",
+    );
     this.lyricsHint = "";
     this.updateDestNames();
   }
@@ -503,7 +602,7 @@ export class SongOnboard extends LitElement {
         </p>
 
         <div class="action-row">
-          <button class="import-btn" @click=${this.onImport}
+          <button class="import-btn" @click=${() => void this.onImport()}
             ?disabled=${this.importing || !this.selectedMp3}
             title="Copy the selected music and lyrics into your CallerBuddy folder">
             ${this.importing ? "Importing…" : "Import"}
@@ -514,6 +613,13 @@ export class SongOnboard extends LitElement {
             Cancel
           </button>
         </div>
+        ${this.collisionNames.length > 0
+          ? html`<p class="collision-warning" role="alert">
+              A song with this name already exists
+              (${this.collisionNames.join(", ")}).
+              Change the label or title, or import to overwrite.
+            </p>`
+          : nothing}
 
         <!-- Source contents (MP3 radios + clickable files) -->
         <div class="section">
@@ -783,6 +889,14 @@ export class SongOnboard extends LitElement {
     .import-btn:hover:not(:disabled) { filter: brightness(1.1); }
     .import-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    .collision-warning {
+      margin: 0;
+      color: var(--cb-danger, #c0392b);
+      font-size: 0.85rem;
+      line-height: 1.4;
+      font-weight: 500;
+    }
+
     .cancel-btn {
       background: none;
       border: 1px solid var(--cb-border);
@@ -795,6 +909,80 @@ export class SongOnboard extends LitElement {
 
     .cancel-btn:hover:not(:disabled) { background: var(--cb-hover); }
     .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* -- Overwrite confirm dialog ------------------------------------------ */
+
+    .overwrite-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 2100;
+    }
+
+    .overwrite-modal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(92vw, 24rem);
+      box-sizing: border-box;
+      padding: 1.25rem 1.35rem;
+      background: var(--cb-bg);
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border);
+      border-radius: 10px;
+      box-shadow: 0 12px 40px var(--cb-shadow);
+      z-index: 2101;
+    }
+
+    .overwrite-title {
+      margin: 0 0 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .overwrite-body {
+      margin: 0 0 1.1rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .overwrite-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .overwrite-cancel {
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 0.65em 1em;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
+    }
+
+    .overwrite-cancel:hover {
+      filter: brightness(1.05);
+    }
+
+    .overwrite-confirm {
+      border-radius: 8px;
+      padding: 0.55em 1em;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      background: transparent;
+      color: var(--cb-danger, #c0392b);
+      border: 1px solid var(--cb-danger, #c0392b);
+    }
+
+    .overwrite-confirm:hover {
+      background: color-mix(in srgb, var(--cb-danger, #c0392b) 12%, transparent);
+    }
 
     /* -- Source contents (radio prefix + filename) ------------------------- */
 

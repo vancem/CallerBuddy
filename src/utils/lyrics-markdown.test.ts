@@ -29,11 +29,13 @@ describe("parseLyricsMarkdown", () => {
 });
 
 describe("generateLyricsMarkdownTemplate", () => {
-  it("includes title, label, and figure stub", () => {
+  it("includes title, label, figure stub, and markdown examples", () => {
     const md = generateLyricsMarkdownTemplate("Sail Away", "RYL 607");
     expect(md).toContain("# Sail Away");
     expect(md).toContain("_(RYL 607)_");
     expect(md).toContain("## Figure");
+    expect(md).toContain("Paste lyrics here\\");
+    expect(md).toContain("Lyrics can have **calls** in them\\");
     expect(md.trimEnd().endsWith("\\")).toBe(true);
   });
 });
