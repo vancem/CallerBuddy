@@ -18,6 +18,7 @@ import {
   readTextFile,
   readBinaryFile,
   writeTextFile,
+  deleteFile,
   fileExists,
   listDirectory,
 } from "./services/file-system-service.js";
@@ -38,6 +39,7 @@ import {
   nextOrderAdded,
   effectiveAudioLoopPoints,
   isMusicFile,
+  lyricsFilenameFor,
 } from "./models/song.js";
 import {
   daysSinceLastUsedMs,
@@ -537,6 +539,71 @@ export class CallerBuddy {
     } catch (err) {
       log.warn("Could not persist song update:", err);
     }
+  }
+
+  /**
+   * Permanently delete a song: audio file, lyrics file (if present), and its
+   * songs.json entry. Also removes playlist rows and closes the player if this
+   * song is currently playing.
+   */
+  async deleteSong(song: Song): Promise<void> {
+    const handle = song.dirHandle ?? this.state.rootHandle;
+    if (!handle) {
+      log.warn(`deleteSong: no directory handle for "${song.musicFile}"`);
+      throw new Error("No folder is available to delete this song from.");
+    }
+
+    const granted = await ensurePermission(handle);
+    if (!granted) {
+      throw new Error("Write permission is required to delete a song.");
+    }
+
+    await this.ensurePlaylistRelPathForSong(song);
+    const deleteKey = (song.playlistRelPath ?? song.musicFile).toLowerCase();
+    const current = this.state.currentSong;
+    if (current) {
+      await this.ensurePlaylistRelPathForSong(current);
+      const currentKey = (current.playlistRelPath ?? current.musicFile).toLowerCase();
+      if (currentKey === deleteKey) {
+        // Confirmed delete: skip unsaved-lyrics prompt; files are going away.
+        await this.finalizeSongPlayClose();
+      }
+    }
+
+    try {
+      await deleteFile(handle, song.musicFile);
+      log.info(`deleteSong: removed audio "${song.musicFile}"`);
+    } catch (err) {
+      log.error(`deleteSong: failed to remove audio "${song.musicFile}":`, err);
+      throw err;
+    }
+
+    const lyricsName = song.lyricsFile.trim() || lyricsFilenameFor(song.musicFile);
+    if (lyricsName) {
+      try {
+        if (await fileExists(handle, lyricsName)) {
+          await deleteFile(handle, lyricsName);
+          log.info(`deleteSong: removed lyrics "${lyricsName}"`);
+        }
+      } catch (err) {
+        log.warn(`deleteSong: could not remove lyrics "${lyricsName}":`, err);
+      }
+    }
+
+    const key = song.musicFile.toLowerCase();
+    try {
+      const folderSongs = await loadSongsJson(handle);
+      const next = folderSongs.filter((s) => s.musicFile.toLowerCase() !== key);
+      if (next.length !== folderSongs.length) {
+        await saveSongsJson(handle, next);
+        log.info(`deleteSong: removed "${song.musicFile}" from songs.json`);
+      }
+    } catch (err) {
+      log.warn("deleteSong: could not update songs.json:", err);
+    }
+
+    this.state.removeSongOccurrencesFromPlaylist(song);
+    this.state.emit(StateEvents.SONG_UPDATED);
   }
 
   /** Read the lyrics file for a song. Returns the HTML/MD text or empty string. */

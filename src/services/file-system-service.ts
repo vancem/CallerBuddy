@@ -187,3 +187,16 @@ export async function fileExists(
     return false;
   }
 }
+
+/**
+ * Delete a file from the directory.
+ * Requires readwrite permission on the handle.
+ */
+export async function deleteFile(
+  dirHandle: FileSystemDirectoryHandle,
+  filename: string,
+): Promise<void> {
+  log.debug(`deleteFile: removing "${filename}" from "${dirHandle.name}"…`);
+  await dirHandle.removeEntry(filename);
+  log.debug(`deleteFile: "${filename}" removed`);
+}

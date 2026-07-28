@@ -199,6 +199,21 @@ export class AppState extends EventTarget {
     }
   }
 
+  /**
+   * Remove every playlist row that matches the given song identity
+   * ({@link playlistEntryKey}) and clear its played mark.
+   */
+  removeSongOccurrencesFromPlaylist(song: Song): void {
+    const targetKey = this.playlistEntryKey(song);
+    const before = this.playlist.length;
+    this.playlist = this.playlist.filter(
+      (s) => this.playlistEntryKey(s) !== targetKey,
+    );
+    if (this.playlist.length === before) return;
+    this.playedSongPaths.delete(targetKey);
+    this.emit(StateEvents.PLAYLIST_CHANGED);
+  }
+
   moveInPlaylist(fromIndex: number, toIndex: number): void {
     if (
       fromIndex < 0 ||

@@ -96,6 +96,9 @@ export class PlaylistEditor extends LitElement {
   ];
   @state() private contextTarget: ContextTarget | null = null;
   @state() private contextMenuPos = { x: 0, y: 0 };
+  /** Song pending permanent delete confirmation (null when dialog closed). */
+  @state() private deleteConfirmSong: Song | null = null;
+  @state() private deleteInProgress = false;
 
   @state() private editingCell: EditingCell | null = null;
   /** After Escape, skip one blur so we do not persist cancelled edits. */
@@ -802,6 +805,7 @@ export class PlaylistEditor extends LitElement {
                       >
                         Type ${this.sortIndicator("type")}
                       </th>
+                      <th class="more-cell" title="More actions"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -820,7 +824,7 @@ export class PlaylistEditor extends LitElement {
                           @dragend=${this.onEditorDragEnd}
                           @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "song", song })}
                           @dblclick=${() => void this.addToPlaylist(song)}
-                          title="Drag to playlist, double-click, or right-click to add"
+                          title="Drag to playlist, double-click, or use ⋮ for more options"
                         >
                           <td class="play-cell">
                             <button
@@ -866,6 +870,15 @@ export class PlaylistEditor extends LitElement {
                               title="${isSingingCall(song) ? "Singing call" : "Patter (no lyrics)"}"
                             >${isSingingCall(song) ? "Singing" : "Patter"}</span>
                           </td>
+                          <td class="more-cell">
+                            <button
+                              class="icon-btn more-btn"
+                              title="More actions"
+                              aria-label="More actions for ${song.title}"
+                              @click=${(e: MouseEvent) =>
+                                this.onMoreMenuClick(e, { kind: "song", song })}
+                            >⋮</button>
+                          </td>
                         </tr>
                       `,
                     )}
@@ -885,6 +898,7 @@ export class PlaylistEditor extends LitElement {
 
         <!-- Context menu -->
         ${this.renderContextMenu()}
+        ${this.renderDeleteConfirm()}
       </div>
     `;
   }
@@ -923,10 +937,19 @@ export class PlaylistEditor extends LitElement {
           class="folder-row"
           @click=${() => this.openFolderInNewTabFromCtx(entry.name)}
           @contextmenu=${(e: MouseEvent) => this.onRowContextMenu(e, { kind: "folder", entry })}
-          title="Click to open in new tab, right-click for options"
+          title="Click to open in new tab, or use ⋮ for options"
         >
           <td class="folder-icon-cell" colspan="2">📁</td>
           <td colspan="8" class="folder-name">${entry.name}</td>
+          <td class="more-cell">
+            <button
+              class="icon-btn more-btn"
+              title="More actions"
+              aria-label="More actions for folder ${entry.name}"
+              @click=${(e: MouseEvent) =>
+                this.onMoreMenuClick(e, { kind: "folder", entry })}
+            >⋮</button>
+          </td>
         </tr>
       `,
     );
@@ -954,6 +977,10 @@ export class PlaylistEditor extends LitElement {
           <button class="menu-item" role="menuitem"
             @click=${() => this.playSongFromCtx()}
           >Play now</button>
+          <hr />
+          <button class="menu-item menu-item-danger" role="menuitem"
+            @click=${() => this.requestDeleteSongFromCtx()}
+          >Delete song…</button>
         </div>
       `;
     }
@@ -978,6 +1005,18 @@ export class PlaylistEditor extends LitElement {
     e.stopPropagation();
     this.contextTarget = target;
     this.contextMenuPos = { x: e.clientX, y: e.clientY };
+  }
+
+  /** Open the same context menu from the row's ⋮ button (mobile-friendly). */
+  private onMoreMenuClick(e: MouseEvent, target: ContextTarget) {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const menuWidth = 200;
+    const x = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8));
+    const y = Math.min(rect.bottom + 2, window.innerHeight - 8);
+    this.contextTarget = target;
+    this.contextMenuPos = { x, y };
   }
 
   private closeContextMenu() {
@@ -1012,6 +1051,85 @@ export class PlaylistEditor extends LitElement {
     const song = this.contextTarget.song;
     this.contextTarget = null;
     await this.playSongNow(song);
+  }
+
+  private requestDeleteSongFromCtx() {
+    if (!this.contextTarget || this.contextTarget.kind !== "song") return;
+    this.deleteConfirmSong = this.contextTarget.song;
+    this.contextTarget = null;
+  }
+
+  private cancelDeleteSong() {
+    if (this.deleteInProgress) return;
+    this.deleteConfirmSong = null;
+  }
+
+  private async confirmDeleteSong() {
+    const song = this.deleteConfirmSong;
+    if (!song || this.deleteInProgress) return;
+    this.deleteInProgress = true;
+    try {
+      await callerBuddy.deleteSong(song);
+      this.deleteConfirmSong = null;
+    } catch (err) {
+      log.error(`Failed to delete song "${song.title}":`, err);
+      window.alert(
+        err instanceof Error
+          ? err.message
+          : "Could not delete the song. Check folder permissions and try again.",
+      );
+    } finally {
+      this.deleteInProgress = false;
+    }
+  }
+
+  private renderDeleteConfirm() {
+    const song = this.deleteConfirmSong;
+    if (!song) return nothing;
+
+    const hasLyrics = Boolean(song.lyricsFile.trim());
+    return html`
+      <div
+        class="delete-confirm-overlay"
+        @click=${(e: MouseEvent) => {
+          if (e.target !== e.currentTarget) return;
+          this.cancelDeleteSong();
+        }}
+      >
+        <div
+          class="delete-confirm-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-song-title"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <h2 id="delete-song-title" class="delete-confirm-title">Delete song?</h2>
+          <p class="delete-confirm-body">
+            Permanently delete <strong>${song.title}</strong>?
+            This removes the audio file${hasLyrics ? " and lyrics file" : ""}
+            and its entry from songs.json. This cannot be undone.
+          </p>
+          <div class="delete-confirm-actions">
+            <button
+              type="button"
+              class="delete-confirm-danger"
+              ?disabled=${this.deleteInProgress}
+              @click=${() => void this.confirmDeleteSong()}
+            >
+              ${this.deleteInProgress ? "Deleting…" : "Delete"}
+            </button>
+            <button
+              type="button"
+              class="delete-confirm-secondary"
+              ?disabled=${this.deleteInProgress}
+              @click=${() => this.cancelDeleteSong()}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   // -- Inline cell editing (categories / rank) ------------------------------
@@ -1920,6 +2038,21 @@ export class PlaylistEditor extends LitElement {
       padding: 5px 4px 5px 2px;
     }
 
+    .song-table th.more-cell,
+    .song-table td.more-cell {
+      width: auto;
+      min-width: 2rem;
+      text-align: center;
+      padding: 5px 4px;
+    }
+
+    .more-btn {
+      font-size: 1.15rem;
+      letter-spacing: 0;
+      line-height: 1;
+      padding: 4px 8px;
+    }
+
     .song-table th.title-col-head,
     .song-table td.title-cell {
       padding-left: 4px;
@@ -1960,10 +2093,95 @@ export class PlaylistEditor extends LitElement {
       color: var(--cb-fg-on-accent);
     }
 
+    .context-menu .menu-item-danger {
+      color: var(--cb-danger, #c0392b);
+    }
+
+    .context-menu .menu-item-danger:hover {
+      background: var(--cb-danger, #c0392b);
+      color: #fff;
+    }
+
     .context-menu hr {
       border: none;
       border-top: 1px solid var(--cb-border);
       margin: 4px 0;
+    }
+
+    /* -- Delete confirm dialog --------------------------------------------- */
+
+    .delete-confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 2100;
+    }
+
+    .delete-confirm-modal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(92vw, 22rem);
+      box-sizing: border-box;
+      padding: 1.25rem 1.35rem;
+      background: var(--cb-bg);
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border);
+      border-radius: 10px;
+      box-shadow: 0 12px 40px var(--cb-shadow);
+      z-index: 2101;
+    }
+
+    .delete-confirm-title {
+      margin: 0 0 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .delete-confirm-body {
+      margin: 0 0 1.1rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .delete-confirm-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .delete-confirm-danger {
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 0.65em 1em;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      background: var(--cb-danger, #c0392b);
+      color: #fff;
+    }
+
+    .delete-confirm-danger:hover:not(:disabled) {
+      filter: brightness(1.05);
+    }
+
+    .delete-confirm-danger:disabled,
+    .delete-confirm-secondary:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .delete-confirm-secondary {
+      border-radius: 8px;
+      padding: 0.55em 1em;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      background: transparent;
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border-strong, var(--cb-border));
     }
 
     /* -- Shared button styles ---------------------------------------------- */
