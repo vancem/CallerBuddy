@@ -735,6 +735,10 @@ export class AppShell extends LitElement {
       alert("Please set a CallerBuddy folder first.");
       return;
     }
+    if (callerBuddy.state.tabs.some((t) => t.type === TabType.SongOnboard)) {
+      alert("Please complete or cancel the current song import before starting a new one.");
+      return;
+    }
     try {
       const [fileHandle] = await window.showOpenFilePicker({
         types: [
@@ -757,6 +761,10 @@ export class AppShell extends LitElement {
     this.showMenu = false;
     if (!callerBuddy.state.rootHandle) {
       alert("Please set a CallerBuddy folder first.");
+      return;
+    }
+    if (callerBuddy.state.tabs.some((t) => t.type === TabType.SongOnboard)) {
+      alert("Please complete or cancel the current song import before starting a new one.");
       return;
     }
     try {

@@ -94,13 +94,13 @@ export function escapeMarkdownLineStart(line: string): string {
 
 /**
  * If a line begins with a section title — Open… / Close… / Figure / Tag /
- * Middle Break (and is not already a Markdown ATX heading), prefix `## `.
+ * Middle (and is not already a Markdown ATX heading), prefix `## `.
  * "Open"/"Close" match any word starting with those letters (Opener, Closer, …).
  * Leaves existing `## …` lines alone. Avoids promoting the call "Tag the line".
  */
 export function promoteSectionHeaderLine(line: string): string | null {
   const m = line.match(
-    /^([ \t]*)(#{1,6}[ \t]+)?(Middle\s+Break|Figure|Tag|Open\w*|Close\w*)(.*)$/i,
+    /^([ \t]*)(#{1,6}[ \t]+)?(Middle|Figure|Tag|Open|Close)(.*)$/i,
   );
   if (!m) return null;
   const ws = m[1] ?? "";
@@ -187,16 +187,6 @@ function sniffCharset(head: string): string | null {
   if (!meta?.[1]) return null;
   const key = meta[1].toLowerCase();
   return CHARSET_ALIASES[key] ?? null;
-}
-
-/** Prefer UTF-8 when valid; otherwise assume legacy Windows cue-sheet encoding. */
-function detectUtf8OrWindows1252(bytes: Uint8Array): string {
-  try {
-    new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    return "utf-8";
-  } catch {
-    return "windows-1252";
-  }
 }
 
 function decodeWithCharset(bytes: Uint8Array, charset: string): string {
