@@ -107,6 +107,29 @@ describe("decodeHtmlBytes", () => {
     expect(decoded).toContain("I\u2019m sure");
     expect(decoded).not.toContain("\uFFFD");
   });
+
+  it("decodes windows-1252 even when TextDecoder rejects the label", () => {
+    const Original = globalThis.TextDecoder;
+    globalThis.TextDecoder = class extends Original {
+      constructor(label?: string, options?: TextDecoderOptions) {
+        if ((label ?? "").toLowerCase() === "windows-1252") {
+          throw new RangeError("Encoding not supported: windows-1252");
+        }
+        super(label, options);
+      }
+    } as typeof TextDecoder;
+    try {
+      const html =
+        '<html><head><meta charset="windows-1252"></head>' +
+        "<body><p>Ooo\x85 diggin\x92</p></body></html>";
+      const decoded = decodeHtmlBytes(bytesFromLatin1(html));
+      expect(decoded).toContain("Ooo…");
+      expect(decoded).toContain("diggin’");
+      expect(decoded).not.toContain("\uFFFD");
+    } finally {
+      globalThis.TextDecoder = Original;
+    }
+  });
 });
 
 describe("importHtmlToMarkdown charset", () => {

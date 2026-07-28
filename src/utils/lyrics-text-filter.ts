@@ -199,10 +199,33 @@ function detectUtf8OrWindows1252(bytes: Uint8Array): string {
   }
 }
 
+/**
+ * Decode windows-1252 without relying on TextDecoder support for that label.
+ * Some Node/jsdom builds (e.g. Linux CI) fall back to UTF-8 and produce U+FFFD
+ * for cue-sheet bytes like 0x92 (apostrophe).
+ */
+function decodeWindows1252(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) {
+    const b = bytes[i]!;
+    if (b >= 0x80 && b <= 0x9f) {
+      s += WIN1252_C1[b] ?? "";
+    } else {
+      s += String.fromCharCode(b);
+    }
+  }
+  return s;
+}
+
 function decodeWithCharset(bytes: Uint8Array, charset: string): string {
+  if (charset === "windows-1252") {
+    return decodeWindows1252(bytes);
+  }
   try {
     return new TextDecoder(charset, { fatal: false }).decode(bytes);
   } catch {
-    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    // Last resort: treat as windows-1252 cue-sheet bytes rather than UTF-8
+    // replacement characters (which destroy curly quotes / ellipses).
+    return decodeWindows1252(bytes);
   }
 }
