@@ -5,8 +5,7 @@
  */
 
 import { toTitleCase } from "./html-scraper.js";
-import { emphasizeCallsAsMarkdown } from "../utils/lyrics-call-bold.js";
-import { filterLyricsText } from "../utils/lyrics-text-filter.js";
+import { filterLyricsText, formatLyricsBodyLine } from "../utils/lyrics-text-filter.js";
 
 const SECTION_KEYWORD_RE =
   /^(opener|figure|breaks?|middle\s*break|closer?|tag|verse|bridge)\b/i;
@@ -202,7 +201,7 @@ function emitMarkdown(
   let bodyRun: string[] = [];
   const flushBody = () => {
     if (!bodyRun.length) return;
-    parts.push(bodyRun.map((l) => `${emphasizeCallsAsMarkdown(l)}\\`).join("\n"));
+    parts.push(bodyRun.map((l) => formatLyricsBodyLine(l)).join("\n"));
     bodyRun = [];
   };
 

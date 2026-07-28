@@ -43,6 +43,16 @@ describe("plainTextToMarkdownHardBreaks", () => {
       "**Heads** **square thru** **4**\\\n**Pass thru**\\\n",
     );
   });
+
+  it("escapes leading # and * so they are not Markdown", () => {
+    expect(plainTextToMarkdownHardBreaks("# not a heading\n* not a list")).toBe(
+      "\\# not a heading\\\n\\* not a list\\\n",
+    );
+  });
+
+  it("escapes a run of leading # characters", () => {
+    expect(plainTextToMarkdownHardBreaks("## foo")).toBe("\\#\\# foo\\\n");
+  });
 });
 
 describe("decodeHtmlBytes", () => {

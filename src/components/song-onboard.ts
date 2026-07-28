@@ -31,6 +31,88 @@ interface OnboardTabData {
   sourceType: "zip" | "folder";
 }
 
+/** Popups opened from the contents list; closed when the onboard tab goes away. */
+type EntryWindowKind = "mp3" | "doc";
+
+interface TrackedEntryWindow {
+  path: string;
+  win: Window;
+  kind: EntryWindowKind;
+}
+
+const entryWindows: TrackedEntryWindow[] = [];
+let watchingOnboardTab = false;
+
+const DOC_POPUP = { width: 400, height: 600 };
+const MP3_POPUP = { width: 350, height: 150 };
+const POPUP_MARGIN = 20;
+const POPUP_TOP = 40;
+
+function pruneClosedEntryWindows(): void {
+  for (let i = entryWindows.length - 1; i >= 0; i--) {
+    if (entryWindows[i]!.win.closed) entryWindows.splice(i, 1);
+  }
+}
+
+function trackEntryWindow(path: string, win: Window, kind: EntryWindowKind): void {
+  pruneClosedEntryWindows();
+  entryWindows.push({ path, win, kind });
+  ensureOnboardPopupWatcher();
+}
+
+function closeAllEntryWindows(): void {
+  for (const { win } of entryWindows) {
+    try {
+      if (!win.closed) win.close();
+    } catch {
+      /* ignore */
+    }
+  }
+  entryWindows.length = 0;
+}
+
+function ensureOnboardPopupWatcher(): void {
+  if (watchingOnboardTab) return;
+  watchingOnboardTab = true;
+  const onChange = () => {
+    const onboardOpen = callerBuddy.state.tabs.some((t) => t.type === TabType.SongOnboard);
+    if (onboardOpen) return;
+    closeAllEntryWindows();
+    callerBuddy.state.removeEventListener(StateEvents.CHANGED, onChange);
+    watchingOnboardTab = false;
+  };
+  callerBuddy.state.addEventListener(StateEvents.CHANGED, onChange);
+}
+
+/** If this path already has an open popup, focus it and return true. */
+function focusExistingEntryWindow(path: string): boolean {
+  pruneClosedEntryWindows();
+  const existing = entryWindows.find((e) => e.path === path && !e.win.closed);
+  if (!existing) return false;
+  try {
+    existing.win.focus();
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
+
+function openPositionedEntryWindow(path: string, kind: EntryWindowKind): Window | null {
+  pruneClosedEntryWindows();
+  const size = kind === "mp3" ? MP3_POPUP : DOC_POPUP;
+  const left = Math.max(0, window.screenX + window.outerWidth - size.width - POPUP_MARGIN);
+  let top = Math.max(0, window.screenY + POPUP_TOP);
+  if (kind === "mp3") {
+    const openMp3 = entryWindows.filter((e) => e.kind === "mp3" && !e.win.closed).length;
+    top += openMp3 * size.height;
+  }
+  const features =
+    `popup=yes,width=${size.width},height=${size.height},left=${left},top=${top}`;
+  const win = window.open("about:blank", "_blank", features);
+  if (win) trackEntryWindow(path, win, kind);
+  return win;
+}
+
 @customElement("song-onboard")
 export class SongOnboard extends LitElement {
   @state() private label = "";
@@ -46,7 +128,6 @@ export class SongOnboard extends LitElement {
   @state() private allEntries: string[] = [];
   @state() private sourceName = "";
   @state() private sourceType: "zip" | "folder" = "zip";
-  @state() private showContents = false;
   @state() private importing = false;
   @state() private showImportHelp = false;
 
@@ -143,16 +224,59 @@ export class SongOnboard extends LitElement {
     }
   }
 
-  private toggleContents() {
-    this.showContents = !this.showContents;
+  /** Extensions we can open like File Explorer (view / play in a popup window). */
+  private isOpenableEntry(path: string): boolean {
+    return /\.(html?|md|txt|pdf|mp3)$/i.test(path);
   }
 
-  private async openHtmlPreview(path: string, e: Event) {
+  private openEntryWindow(path: string): Window | null {
+    const kind = path.toLowerCase().endsWith(".mp3") ? "mp3" : "doc";
+    return openPositionedEntryWindow(path, kind);
+  }
+
+  private async openSourceEntry(path: string, e: Event) {
     e.preventDefault();
-    const win = window.open("", "_blank");
+    if (focusExistingEntryWindow(path)) return;
+    const win = this.openEntryWindow(path);
     if (!win) return;
+
+    const lower = path.toLowerCase();
+    const writeError = (err: unknown) => {
+      try {
+        win.document.open();
+        win.document.write(`<p>Failed to load: ${formatUnknownError(err)}</p>`);
+        win.document.close();
+      } catch {
+        /* tab may already be closed */
+      }
+    };
+
     try {
-      const lower = path.toLowerCase();
+      if (lower.endsWith(".pdf")) {
+        const buf = await callerBuddy.readOnboardingBinary(path);
+        const url = URL.createObjectURL(new Blob([buf], { type: "application/pdf" }));
+        win.location.href = url;
+        window.setTimeout(() => URL.revokeObjectURL(url), 600_000);
+        return;
+      }
+
+      if (lower.endsWith(".mp3")) {
+        const buf = await callerBuddy.readOnboardingBinary(path);
+        const url = URL.createObjectURL(new Blob([buf], { type: "audio/mpeg" }));
+        const title = path.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        win.document.open();
+        win.document.write(
+          `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head>` +
+            `<body style="margin:12px;font-family:system-ui,sans-serif">` +
+            `<p style="margin:0 0 8px;font-size:12px;word-break:break-all">${title}</p>` +
+            `<audio controls autoplay src="${url}" style="width:100%"></audio>` +
+            `</body></html>`,
+        );
+        win.document.close();
+        window.setTimeout(() => URL.revokeObjectURL(url), 600_000);
+        return;
+      }
+
       let raw: string;
       if (lower.endsWith(".html") || lower.endsWith(".htm")) {
         const { decodeHtmlBytes } = await import("../utils/lyrics-text-filter.js");
@@ -161,7 +285,7 @@ export class SongOnboard extends LitElement {
         raw = await callerBuddy.readOnboardingEntry(path);
       }
       win.document.open();
-      if (lower.endsWith(".md")) {
+      if (lower.endsWith(".md") || lower.endsWith(".txt")) {
         win.document.write(
           `<pre style="white-space:pre-wrap;font-family:monospace;padding:16px">${raw
             .replace(/&/g, "&amp;")
@@ -173,9 +297,7 @@ export class SongOnboard extends LitElement {
       }
       win.document.close();
     } catch (err) {
-      win.document.open();
-      win.document.write(`<p>Failed to load: ${formatUnknownError(err)}</p>`);
-      win.document.close();
+      writeError(err);
     }
   }
 
@@ -369,27 +491,19 @@ export class SongOnboard extends LitElement {
         ${this.lyricsMarkdown
           ? html`<p class="explain">Source lyrics were converted to Markdown and placed
               in the editor — please review and update as desired.
-              You can open the original file by double-clicking it
-              in the file list below to compare or cut and paste.</p>`
+              You can open original files from the list below to compare or cut and paste.</p>`
           : nothing}
 
-        <!-- Show source contents -->
+        <!-- Source contents (always visible; clickable like File Explorer) -->
         <div class="section">
-          <button class="toggle-btn" @click=${this.toggleContents}
-            title="Show or hide the full list of files in the source ${sourceLabel}">
-            ${this.showContents ? "Hide" : "Show"} complete
-            ${sourceLabel} contents (${this.allEntries.length} files)
-          </button>
-          ${this.showContents
-            ? html`
-              <div class="contents-list">
-                ${this.allEntries.map((e) =>
-                  /\.(html?|md)$/i.test(e)
-                    ? html`<div class="contents-entry"><a href="#" @click=${(ev: Event) => this.openHtmlPreview(e, ev)}>${e}</a></div>`
-                    : html`<div class="contents-entry">${e}</div>`,
-                )}
-              </div>`
-            : nothing}
+          <h3>${sourceLabel} contents (${this.allEntries.length} files)</h3>
+          <div class="contents-list">
+            ${this.allEntries.map((e) =>
+              this.isOpenableEntry(e)
+                ? html`<div class="contents-entry"><a href="#" @click=${(ev: Event) => this.openSourceEntry(e, ev)}>${e}</a></div>`
+                : html`<div class="contents-entry">${e}</div>`,
+            )}
+          </div>
         </div>
 
         <!-- HTML source selector (only if multiple) -->
@@ -689,23 +803,10 @@ export class SongOnboard extends LitElement {
       white-space: nowrap;
     }
 
-    /* -- Source contents toggle --------------------------------------------- */
-
-    .toggle-btn {
-      background: none;
-      border: 1px solid var(--cb-border);
-      color: var(--cb-fg-secondary, #aaa);
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.82rem;
-      text-align: left;
-    }
-
-    .toggle-btn:hover { background: var(--cb-hover); }
+    /* -- Source contents ---------------------------------------------------- */
 
     .contents-list {
-      max-height: 160px;
+      max-height: 200px;
       overflow-y: auto;
       border: 1px solid var(--cb-border);
       border-radius: 4px;

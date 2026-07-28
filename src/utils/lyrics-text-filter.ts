@@ -5,7 +5,7 @@
  * Producer HTML is often windows-1252; decode bytes with the declared charset
  * before scraping. {@link filterLyricsText} is the shared post-decode pass
  * (newlines, controls, light cleanup) used by HTML import and paste.
- * {@link plainTextToMarkdownHardBreaks} also bolds square-dance calls.
+ * {@link plainTextToMarkdownHardBreaks} also bolds calls and escapes leading `#`/`*`.
  */
 
 import { emphasizeCallsAsMarkdown } from "./lyrics-call-bold.js";
@@ -83,8 +83,28 @@ export function filterLyricsText(text: string): string {
 }
 
 /**
+ * Escape `#` / `*` at the start of a line (after optional indent) so Markdown
+ * does not treat the line as a heading or list.
+ */
+export function escapeMarkdownLineStart(line: string): string {
+  return line.replace(/^([ \t]*)([#*]+)/, (_m, ws: string, marks: string) => {
+    return ws + [...marks].map((ch) => `\\${ch}`).join("");
+  });
+}
+
+/**
+ * Body-line conversion shared by paste and import: escape MD starters, bold
+ * calls, trailing hard-break `\`.
+ */
+export function formatLyricsBodyLine(line: string): string {
+  const escaped = escapeMarkdownLineStart(line);
+  const bolded = emphasizeCallsAsMarkdown(escaped);
+  return bolded.endsWith("\\") ? bolded : `${bolded}\\`;
+}
+
+/**
  * Turn filtered plain text into Markdown body lines with trailing `\`,
- * and bold square-dance call names (same conversion as lyrics import).
+ * escaping leading `#`/`*`, and bolding square-dance call names.
  * Blank lines become paragraph breaks (empty line, no backslash).
  */
 export function plainTextToMarkdownHardBreaks(text: string): string {
@@ -97,8 +117,7 @@ export function plainTextToMarkdownHardBreaks(text: string): string {
       out.push("");
       continue;
     }
-    const bolded = emphasizeCallsAsMarkdown(trimmed);
-    out.push(bolded.endsWith("\\") ? bolded : `${bolded}\\`);
+    out.push(formatLyricsBodyLine(trimmed));
   }
   // Trim trailing blank lines
   while (out.length && out[out.length - 1] === "") out.pop();
