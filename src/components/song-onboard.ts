@@ -582,7 +582,7 @@ export class SongOnboard extends LitElement {
             ? html`<div class="dest-line">
                 Lyrics: <strong>${this.destLyricsName}</strong>
               </div>`
-            : html`<div class="dest-line muted">No lyrics file will be created</div>`}
+            : html`<div class="dest-line muted">No lyrics file will be created, will be treated as a patter song. </div>`}
         </div>
 
         <p class="hint">

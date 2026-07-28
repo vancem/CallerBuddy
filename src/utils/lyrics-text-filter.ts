@@ -189,6 +189,16 @@ function sniffCharset(head: string): string | null {
   return CHARSET_ALIASES[key] ?? null;
 }
 
+/** Prefer UTF-8 when valid; otherwise assume legacy Windows cue-sheet encoding. */
+function detectUtf8OrWindows1252(bytes: Uint8Array): string {
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return "utf-8";
+  } catch {
+    return "windows-1252";
+  }
+}
+
 function decodeWithCharset(bytes: Uint8Array, charset: string): string {
   try {
     return new TextDecoder(charset, { fatal: false }).decode(bytes);

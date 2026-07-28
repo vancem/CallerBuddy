@@ -50,7 +50,8 @@ type SortField =
   | "rank"
   | "orderAdded"
   | "lastUsedDays"
-  | "playedDisplay";
+  | "playedDisplay"
+  | "type";
 type SortDir = "asc" | "desc";
 type SortKey = { field: SortField; dir: SortDir };
 
@@ -794,7 +795,13 @@ export class PlaylistEditor extends LitElement {
                       >
                         Label ${this.sortIndicator("label")}
                       </th>
-                      <th title="Singing call (has lyrics) or patter (no lyrics file).">Type</th>
+                      <th
+                        class="sortable"
+                        title="Singing call (has lyrics) or patter (no lyrics file)."
+                        @click=${() => this.toggleSort("type")}
+                      >
+                        Type ${this.sortIndicator("type")}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1231,6 +1238,9 @@ export class PlaylistEditor extends LitElement {
         }
         case "playedDisplay": {
           return displayPlayWeight(s.playWeight, s.lastUsed, nowMs);
+        }
+        case "type": {
+          return isSingingCall(s) ? "Singing" : "Patter";
         }
         default: {
           return s[field as keyof Song] as unknown as string | number;

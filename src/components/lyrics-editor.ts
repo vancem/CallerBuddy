@@ -207,8 +207,8 @@ export class LyricsEditor extends LitElement {
       padding: 4px 10px;
       border: 1px solid var(--cb-border);
       border-radius: 4px;
-      background: var(--cb-surface);
-      color: var(--cb-text);
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
       cursor: pointer;
     }
 
@@ -248,8 +248,15 @@ export class LyricsEditor extends LitElement {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 0.9rem;
       line-height: 1.45;
-      background: var(--cb-surface);
-      color: var(--cb-text);
+      /* Keep I-beam (caret + mouse) visible on light panels; Windows OS dark
+         mode otherwise can flip it white-on-white until focus leaves the app. */
+      color-scheme: light;
+      background: var(--cb-input-bg);
+      color: var(--cb-fg);
+      caret-color: var(--cb-fg);
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24' viewBox='0 0 16 24'%3E%3Cpath d='M3 1h10M8 1v22M3 23h10' stroke='%23fff' stroke-width='3.5' fill='none' stroke-linecap='square'/%3E%3Cpath d='M3 1h10M8 1v22M3 23h10' stroke='%23202124' stroke-width='1.5' fill='none' stroke-linecap='square'/%3E%3C/svg%3E")
+          8 12,
+        text;
     }
 
     textarea.lyrics-source:focus {
