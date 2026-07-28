@@ -16,6 +16,7 @@ import { callerBuddy } from "../caller-buddy.js";
 import { StateEvents, TabType } from "../services/app-state.js";
 import {
   computeDestNames,
+  labelAndTitleFromMusicPath,
   rescrapeHtml,
   type OnboardingProposal,
   type Mp3Candidate,
@@ -199,7 +200,12 @@ export class SongOnboard extends LitElement {
   }
 
   private onMp3Select(e: Event) {
-    this.selectedMp3 = (e.target as HTMLInputElement).value;
+    const path = (e.target as HTMLInputElement).value;
+    this.selectedMp3 = path;
+    const { label, title } = labelAndTitleFromMusicPath(path);
+    this.label = label;
+    this.songTitle = title;
+    this.updateDestNames();
   }
 
   private isMp3Entry(path: string): boolean {

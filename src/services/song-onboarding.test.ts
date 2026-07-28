@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   analyzeZipForOnboarding,
   computeDestNames,
+  labelAndTitleFromMusicPath,
   _testOnly,
 } from "./song-onboarding.js";
 
@@ -126,6 +127,43 @@ describe("extractTitle", () => {
     expect(
       extractTitle("SIR 804.zip", mp3s, "SIR 804"),
     ).toBe("Wonderful Tonight");
+  });
+
+  it("falls through to MP3 for title when folder/zip name has no label (patter case)", () => {
+    const mp3s = ["BS 552 - MUSIC BOX.mp3"];
+    expect(extractTitle("patter", mp3s, "BS 552")).toBe("Music Box");
+    expect(extractTitle("patter.zip", mp3s, "BS 552")).toBe("Music Box");
+  });
+
+  it("uses preferred MP3 for title, not the shortest title in the folder", () => {
+    const mp3s = [
+      "ESP 428 - BLT.mp3",
+      "BS 552 - MUSIC BOX.mp3",
+      "BS 579 - CANDY GIRL.mp3",
+    ];
+    expect(extractTitle("patter", mp3s, "BS 552", "BS 552 - MUSIC BOX.mp3")).toBe(
+      "Music Box",
+    );
+  });
+});
+
+describe("labelAndTitleFromMusicPath", () => {
+  it("parses standard LABEL - TITLE music names", () => {
+    expect(labelAndTitleFromMusicPath("BS 552 - MUSIC BOX.mp3")).toEqual({
+      label: "BS 552",
+      title: "Music Box",
+    });
+    expect(labelAndTitleFromMusicPath("ESP 428 - BLT.mp3")).toEqual({
+      label: "ESP 428",
+      title: "Blt",
+    });
+  });
+
+  it("handles reversed TITLE - LABEL names", () => {
+    expect(labelAndTitleFromMusicPath("Wonderful Tonight - SIR 804.mp3")).toEqual({
+      label: "SIR 804",
+      title: "Wonderful Tonight",
+    });
   });
 });
 

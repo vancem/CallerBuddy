@@ -75,15 +75,17 @@ export async function analyzeZipForOnboarding(
   // 1. Extract label
   const label = extractLabel(zipName, mp3Paths);
 
-  // 2. Extract title
-  const title = extractTitle(zipName, mp3Paths, label);
+  // 2. Title from source name only when it embeds a label (not container folders like "patter")
+  const titleFromSource = titleFromSourceName(zipName, label);
 
-  // 3. Score and rank MP3 candidates
-  const mp3Candidates = scoreMp3Candidates(mp3Paths, label, title);
-
+  // 3. Score MP3s (title hint only helps exact-match bonus when source had a real title)
+  const mp3Candidates = scoreMp3Candidates(mp3Paths, label, titleFromSource);
   const selectedMp3 = mp3Candidates.length > 0 ? mp3Candidates[0].path : "";
 
-  // 4. Select best lyrics source (prefer .md, then HTML, then TXT)
+  // 4. Final title: source name, else selected MP3 filename, else source verbatim
+  const title = extractTitle(zipName, mp3Paths, label, selectedMp3);
+
+  // 5. Select best lyrics source (prefer .md, then HTML, then TXT)
   const htmlCandidates: HtmlCandidate[] = [
     ...mdPaths.map((p) => ({ path: p, filename: basename(p) })),
     ...htmlPaths.map((p) => ({ path: p, filename: basename(p) })),
@@ -91,7 +93,7 @@ export async function analyzeZipForOnboarding(
   const selectedMd = selectBestMd(mdPaths, label, title);
   const selectedHtml = selectedMd || selectBestHtml(htmlPaths, label, title);
 
-  // 5. Load / convert lyrics to Markdown (MD → HTML → TXT; PDF/Word = paste hint)
+  // 6. Load / convert lyrics to Markdown (MD → HTML → TXT; PDF/Word = paste hint)
   let lyricsMarkdown = "";
   if (selectedMd) {
     try {
@@ -127,7 +129,7 @@ export async function analyzeZipForOnboarding(
     lyricsHint = pasteLyricsHint(pdfPaths.length > 0, wordPaths.length > 0);
   }
 
-  // 6. Generate destination filenames
+  // 7. Generate destination filenames
   const destBase = label && title ? `${label} - ${title}` : title || label || "Untitled";
   const destMp3Name = `${destBase}.mp3`;
   const destLyricsName = lyricsMarkdown ? `${destBase}.md` : "";
@@ -249,26 +251,52 @@ function extractLabelFromString(s: string): string {
 // Title extraction
 // ---------------------------------------------------------------------------
 
-function extractTitle(zipName: string, mp3Paths: string[], label: string): string {
-  // Priority 1: ZIP filename after label removal
-  const zipBase = stripExtension(zipName);
-  let fromZip = removeLabelFromString(zipBase, label);
-  fromZip = cleanTitle(fromZip);
-  if (fromZip) return fromZip;
+/**
+ * Parse catalog label and song title from a music file path (e.g. when the user
+ * changes the selected MP3 during onboarding).
+ */
+export function labelAndTitleFromMusicPath(path: string): { label: string; title: string } {
+  const name = stripExtension(basename(path));
+  const label = extractLabelFromString(name);
+  const title = label
+    ? cleanTitle(removeLabelFromString(name, label))
+    : cleanTitle(name);
+  return { label, title };
+}
 
-  // Priority 2: Best MP3 filename
-  if (mp3Paths.length > 0) {
-    const candidates = mp3Paths
-      .map((p) => cleanTitle(removeLabelFromString(stripExtension(basename(p)), label)))
-      .filter((t) => t.length > 0);
-    if (candidates.length > 0) {
-      // Prefer the shortest clean name (fewest variant descriptors)
-      candidates.sort((a, b) => a.length - b.length);
-      return candidates[0];
-    }
+/**
+ * Title embedded in the ZIP/folder name when that name contains a catalog label.
+ * Returns "" for container names like "patter" so callers can use the selected MP3.
+ */
+function titleFromSourceName(zipName: string, label: string): string {
+  const zipBase = stripExtension(zipName);
+  const labelFromSource = extractLabelFromString(zipBase);
+  if (!labelFromSource) return "";
+  return cleanTitle(removeLabelFromString(zipBase, label || labelFromSource));
+}
+
+function extractTitle(
+  zipName: string,
+  mp3Paths: string[],
+  label: string,
+  preferredMp3Path = "",
+): string {
+  const zipBase = stripExtension(zipName);
+
+  // Priority 1: source name only when it embeds a catalog label
+  const fromSource = titleFromSourceName(zipName, label);
+  if (fromSource) return fromSource;
+
+  // Priority 2: preferred (selected) MP3 first, then other music files — not "shortest title"
+  const pathsToTry = preferredMp3Path
+    ? [preferredMp3Path, ...mp3Paths.filter((p) => p !== preferredMp3Path)]
+    : mp3Paths;
+  for (const p of pathsToTry) {
+    const t = cleanTitle(removeLabelFromString(stripExtension(basename(p)), label));
+    if (t) return t;
   }
 
-  // Priority 3: ZIP name verbatim
+  // Priority 3: source name verbatim
   return normalizeTitle(zipBase);
 }
 
