@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync } from "fs";
 import { describe, it, expect } from "vitest";
 import {
   decodeHtmlBytes,
@@ -7,6 +6,15 @@ import {
   plainTextToMarkdownHardBreaks,
 } from "../utils/lyrics-text-filter.js";
 import { importHtmlToMarkdown } from "../services/lyrics-import.js";
+
+/** Build an ArrayBuffer whose bytes match Latin-1 / windows-1252 code units. */
+function bytesFromLatin1(source: string): ArrayBuffer {
+  const bytes = new Uint8Array(source.length);
+  for (let i = 0; i < source.length; i++) {
+    bytes[i] = source.charCodeAt(i) & 0xff;
+  }
+  return bytes.buffer;
+}
 
 describe("filterLyricsText", () => {
   it("preserves Unicode letters and punctuation", () => {
@@ -78,33 +86,37 @@ describe("plainTextToMarkdownHardBreaks", () => {
 });
 
 describe("decodeHtmlBytes", () => {
-  it("decodes windows-1252 meta charset (Dancing Queen)", () => {
-    const buf = readFileSync(
-      "demoMusic/tests/singingCalls/RIV 675 - Dancing Queen/RIV 675 - Dancing Queen.html",
-    );
-    const html = decodeHtmlBytes(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
-    expect(html).toContain("Ooo…");
-    expect(html).toContain("diggin’");
-    expect(html).toContain("‘round");
-    expect(html).not.toContain("\uFFFD");
+  it("decodes windows-1252 meta charset (ellipsis and curly quotes)", () => {
+    // 0x85=…, 0x91=‘, 0x92=’ in windows-1252
+    const html =
+      '<html><head><meta charset="windows-1252"></head>' +
+      "<body><p>Ooo\x85 diggin\x92 \x91round</p></body></html>";
+    const decoded = decodeHtmlBytes(bytesFromLatin1(html));
+    expect(decoded).toContain("Ooo…");
+    expect(decoded).toContain("diggin’");
+    expect(decoded).toContain("‘round");
+    expect(decoded).not.toContain("\uFFFD");
   });
 
-  it("decodes windows-1252 apostrophe when charset meta is missing (YMCA)", () => {
-    const buf = readFileSync("demoMusic/tests/singingCalls/RIV 250 - YMCA/RIV 250 - YMCA.html");
-    const html = decodeHtmlBytes(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
-    expect(html).toContain("there\u2019s no need");
-    expect(html).toContain("I\u2019m sure");
-    expect(html).not.toContain("\uFFFD");
+  it("decodes windows-1252 apostrophe when charset meta is missing", () => {
+    // Invalid as UTF-8 (lone 0x92), so decoder falls back to windows-1252
+    const html =
+      "<html><body><p>there\x92s no need</p><p>I\x92m sure</p></body></html>";
+    const decoded = decodeHtmlBytes(bytesFromLatin1(html));
+    expect(decoded).toContain("there\u2019s no need");
+    expect(decoded).toContain("I\u2019m sure");
+    expect(decoded).not.toContain("\uFFFD");
   });
 });
 
 describe("importHtmlToMarkdown charset", () => {
-  it("keeps curly apostrophe and ellipsis from Dancing Queen", () => {
-    const buf = readFileSync(
-      "demoMusic/tests/singingCalls/RIV 675 - Dancing Queen/RIV 675 - Dancing Queen.html",
-    );
-    const html = decodeHtmlBytes(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
-    const { markdown } = importHtmlToMarkdown(html, "RIV 675", "Dancing Queen");
+  it("keeps curly apostrophe and ellipsis after windows-1252 decode", () => {
+    const html =
+      '<html><head><meta charset="windows-1252"></head><body>' +
+      "<p>Ooo\x85 diggin\x92 \x91round the floor</p>" +
+      "</body></html>";
+    const decoded = decodeHtmlBytes(bytesFromLatin1(html));
+    const { markdown } = importHtmlToMarkdown(decoded, "TST 1", "Charset Sample");
     expect(markdown).toContain("Ooo…");
     expect(markdown).toMatch(/diggin’/);
     expect(markdown).toMatch(/‘round|round/);
