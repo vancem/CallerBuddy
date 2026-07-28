@@ -182,8 +182,8 @@ function latin1Preview(bytes: Uint8Array, max: number): string {
 
 function sniffCharset(head: string): string | null {
   const meta =
-    head.match(/charset\s*=\s*["']?\s*([a-z0-9_\-]+)/i) ??
-    head.match(/content\s*=\s*["'][^"']*charset\s*=\s*([a-z0-9_\-]+)/i);
+    head.match(/charset\s*=\s*["']?\s*([a-z0-9_-]+)/i) ??
+    head.match(/content\s*=\s*["'][^"']*charset\s*=\s*([a-z0-9_-]+)/i);
   if (!meta?.[1]) return null;
   const key = meta[1].toLowerCase();
   return CHARSET_ALIASES[key] ?? null;

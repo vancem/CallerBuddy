@@ -299,7 +299,14 @@ export function extensionOf(filename: string): string {
 
 /** Strip characters that are illegal in Windows / most FS filenames. */
 export function sanitizeFilenamePart(part: string): string {
-  return part.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim();
+  let out = "";
+  for (const ch of part) {
+    const code = ch.charCodeAt(0);
+    if (code < 32) continue;
+    if ('<>:"/\\|?*'.includes(ch)) continue;
+    out += ch;
+  }
+  return out.trim();
 }
 
 /**

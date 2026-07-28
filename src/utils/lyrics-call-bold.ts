@@ -114,14 +114,14 @@ export function normalizeAllCapsLine(line: string): string {
 /** Wrap matched calls in Markdown `**…**` (skips lines that already use bold). */
 export function emphasizeCallsAsMarkdown(line: string): string {
   if (line.includes("**")) return line;
-  let result = normalizeAllCapsLine(line);
+  const result = normalizeAllCapsLine(line);
   CALL_REGEX.lastIndex = 0;
   return result.replace(CALL_REGEX, (m) => `**${m}**`);
 }
 
 /** Wrap matched calls in HTML `<b>…</b>`. */
 export function emphasizeCallsAsHtml(line: string): string {
-  let result = normalizeAllCapsLine(line);
+  const result = normalizeAllCapsLine(line);
   CALL_REGEX.lastIndex = 0;
   return result.replace(CALL_REGEX, (m) => `<b>${m}</b>`);
 }
