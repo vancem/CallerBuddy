@@ -53,6 +53,28 @@ describe("plainTextToMarkdownHardBreaks", () => {
   it("escapes a run of leading # characters", () => {
     expect(plainTextToMarkdownHardBreaks("## foo")).toBe("\\#\\# foo\\\n");
   });
+
+  it("promotes Opener/Figure/Closer/Tag/Middle Break lines to ## headers", () => {
+    expect(
+      plainTextToMarkdownHardBreaks("Opener\nCircle left\nFigure\nCloser\nTag\nMiddle Break"),
+    ).toBe("## Opener\n**Circle** **left**\\\n## Figure\n## Closer\n## Tag\n## Middle Break\n");
+  });
+
+  it("promotes any word starting with Open or Close", () => {
+    expect(plainTextToMarkdownHardBreaks("Open\nOpening\nOpener\nClose\nCloser")).toBe(
+      "## Open\n## Opening\n## Opener\n## Close\n## Closer\n",
+    );
+  });
+
+  it("leaves lines that already have ## headers alone", () => {
+    expect(plainTextToMarkdownHardBreaks("## Opener\n## Figure (heads)")).toBe(
+      "## Opener\n## Figure (heads)\n",
+    );
+  });
+
+  it("does not promote the call Tag the line", () => {
+    expect(plainTextToMarkdownHardBreaks("Tag the line")).toBe("**Tag the line**\\\n");
+  });
 });
 
 describe("decodeHtmlBytes", () => {
@@ -64,6 +86,14 @@ describe("decodeHtmlBytes", () => {
     expect(html).toContain("Ooo…");
     expect(html).toContain("diggin’");
     expect(html).toContain("‘round");
+    expect(html).not.toContain("\uFFFD");
+  });
+
+  it("decodes windows-1252 apostrophe when charset meta is missing (YMCA)", () => {
+    const buf = readFileSync("demoMusic/tests/singingCalls/RIV 250 - YMCA/RIV 250 - YMCA.html");
+    const html = decodeHtmlBytes(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+    expect(html).toContain("there\u2019s no need");
+    expect(html).toContain("I\u2019m sure");
     expect(html).not.toContain("\uFFFD");
   });
 });

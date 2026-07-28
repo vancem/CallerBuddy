@@ -9,6 +9,8 @@ export const CALL_NAMES: string[] = [
   "double pass thru",
   "touch a quarter",
   "touch one quarter",
+  "touch 1/4",
+  "walk and dodge",
   "sweep a quarter",
   "california twirl",
   "split circulate",

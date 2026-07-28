@@ -43,7 +43,7 @@ export interface OnboardingProposal {
   /** Destination lyrics filename (.md), or empty */
   destLyricsName: string;
   /**
-   * Hint when auto-convert found nothing useful (e.g. PDF-only archive).
+   * Hint when auto-convert found nothing useful (e.g. PDF/Word-only archive).
    * Shown in the onboard UI so the user can paste lyrics.
    */
   lyricsHint: string;
@@ -91,7 +91,7 @@ export async function analyzeZipForOnboarding(
   const selectedMd = selectBestMd(mdPaths, label, title);
   const selectedHtml = selectedMd || selectBestHtml(htmlPaths, label, title);
 
-  // 5. Load / convert lyrics to Markdown (MD → HTML → TXT; PDF = paste hint)
+  // 5. Load / convert lyrics to Markdown (MD → HTML → TXT; PDF/Word = paste hint)
   let lyricsMarkdown = "";
   if (selectedMd) {
     try {
@@ -121,11 +121,10 @@ export async function analyzeZipForOnboarding(
   }
 
   const pdfPaths = entryPaths.filter((p) => p.toLowerCase().endsWith(".pdf"));
+  const wordPaths = entryPaths.filter((p) => /\.docx?$/i.test(p));
   let lyricsHint = "";
-  if (!lyricsMarkdown && pdfPaths.length > 0) {
-    lyricsHint =
-      "No HTML/Markdown lyrics found, but this archive has a PDF. " +
-      "Open the PDF, copy the text, and paste it into the lyrics editor.";
+  if (!lyricsMarkdown && (pdfPaths.length > 0 || wordPaths.length > 0)) {
+    lyricsHint = pasteLyricsHint(pdfPaths.length > 0, wordPaths.length > 0);
   }
 
   // 6. Generate destination filenames
@@ -426,6 +425,19 @@ function isHtmlExt(path: string): boolean {
   return HTML_EXTENSIONS.has(getExtension(basename(path)));
 }
 
+/** Paste nudge when lyrics exist only as PDF and/or Word files. */
+function pasteLyricsHint(hasPdf: boolean, hasWord: boolean): string {
+  const kinds: string[] = [];
+  if (hasPdf) kinds.push("PDF");
+  if (hasWord) kinds.push("Word (.doc/.docx)");
+  const kindList =
+    kinds.length === 1 ? kinds[0]! : `${kinds[0]} and ${kinds[1]}`;
+  return (
+    `No HTML/Markdown lyrics found, but this archive has a ${kindList}. ` +
+    "Open that file from the list, copy the text, and paste it into the lyrics editor."
+  );
+}
+
 // Exported for unit testing only
 export const _testOnly = {
   extractLabel,
@@ -434,4 +446,5 @@ export const _testOnly = {
   selectBestHtml,
   cleanTitle,
   normalizeTitle,
+  pasteLyricsHint,
 };

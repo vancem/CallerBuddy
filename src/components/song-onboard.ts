@@ -202,6 +202,35 @@ export class SongOnboard extends LitElement {
     this.selectedMp3 = (e.target as HTMLInputElement).value;
   }
 
+  private isMp3Entry(path: string): boolean {
+    return path.toLowerCase().endsWith(".mp3");
+  }
+
+  private mp3SelectTitle(path: string): string {
+    const c = this.mp3Candidates.find((x) => x.path === path);
+    return c?.reason || "Use this MP3 for import";
+  }
+
+  private renderContentsEntry(path: string) {
+    const name = this.isOpenableEntry(path)
+      ? html`<a href="#" @click=${(ev: Event) => this.openSourceEntry(path, ev)}>${path}</a>`
+      : path;
+    return html`
+      <div class="contents-entry">
+        <span class="contents-select">
+          ${this.isMp3Entry(path)
+            ? html`<input type="radio" name="mp3"
+                .value=${path}
+                .checked=${path === this.selectedMp3}
+                title=${this.mp3SelectTitle(path)}
+                @change=${this.onMp3Select} />`
+            : nothing}
+        </span>
+        <span class="contents-name">${name}</span>
+      </div>
+    `;
+  }
+
   private async onHtmlSelect(e: Event) {
     const path = (e.target as HTMLSelectElement).value;
     this.selectedHtml = path;
@@ -391,14 +420,27 @@ export class SongOnboard extends LitElement {
       return html`
         <div class="left-panel">
           <div class="no-lyrics">
-            <p>No lyrics found in source.</p>
             ${this.lyricsHint
-              ? html`<p class="muted">${this.lyricsHint}</p>
+              ? html`
+                  <p>No lyrics found in source.</p>
+                  <p class="muted">${this.lyricsHint}</p>
                   <button class="secondary-btn" type="button" @click=${this.startBlankLyrics}
-                    title="Open an empty lyrics editor so you can paste from a PDF">
+                    title="Open an empty lyrics editor so you can paste from a PDF or Word file">
                     Open editor to paste
-                  </button>`
-              : html`<p class="muted">The song will be imported without a lyrics file.</p>`}
+                  </button>
+                `
+              : html`
+                  <p>Could not find any lyrics file in this source.</p>
+                  <p class="muted">
+                    This song will be imported as a <strong>patter</strong> song
+                    (music only, no lyrics). If that is not correct, you can add
+                    lyrics by hand.
+                  </p>
+                  <button class="secondary-btn" type="button" @click=${this.startBlankLyrics}
+                    title="Open an empty lyrics editor and type or paste lyrics">
+                    Add lyrics by hand
+                  </button>
+                `}
           </div>
         </div>
       `;
@@ -467,44 +509,22 @@ export class SongOnboard extends LitElement {
           </button>
         </div>
 
-        <!-- Source music file -->
+        <!-- Source contents (MP3 radios + clickable files) -->
         <div class="section">
-          <h3>Source Music File</h3>
-          <div class="mp3-list">
-            ${this.mp3Candidates.map(
-              (c) => html`
-                <label class="mp3-item" title=${c.reason}>
-                  <input type="radio" name="mp3"
-                    .value=${c.path}
-                    .checked=${c.path === this.selectedMp3}
-                    @change=${this.onMp3Select} />
-                  <span class="mp3-name">${c.filename}</span>
-                </label>
-              `,
-            )}
-            ${this.mp3Candidates.length === 0
-              ? html`<p class="muted">No sound files found</p>`
-              : nothing}
+          <h3>${sourceLabel} contents (${this.allEntries.length} files)</h3>
+          <div class="contents-list">
+            ${this.allEntries.map((e) => this.renderContentsEntry(e))}
           </div>
+          ${this.allEntries.every((e) => !this.isMp3Entry(e))
+            ? html`<p class="muted">No MP3 files found</p>`
+            : nothing}
         </div>
 
         ${this.lyricsMarkdown
           ? html`<p class="explain">Source lyrics were converted to Markdown and placed
               in the editor — please review and update as desired.
-              You can open original files from the list below to compare or cut and paste.</p>`
+              You can open original files from the list above to compare or cut and paste.</p>`
           : nothing}
-
-        <!-- Source contents (always visible; clickable like File Explorer) -->
-        <div class="section">
-          <h3>${sourceLabel} contents (${this.allEntries.length} files)</h3>
-          <div class="contents-list">
-            ${this.allEntries.map((e) =>
-              this.isOpenableEntry(e)
-                ? html`<div class="contents-entry"><a href="#" @click=${(ev: Event) => this.openSourceEntry(e, ev)}>${e}</a></div>`
-                : html`<div class="contents-entry">${e}</div>`,
-            )}
-          </div>
-        </div>
 
         <!-- HTML source selector (only if multiple) -->
         ${this.htmlCandidates.length > 1
@@ -770,43 +790,10 @@ export class SongOnboard extends LitElement {
     .cancel-btn:hover:not(:disabled) { background: var(--cb-hover); }
     .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* -- MP3 list ---------------------------------------------------------- */
-
-    .mp3-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-      max-height: 200px;
-      overflow-y: auto;
-      border: 1px solid var(--cb-border);
-      border-radius: 4px;
-      padding: 4px;
-    }
-
-    .mp3-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 6px;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 0.82rem;
-    }
-
-    .mp3-item:hover { background: var(--cb-hover); }
-
-    .mp3-name {
-      flex: 1;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* -- Source contents ---------------------------------------------------- */
+    /* -- Source contents (radio prefix + filename) ------------------------- */
 
     .contents-list {
-      max-height: 200px;
+      max-height: 240px;
       overflow-y: auto;
       border: 1px solid var(--cb-border);
       border-radius: 4px;
@@ -817,8 +804,29 @@ export class SongOnboard extends LitElement {
     }
 
     .contents-entry {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       padding: 1px 0;
       white-space: nowrap;
+    }
+
+    .contents-select {
+      flex: 0 0 1.35rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .contents-select input[type="radio"] {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .contents-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Match browser default link rendering (readable on light/dark UI). */

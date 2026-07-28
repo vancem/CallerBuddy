@@ -358,4 +358,26 @@ describe("analyzeZipForOnboarding", () => {
     expect(proposal.lyricsMarkdown).toContain("Opener");
     expect(proposal.lyricsMarkdown).toContain("Rocky Top Tennessee");
   });
+
+  it("sets paste hint for Word-only lyrics (like PDF)", async () => {
+    const entries = [
+      "COY 846 - Those Were The Days.mp3",
+      "CUE SHEET THOSE WERE THE DAYS.docx",
+    ];
+    const proposal = await analyzeZipForOnboarding(
+      "COY 846 - Those Were The Days.zip",
+      entries,
+      async () => "",
+    );
+    expect(proposal.lyricsMarkdown).toBe("");
+    expect(proposal.lyricsHint).toMatch(/Word|\.doc/i);
+    expect(proposal.lyricsHint).toMatch(/paste/i);
+  });
+
+  it("sets paste hint when both PDF and docx are present", async () => {
+    const entries = ["song.mp3", "sheet.pdf", "sheet.docx"];
+    const proposal = await analyzeZipForOnboarding("Song.zip", entries, async () => "");
+    expect(proposal.lyricsHint).toMatch(/PDF/);
+    expect(proposal.lyricsHint).toMatch(/Word/);
+  });
 });

@@ -93,10 +93,38 @@ export function escapeMarkdownLineStart(line: string): string {
 }
 
 /**
- * Body-line conversion shared by paste and import: escape MD starters, bold
- * calls, trailing hard-break `\`.
+ * If a line begins with a section title — Open… / Close… / Figure / Tag /
+ * Middle Break (and is not already a Markdown ATX heading), prefix `## `.
+ * "Open"/"Close" match any word starting with those letters (Opener, Closer, …).
+ * Leaves existing `## …` lines alone. Avoids promoting the call "Tag the line".
+ */
+export function promoteSectionHeaderLine(line: string): string | null {
+  const m = line.match(
+    /^([ \t]*)(#{1,6}[ \t]+)?(Middle\s+Break|Figure|Tag|Open\w*|Close\w*)(.*)$/i,
+  );
+  if (!m) return null;
+  const ws = m[1] ?? "";
+  const existingHashes = m[2];
+  const word = m[3] ?? "";
+  const rest = m[4] ?? "";
+  // Don't treat "Tag the line" (call) as a section header
+  if (/^tag$/i.test(word) && /^\s+the\b/i.test(rest)) return null;
+  if (existingHashes) return line;
+  // Normalize "Middle Break" spacing in the heading text
+  const title = /^middle\s+break$/i.test(word) ? "Middle Break" : word;
+  return `${ws}## ${title}${rest}`;
+}
+
+/**
+ * Body-line conversion shared by paste and import: promote section titles,
+ * escape MD starters, bold calls, trailing hard-break `\`.
  */
 export function formatLyricsBodyLine(line: string): string {
+  const promoted = promoteSectionHeaderLine(line);
+  if (promoted != null) {
+    // Headers are block titles — no trailing `\`, and do not escape the `##`
+    return promoted;
+  }
   const escaped = escapeMarkdownLineStart(line);
   const bolded = emphasizeCallsAsMarkdown(escaped);
   return bolded.endsWith("\\") ? bolded : `${bolded}\\`;
@@ -125,7 +153,8 @@ export function plainTextToMarkdownHardBreaks(text: string): string {
 }
 
 /**
- * Decode HTML (or similar) bytes using BOM / meta charset / UTF-8 fallback.
+ * Decode HTML (or similar) bytes using BOM / meta charset / UTF-8-or-1252 guess.
+ * Cue sheets often omit charset and use windows-1252 bytes (e.g. 0x92 for ’).
  */
 export function decodeHtmlBytes(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -140,7 +169,7 @@ export function decodeHtmlBytes(buffer: ArrayBuffer): string {
   }
 
   const head = latin1Preview(bytes, 4096);
-  const charset = sniffCharset(head) ?? "utf-8";
+  const charset = sniffCharset(head) ?? detectUtf8OrWindows1252(bytes);
   return decodeWithCharset(bytes, charset);
 }
 
@@ -158,6 +187,16 @@ function sniffCharset(head: string): string | null {
   if (!meta?.[1]) return null;
   const key = meta[1].toLowerCase();
   return CHARSET_ALIASES[key] ?? null;
+}
+
+/** Prefer UTF-8 when valid; otherwise assume legacy Windows cue-sheet encoding. */
+function detectUtf8OrWindows1252(bytes: Uint8Array): string {
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return "utf-8";
+  } catch {
+    return "windows-1252";
+  }
 }
 
 function decodeWithCharset(bytes: Uint8Array, charset: string): string {
