@@ -34,7 +34,7 @@ import {
   renderTransport,
 } from "./song-play-partials.js";
 import type { Song } from "../models/song.js";
-import type { LyricsEditor } from "./lyrics-editor.js";
+import type { LyricsEditor, LyricsEditorMode } from "./lyrics-editor.js";
 import {
   generateLyricsMarkdownTemplate,
   parseLyricsMarkdown,
@@ -71,6 +71,8 @@ export class SongPlay extends LitElement {
   @state() private playing = false;
   @state() private lyrics = "";
   @state() private editing = false;
+  /** Formatted vs Raw — owned here so it survives editor remounts / tab switches. */
+  @state() private lyricsEditorMode: LyricsEditorMode = "formatted";
   /** True while lyrics editor DOM differs from last saved baseline (cleared on save). */
   @state() private lyricsModified = false;
   /** Unsaved-changes prompt when exiting the lyrics editor or closing the player with dirty lyrics. */
@@ -358,11 +360,7 @@ export class SongPlay extends LitElement {
 
   private focusLyricsEditorEditableSurface() {
     if (!this.editing) return;
-    const le = this.getLyricsEditorComponent();
-    const surface = le?.shadowRoot?.querySelector(
-      "textarea.lyrics-source",
-    ) as HTMLTextAreaElement | null;
-    surface?.focus();
+    this.getLyricsEditorComponent()?.focusEditableSurface();
   }
   /** When the window loses focus, pause audio but keep the player open (if auto-pause is on). */
   private _boundWindowBlur = () => {
@@ -925,13 +923,19 @@ export class SongPlay extends LitElement {
     return html`
       <lyrics-editor
         .lyricsMarkdown=${this.lyrics}
+        .editorMode=${this.lyricsEditorMode}
         .showSaveExit=${true}
         @lyrics-input=${this.onLyricsEditorInput}
+        @lyrics-mode-change=${this.onLyricsEditorModeChange}
         @lyrics-save=${() => void this.onSaveLyrics()}
         @lyrics-exit=${() => void this.onExitLyricsEditor()}
         @lyrics-help=${this.onLyricsMarkdownHelp}
       ></lyrics-editor>
     `;
+  }
+
+  private onLyricsEditorModeChange(e: CustomEvent<{ mode: "formatted" | "raw" }>) {
+    this.lyricsEditorMode = e.detail.mode;
   }
 
   private onLyricsMarkdownHelp() {

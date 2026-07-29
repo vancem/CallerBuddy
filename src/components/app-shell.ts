@@ -429,10 +429,10 @@ export class AppShell extends LitElement {
           </div>
         </header>
         <main class="content">
-          ${/* PlaylistPlay and SongPlay are keep-alive (hidden when inactive) so
-              timers / playback / lyrics editor survive tab switches (e.g. Markdown Help).
-              Presence is gated on the tab in AppState — when that tab is closed, the
-              pane unmounts. Other tabs use normal create/destroy on tab switch. */
+          ${/* PlaylistPlay, SongPlay, and Help are keep-alive (hidden when inactive) so
+              timers / playback / lyrics editor / help scroll position survive tab switches
+              (e.g. Markdown Help). Presence is gated on the tab in AppState — when that
+              tab is closed, the pane unmounts. Other tabs use create/destroy on switch. */
             ''}
           ${tabs.some((t) => t.type === TabType.PlaylistPlay)
             ? html`<div class="keep-alive-pane"
@@ -446,9 +446,20 @@ export class AppShell extends LitElement {
                 <song-play .active=${activeTab?.type === TabType.SongPlay}></song-play>
               </div>`
             : nothing}
+          ${tabs.some((t) => t.type === TabType.Help)
+            ? html`<div class="keep-alive-pane"
+                ?hidden=${activeTab?.type !== TabType.Help}>
+                <help-view
+                  .sectionId=${(tabs.find((t) => t.type === TabType.Help)?.data as
+                    | { sectionId?: string }
+                    | undefined)?.sectionId ?? ""}
+                ></help-view>
+              </div>`
+            : nothing}
           ${activeTab &&
           activeTab.type !== TabType.PlaylistPlay &&
-          activeTab.type !== TabType.SongPlay
+          activeTab.type !== TabType.SongPlay &&
+          activeTab.type !== TabType.Help
             ? this.renderTab(activeTab)
             : nothing}
           ${!activeTab ? this.renderEmpty() : nothing}
@@ -520,7 +531,7 @@ export class AppShell extends LitElement {
   }
 
   /** Render the content for a non-keep-alive tab.
-   *  PlaylistPlay and SongPlay are excluded — they use keep-alive panes above. */
+   *  PlaylistPlay, SongPlay, and Help are excluded — they use keep-alive panes above. */
   private renderTab(tab: TabInfo) {
     switch (tab.type) {
       case TabType.Welcome:
@@ -535,10 +546,6 @@ export class AppShell extends LitElement {
       }
       case TabType.SongOnboard:
         return html`<song-onboard></song-onboard>`;
-      case TabType.Help: {
-        const data = tab.data as { sectionId?: string } | undefined;
-        return html`<help-view .sectionId=${data?.sectionId ?? ""}></help-view>`;
-      }
       default:
         return html`<p>Unknown tab type</p>`;
     }
@@ -912,8 +919,8 @@ export class AppShell extends LitElement {
       z-index: 0;
     }
 
-    /* PlaylistPlay / SongPlay are kept alive across tab switches so timers,
-       playback, and the lyrics editor survive (e.g. opening Markdown Help).
+    /* PlaylistPlay / SongPlay / Help are kept alive across tab switches so timers,
+       playback, the lyrics editor, and help scroll position survive (e.g. Markdown Help).
        Hidden via [hidden] when not active. */
     .keep-alive-pane {
       height: 100%;

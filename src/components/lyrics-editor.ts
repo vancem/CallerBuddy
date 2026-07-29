@@ -1,7 +1,8 @@
 /**
- * Shared lyrics editor: Markdown textarea + live preview.
+ * Shared lyrics editor: Formatted (WYSIWYG) mode + Raw Markdown mode.
  *
- * Used by song-play (edit/create) and song-onboard (import review).
+ * Default view matches the pre-Markdown (V.102) contenteditable lyrics surface.
+ * Storage remains Markdown; Formatted ↔ Raw converts on mode switch.
  *
  * Events:
  *  - `lyrics-input`  — detail: { markdown: string }
@@ -12,9 +13,9 @@
 
 import { LitElement, css, html, nothing, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { bumpLyricsScale } from "../utils/lyrics-scale.js";
 import { parseLyricsMarkdown } from "../utils/lyrics-markdown.js";
+import { htmlToLyricsMarkdown } from "../utils/html-to-lyrics-md.js";
 import { plainTextToMarkdownHardBreaks } from "../utils/lyrics-text-filter.js";
 import {
   LYRICS_BODY_FONT_SIZE,
@@ -24,6 +25,25 @@ import {
   LYRICS_UI_FONT_STACK,
 } from "../lyrics-default-style.js";
 
+type EditorMode = "formatted" | "raw";
+
+/**
+ * Survives `<lyrics-editor>` remounts (e.g. Song Onboard is not keep-alive;
+ * Help tab tears it down). Also updated when Song Play owns the mode.
+ */
+let sessionEditorMode: EditorMode = "formatted";
+
+function looksLikeLyricsMarkdown(plain: string): boolean {
+  return /^#{1,2}\s/m.test(plain) || /\\\s*$/m.test(plain);
+}
+
+export type LyricsEditorMode = EditorMode;
+
+/** Last Formatted/Raw choice for this browsing session (survives remounts). */
+export function getLyricsEditorSessionMode(): LyricsEditorMode {
+  return sessionEditorMode;
+}
+
 @customElement("lyrics-editor")
 export class LyricsEditor extends LitElement {
   /** Markdown source. Set when opening the editor; further edits are local. */
@@ -32,39 +52,127 @@ export class LyricsEditor extends LitElement {
   /** Show Save and Exit buttons (song-play mode). */
   @property({ type: Boolean }) showSaveExit = false;
 
+  /**
+   * Formatted vs Raw. Parent may bind this (Song Play) so mode survives
+   * editor remounts; defaults to the session-remembered mode.
+   */
+  @property({ type: String }) editorMode: EditorMode = sessionEditorMode;
+
   @state() private draft = "";
-  /** Markdown pane share (0–1). Default 50/50. */
-  @state() private splitFraction = 0.5;
-  private dragging = false;
+
+  /** When true, next `updated` seeds the contenteditable from `draft`. */
+  private needsWysiwygSeed = true;
 
   override willUpdate(changed: Map<string, unknown>) {
     if (changed.has("lyricsMarkdown")) {
       this.draft = this.lyricsMarkdown ?? "";
+      this.needsWysiwygSeed = true;
+    }
+    if (changed.has("editorMode")) {
+      sessionEditorMode = this.editorMode;
+      if (this.editorMode === "formatted") this.needsWysiwygSeed = true;
     }
   }
 
-  /** Current Markdown text in the textarea. */
+  override updated(changed: Map<string, unknown>) {
+    if (this.editorMode === "formatted" && this.needsWysiwygSeed) {
+      this.seedWysiwygFromDraft();
+    }
+    if (changed.has("editorMode") && this.editorMode === "raw") {
+      const ta = this.getRawTextarea();
+      if (ta && ta.value !== this.draft) ta.value = this.draft;
+    }
+  }
+
+  /** Current Markdown (from the active surface). */
   getEditorMarkdown(): string {
-    const el = this.shadowRoot?.querySelector(
-      "textarea.lyrics-source",
-    ) as HTMLTextAreaElement | null;
-    return el?.value ?? this.draft;
+    if (this.editorMode === "raw") {
+      return this.getRawTextarea()?.value ?? this.draft;
+    }
+    const el = this.getWysiwygEl();
+    if (el) {
+      return htmlToLyricsMarkdown(el.innerHTML).markdown;
+    }
+    return this.draft;
+  }
+
+  /** Focus the active editing surface (formatted contenteditable or raw textarea). */
+  focusEditableSurface(): void {
+    if (this.editorMode === "raw") {
+      this.getRawTextarea()?.focus();
+      return;
+    }
+    this.getWysiwygEl()?.focus();
   }
 
   render() {
-    const previewHtml = parseLyricsMarkdown(this.draft);
-    const leftPct = (this.splitFraction * 100).toFixed(1);
     return html`
       <div class="editor-container">
         <div class="editor-toolbar">
+          ${this.editorMode === "formatted"
+            ? html`
+                <button
+                  type="button"
+                  class="toolbar-btn"
+                  title="Bold (Ctrl+B)"
+                  @mousedown=${this.preventFocusLoss}
+                  @click=${this.execBold}
+                >
+                  <b>B</b>
+                </button>
+                <button
+                  type="button"
+                  class="toolbar-btn section-btn"
+                  title="Section heading (Ctrl+H)"
+                  @mousedown=${this.preventFocusLoss}
+                  @click=${this.execSection}
+                >
+                  Heading
+                </button>
+                <button
+                  type="button"
+                  class="toolbar-btn info-btn"
+                  title="Info — blue text (Ctrl+I)"
+                  @mousedown=${this.preventFocusLoss}
+                  @click=${this.execInfo}
+                >
+                  Info
+                </button>
+                <button
+                  type="button"
+                  class="toolbar-btn"
+                  title="Paragraph (Ctrl+P)"
+                  @mousedown=${this.preventFocusLoss}
+                  @click=${this.execParagraph}
+                >
+                  P
+                </button>
+                <span class="toolbar-divider" aria-hidden="true"></span>
+              `
+            : nothing}
           <button
             type="button"
-            class="toolbar-btn help-btn"
-            title="Open Markdown help"
-            @click=${this.onHelp}
+            class="toolbar-btn mode-btn"
+            title=${this.editorMode === "formatted"
+              ? "Switch to raw Markdown editing"
+              : "Switch to formatted (visual) editing"}
+            @click=${() =>
+              this.setMode(this.editorMode === "formatted" ? "raw" : "formatted")}
           >
-            Markdown help
+            ${this.editorMode === "formatted" ? "Edit Markdown" : "Edit Formatted"}
           </button>
+          ${this.editorMode === "raw"
+            ? html`
+                <button
+                  type="button"
+                  class="toolbar-btn help-btn"
+                  title="Open Markdown help"
+                  @click=${this.onHelp}
+                >
+                  Markdown help
+                </button>
+              `
+            : nothing}
           <span class="toolbar-spacer"></span>
           ${this.showSaveExit
             ? html`
@@ -87,44 +195,78 @@ export class LyricsEditor extends LitElement {
               `
             : nothing}
         </div>
-        <div
-          class="editor-panes"
-          style="--lyrics-editor-split: ${leftPct}%"
-        >
-          <textarea
-            class="lyrics-source"
-            spellcheck="true"
-            wrap="off"
-            .value=${this.draft}
-            @input=${this.onInput}
-            @keydown=${this.onKeydown}
-            @paste=${this.onPaste}
-          ></textarea>
-          <div
-            class="pane-splitter"
-            title="Drag to resize panes"
-            @pointerdown=${this.onSplitterPointerDown}
-            @pointermove=${this.onSplitterPointerMove}
-            @pointerup=${this.onSplitterPointerUp}
-            @pointercancel=${this.onSplitterPointerUp}
-          ></div>
-          <div
-            class="lyrics-preview"
-            tabindex="0"
-            title="Preview (arrow keys scroll)"
-            @keydown=${this.onPreviewKeydown}
-          >
-            <div class="lyrics-content">
-              ${unsafeHTML(previewHtml)}
-            </div>
-          </div>
-        </div>
+        ${this.editorMode === "formatted"
+          ? html`
+              <div
+                class="lyrics-editor lyrics-content"
+                contenteditable="true"
+                spellcheck="true"
+                @input=${this.onWysiwygInput}
+                @keydown=${this.onWysiwygKeydown}
+                @paste=${this.onWysiwygPaste}
+              ></div>
+            `
+          : html`
+              <textarea
+                class="lyrics-source"
+                spellcheck="true"
+                wrap="off"
+                .value=${this.draft}
+                @input=${this.onRawInput}
+                @keydown=${this.onRawKeydown}
+                @paste=${this.onRawPaste}
+              ></textarea>
+            `}
       </div>
     `;
   }
 
-  private onInput(e: Event) {
-    this.draft = (e.target as HTMLTextAreaElement).value;
+  private getWysiwygEl(): HTMLElement | null {
+    return (
+      (this.shadowRoot?.querySelector(
+        ".lyrics-editor",
+      ) as HTMLElement | null) ?? null
+    );
+  }
+
+  private getRawTextarea(): HTMLTextAreaElement | null {
+    return (
+      (this.shadowRoot?.querySelector(
+        "textarea.lyrics-source",
+      ) as HTMLTextAreaElement | null) ?? null
+    );
+  }
+
+  private seedWysiwygFromDraft() {
+    const el = this.getWysiwygEl();
+    if (!el) return;
+    el.innerHTML = parseLyricsMarkdown(this.draft);
+    this.needsWysiwygSeed = false;
+  }
+
+  private syncDraftFromActiveSurface() {
+    this.draft = this.getEditorMarkdown();
+  }
+
+  private setMode(next: EditorMode) {
+    if (next === this.editorMode) return;
+    this.syncDraftFromActiveSurface();
+    sessionEditorMode = next;
+    this.editorMode = next;
+    this.dispatchEvent(
+      new CustomEvent("lyrics-mode-change", {
+        detail: { mode: next },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    if (next === "formatted") {
+      this.needsWysiwygSeed = true;
+    }
+    void this.updateComplete.then(() => this.focusEditableSurface());
+  }
+
+  private emitInput() {
     this.dispatchEvent(
       new CustomEvent("lyrics-input", {
         detail: { markdown: this.draft },
@@ -134,12 +276,77 @@ export class LyricsEditor extends LitElement {
     );
   }
 
-  /** Plain-text paste: filter, bold calls, preserve newlines as Markdown hard breaks. */
-  private onPaste(e: ClipboardEvent) {
+  private onWysiwygInput() {
+    this.syncDraftFromActiveSurface();
+    this.emitInput();
+  }
+
+  private onRawInput(e: Event) {
+    this.draft = (e.target as HTMLTextAreaElement).value;
+    this.emitInput();
+  }
+
+  private preventFocusLoss(e: Event) {
+    e.preventDefault();
+  }
+
+  private getEditorSelection(): Selection | null {
+    const root = this.shadowRoot as ShadowRoot & {
+      getSelection?: () => Selection | null;
+    };
+    return root.getSelection?.() ?? window.getSelection();
+  }
+
+  private execBold() {
+    document.execCommand("bold");
+    this.onWysiwygInput();
+  }
+
+  private execSection() {
+    document.execCommand("formatBlock", false, "h2");
+    this.onWysiwygInput();
+  }
+
+  private execParagraph() {
+    document.execCommand("formatBlock", false, "p");
+    this.onWysiwygInput();
+  }
+
+  private execInfo() {
+    const sel = this.getEditorSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    const span = document.createElement("span");
+    span.className = "info";
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+    sel.removeAllRanges();
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+    sel.addRange(newRange);
+    this.onWysiwygInput();
+  }
+
+  /** Plain-text paste into WYSIWYG: filter → Markdown → HTML fragment. */
+  private onWysiwygPaste(e: ClipboardEvent) {
     const plain = e.clipboardData?.getData("text/plain");
     if (plain == null || plain === "") return;
-    // If the clipboard already looks like our Markdown, leave it alone.
-    if (/^#{1,2}\s/m.test(plain) || /\\\s*$/m.test(plain)) return;
+    e.preventDefault();
+
+    let md = plain;
+    if (!looksLikeLyricsMarkdown(plain)) {
+      md = plainTextToMarkdownHardBreaks(plain).replace(/\n$/, "");
+    }
+    const fragment = parseLyricsMarkdown(md);
+    document.execCommand("insertHTML", false, fragment);
+    this.onWysiwygInput();
+  }
+
+  /** Plain-text paste into raw Markdown textarea. */
+  private onRawPaste(e: ClipboardEvent) {
+    const plain = e.clipboardData?.getData("text/plain");
+    if (plain == null || plain === "") return;
+    if (looksLikeLyricsMarkdown(plain)) return;
 
     e.preventDefault();
     const ta = e.target as HTMLTextAreaElement;
@@ -151,16 +358,55 @@ export class LyricsEditor extends LitElement {
     this.draft = next;
     const caret = start + inserted.length;
     ta.setSelectionRange(caret, caret);
-    this.dispatchEvent(
-      new CustomEvent("lyrics-input", {
-        detail: { markdown: this.draft },
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    this.emitInput();
   }
 
-  private onKeydown(e: KeyboardEvent) {
+  private onWysiwygKeydown(e: KeyboardEvent) {
+    e.stopPropagation();
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+      if (e.key === "=" || e.key === "+" || e.key === "-") {
+        e.preventDefault();
+        bumpLyricsScale(e.key === "-" ? -1 : 1);
+        return;
+      }
+    }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+      this.onWysiwygInput();
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.onExit();
+      return;
+    }
+    if (!e.ctrlKey && !e.metaKey) return;
+    switch (e.key.toLowerCase()) {
+      case "b":
+        e.preventDefault();
+        this.execBold();
+        break;
+      case "h":
+        e.preventDefault();
+        this.execSection();
+        break;
+      case "i":
+        e.preventDefault();
+        this.execInfo();
+        break;
+      case "p":
+        e.preventDefault();
+        this.execParagraph();
+        break;
+      case "s":
+        e.preventDefault();
+        this.onSave();
+        break;
+    }
+  }
+
+  private onRawKeydown(e: KeyboardEvent) {
     if (e.key === "Escape") {
       e.preventDefault();
       this.onExit();
@@ -177,65 +423,15 @@ export class LyricsEditor extends LitElement {
     }
   }
 
-  /** Arrow keys scroll the preview when it is focused. */
-  private onPreviewKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      this.onExit();
-      return;
-    }
-    const el = e.currentTarget as HTMLElement;
-    const step = e.shiftKey ? 80 : 40;
-    let dx = 0;
-    let dy = 0;
-    switch (e.key) {
-      case "ArrowLeft":
-        dx = -step;
-        break;
-      case "ArrowRight":
-        dx = step;
-        break;
-      case "ArrowUp":
-        dy = -step;
-        break;
-      case "ArrowDown":
-        dy = step;
-        break;
-      case "Home":
-        if (e.ctrlKey) {
-          el.scrollTop = 0;
-          el.scrollLeft = 0;
-          e.preventDefault();
-        }
-        return;
-      case "End":
-        if (e.ctrlKey) {
-          el.scrollTop = el.scrollHeight;
-          el.scrollLeft = el.scrollWidth;
-          e.preventDefault();
-        }
-        return;
-      default:
-        return;
-    }
-    if (dx === 0 && dy === 0) return;
-    const maxLeft = el.scrollWidth - el.clientWidth;
-    const maxTop = el.scrollHeight - el.clientHeight;
-    const nextLeft = Math.max(0, Math.min(maxLeft, el.scrollLeft + dx));
-    const nextTop = Math.max(0, Math.min(maxTop, el.scrollTop + dy));
-    if (nextLeft === el.scrollLeft && nextTop === el.scrollTop) return;
-    e.preventDefault();
-    el.scrollLeft = nextLeft;
-    el.scrollTop = nextTop;
-  }
-
   private onSave() {
+    this.syncDraftFromActiveSurface();
     this.dispatchEvent(
       new CustomEvent("lyrics-save", { bubbles: true, composed: true }),
     );
   }
 
   private onExit() {
+    this.syncDraftFromActiveSurface();
     this.dispatchEvent(
       new CustomEvent("lyrics-exit", { bubbles: true, composed: true }),
     );
@@ -251,46 +447,11 @@ export class LyricsEditor extends LitElement {
     );
   }
 
-  private isStackedLayout(): boolean {
-    return this.clientWidth <= 700;
-  }
-
-  private onSplitterPointerDown = (e: PointerEvent) => {
-    e.preventDefault();
-    this.dragging = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  private onSplitterPointerMove = (e: PointerEvent) => {
-    if (!this.dragging) return;
-    this.applySplitterPosition(e.clientX, e.clientY);
-  };
-
-  private applySplitterPosition(clientX: number, clientY: number) {
-    const panes = this.shadowRoot?.querySelector(".editor-panes") as HTMLElement | null;
-    if (!panes) return;
-    const rect = panes.getBoundingClientRect();
-    if (this.isStackedLayout()) {
-      if (rect.height <= 0) return;
-      const frac = (clientY - rect.top) / rect.height;
-      this.splitFraction = Math.max(0.2, Math.min(0.8, frac));
-    } else {
-      if (rect.width <= 0) return;
-      const frac = (clientX - rect.left) / rect.width;
-      this.splitFraction = Math.max(0.2, Math.min(0.8, frac));
-    }
-  }
-
-  private onSplitterPointerUp = () => {
-    this.dragging = false;
-  };
-
   static styles = css`
     :host {
       display: block;
       height: 100%;
       min-height: 0;
-      container-type: inline-size;
     }
 
     .editor-container {
@@ -320,10 +481,29 @@ export class LyricsEditor extends LitElement {
       background: var(--cb-input-bg);
       color: var(--cb-fg);
       cursor: pointer;
+      min-width: 2rem;
+      text-align: center;
     }
 
     .toolbar-btn:hover {
       background: var(--cb-hover);
+    }
+
+    .toolbar-btn.section-btn {
+      color: red;
+      font-weight: 500;
+    }
+
+    .toolbar-btn.info-btn {
+      color: blue;
+      font-weight: 500;
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      align-self: stretch;
+      margin: 2px 4px;
+      background: var(--cb-border);
     }
 
     .help-btn {
@@ -338,33 +518,67 @@ export class LyricsEditor extends LitElement {
       flex: 1;
     }
 
-    .editor-panes {
-      display: grid;
-      grid-template-columns: var(--lyrics-editor-split, 50%) 6px 1fr;
-      grid-template-rows: 1fr;
-      gap: 0;
+    .lyrics-editor {
       flex: 1;
+      overflow: auto;
+      outline: none;
+      cursor: text;
+      padding: 16px;
+      box-sizing: border-box;
       min-height: 0;
       min-width: 0;
+      /* Keep caret visible on light panels under OS dark mode. */
+      color-scheme: light;
+      caret-color: #202124;
     }
 
-    .pane-splitter {
-      grid-column: 2;
-      grid-row: 1;
-      cursor: col-resize;
-      background: var(--cb-border);
-      touch-action: none;
-      user-select: none;
+    .lyrics-editor:focus {
+      outline: 2px solid var(--cb-accent);
+      outline-offset: -2px;
     }
 
-    .pane-splitter:hover,
-    .pane-splitter:active {
-      background: var(--cb-accent, #4a9eff);
+    .lyrics-content {
+      width: max-content;
+      min-width: 100%;
+      background: lightyellow;
+      font-family: ${unsafeCSS(LYRICS_UI_FONT_STACK)};
+      font-size: var(--cb-lyrics-font-size, ${unsafeCSS(LYRICS_BODY_FONT_SIZE)});
+      line-height: 140%;
+      color: black;
+      margin: 0 !important;
+      white-space: nowrap;
+    }
+
+    .lyrics-content h1 {
+      font-size: ${unsafeCSS(LYRICS_H1_SIZE)};
+      display: block;
+      margin: 0 0 0.15em;
+      white-space: nowrap;
+    }
+
+    .lyrics-content .info,
+    .lyrics-content em.info {
+      color: blue;
+      font-size: ${unsafeCSS(LYRICS_INFO_SIZE)};
+      font-weight: normal;
+      font-style: italic;
+    }
+
+    .lyrics-content h2 {
+      color: red;
+      font-size: ${unsafeCSS(LYRICS_H2_SIZE)};
+      font-weight: normal;
+      margin: 0.6em 0 0;
+      white-space: nowrap;
+    }
+
+    .lyrics-content p {
+      margin: 0 0 0.4em;
+      white-space: nowrap;
     }
 
     textarea.lyrics-source {
-      grid-column: 1;
-      grid-row: 1;
+      flex: 1;
       width: 100%;
       height: 100%;
       box-sizing: border-box;
@@ -379,8 +593,6 @@ export class LyricsEditor extends LitElement {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: var(--cb-lyrics-font-size, ${unsafeCSS(LYRICS_BODY_FONT_SIZE)});
       line-height: 1.45;
-      /* Keep I-beam (caret + mouse) visible on light panels; Windows OS dark
-         mode otherwise can flip it white-on-white until focus leaves the app. */
       color-scheme: light;
       background: var(--cb-input-bg);
       color: var(--cb-fg);
@@ -395,85 +607,6 @@ export class LyricsEditor extends LitElement {
     textarea.lyrics-source:focus {
       outline: 2px solid var(--cb-accent);
       outline-offset: -2px;
-    }
-
-    .lyrics-preview {
-      grid-column: 3;
-      grid-row: 1;
-      overflow: auto;
-      min-height: 0;
-      min-width: 0;
-      outline: none;
-    }
-
-    .lyrics-preview:focus {
-      outline: 2px solid var(--cb-accent);
-      outline-offset: -2px;
-    }
-
-    .lyrics-preview .lyrics-content {
-      width: max-content;
-      min-width: 100%;
-      box-sizing: border-box;
-      padding: 16px;
-      margin: 0 !important;
-      white-space: nowrap;
-      background: lightyellow;
-      font-family: ${unsafeCSS(LYRICS_UI_FONT_STACK)};
-      font-size: var(--cb-lyrics-font-size, ${unsafeCSS(LYRICS_BODY_FONT_SIZE)});
-      line-height: 140%;
-      color: black;
-    }
-
-    .lyrics-preview .lyrics-content h1 {
-      font-size: ${unsafeCSS(LYRICS_H1_SIZE)};
-      display: block;
-      margin: 0 0 0.15em;
-      white-space: nowrap;
-    }
-
-    .lyrics-preview .lyrics-content .info,
-    .lyrics-preview .lyrics-content em.info {
-      color: blue;
-      font-size: ${unsafeCSS(LYRICS_INFO_SIZE)};
-      font-weight: normal;
-      font-style: italic;
-    }
-
-    .lyrics-preview .lyrics-content h2 {
-      color: red;
-      font-size: ${unsafeCSS(LYRICS_H2_SIZE)};
-      font-weight: normal;
-      margin: 0.6em 0 0;
-      white-space: nowrap;
-    }
-
-    .lyrics-preview .lyrics-content p {
-      margin: 0 0 0.4em;
-      white-space: nowrap;
-    }
-
-    @container (max-width: 700px) {
-      .editor-panes {
-        grid-template-columns: 1fr;
-        grid-template-rows: var(--lyrics-editor-split, 50%) 6px 1fr;
-      }
-
-      .pane-splitter {
-        grid-column: 1;
-        grid-row: 2;
-        cursor: row-resize;
-      }
-
-      textarea.lyrics-source {
-        grid-column: 1;
-        grid-row: 1;
-      }
-
-      .lyrics-preview {
-        grid-column: 1;
-        grid-row: 3;
-      }
     }
   `;
 }

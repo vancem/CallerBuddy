@@ -50,14 +50,15 @@ export class HelpView extends LitElement {
 
   override updated(changed: Map<string, unknown>) {
     if (changed.has("sectionId") && this.sectionId) {
-      requestAnimationFrame(() => this.scrollToSection(this.sectionId));
+      // Instant jump: avoid top→smooth flash when Help is (re)opened with a target.
+      requestAnimationFrame(() => this.scrollToSection(this.sectionId, "auto"));
     }
   }
 
-  private scrollToSection(id: string) {
+  private scrollToSection(id: string, behavior: ScrollBehavior = "smooth") {
     this.activeSection = id;
     const el = this.shadowRoot?.getElementById(id);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    el?.scrollIntoView({ behavior, block: "start" });
   }
 
   render() {

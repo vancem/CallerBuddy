@@ -25,7 +25,8 @@ import {
 import { generateLyricsMarkdownTemplate } from "../utils/lyrics-markdown.js";
 import { formatUnknownError } from "../utils/format.js";
 import "./lyrics-editor.js";
-import type { LyricsEditor } from "./lyrics-editor.js";
+import type { LyricsEditor, LyricsEditorMode } from "./lyrics-editor.js";
+import { getLyricsEditorSessionMode } from "./lyrics-editor.js";
 
 interface OnboardTabData {
   proposal: OnboardingProposal;
@@ -122,6 +123,8 @@ export class SongOnboard extends LitElement {
   @state() private selectedMp3 = "";
   @state() private selectedHtml = "";
   @state() private lyricsMarkdown = "";
+  /** Formatted vs Raw — restored from session when this tab remounts after Help. */
+  @state() private lyricsEditorMode: LyricsEditorMode = getLyricsEditorSessionMode();
   @state() private lyricsHint = "";
   @state() private destMp3Name = "";
   @state() private destLyricsName = "";
@@ -554,6 +557,8 @@ export class SongOnboard extends LitElement {
       <div class="left-panel">
         <lyrics-editor
           .lyricsMarkdown=${this.lyricsMarkdown}
+          .editorMode=${this.lyricsEditorMode}
+          @lyrics-mode-change=${this.onLyricsEditorModeChange}
           @lyrics-help=${this.onLyricsMarkdownHelp}
         ></lyrics-editor>
       </div>
@@ -573,6 +578,10 @@ export class SongOnboard extends LitElement {
     callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
       sectionId: "howto-lyrics-markdown",
     });
+  }
+
+  private onLyricsEditorModeChange(e: CustomEvent<{ mode: LyricsEditorMode }>) {
+    this.lyricsEditorMode = e.detail.mode;
   }
 
   private renderRightPanel() {

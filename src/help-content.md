@@ -253,10 +253,13 @@ While a singing call is playing, click
 the song has no lyrics file yet, the button reads
 **Create Lyrics** and generates a template.
 
-- The editor shows Markdown on the left and a live preview on
-  the right (same look as during playback).
-- Click **Markdown help** for the syntax CallerBuddy
-  understands.
+- The editor opens in **Formatted** mode: edit lyrics as they
+  look during playback (bold, headings, info text).
+- Use the toolbar (**B**, **Heading**, **Info**, **P**) or
+  Ctrl+B / H / I / P.
+- Click **Edit Markdown** to edit the source directly; click
+  **Edit Formatted** to return. **Markdown help** is available
+  in Markdown mode.
 - Click **Save** to write changes to disk.
 - Click **Exit** to return to the read-only lyrics view.
   If you have unsaved changes, you will be prompted to save
