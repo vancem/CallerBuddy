@@ -1,8 +1,8 @@
 /**
- * Song library: scanning folders for music/lyrics and reading/writing songs.json.
+ * Song library: scanning folders for music/lyrics and reading/writing CallerBuddySongs.json.
  *
  * When CallerBuddyRoot is set, this module scans for MP3, M4A, and WAV files, pairs
- * them with matching lyrics files, and builds or updates the songs.json catalog.
+ * them with matching lyrics files, and builds or updates the CallerBuddySongs.json catalog.
  *
  * File naming convention: "LABEL - TITLE.ext"
  * See CallerBuddySpec.md §"The Playlist Workflow" and models/song.ts.
@@ -26,7 +26,7 @@ import {
 } from "./file-system-service.js";
 import { log, assert } from "./logger.js";
 
-const SONGS_JSON = "songs.json";
+const SONGS_JSON = "CallerBuddySongs.json";
 
 /** Max fraction of persisted entries removable in one pass before scan is treated as suspicious. */
 const MAX_ORPHAN_DROP_FRACTION = 0.5;
@@ -95,16 +95,16 @@ export async function scanDirectory(
 }
 
 // ---------------------------------------------------------------------------
-// Persistence (songs.json)
+// Persistence (CallerBuddySongs.json)
 // ---------------------------------------------------------------------------
 
-/** Load songs.json from the directory. Returns [] if the file doesn't exist. */
+/** Load CallerBuddySongs.json from the directory. Returns [] if the file doesn't exist. */
 export async function loadSongsJson(
   dirHandle: FileSystemDirectoryHandle,
 ): Promise<Song[]> {
   const exists = await fileExists(dirHandle, SONGS_JSON);
   if (!exists) {
-    log.info("No songs.json found; starting fresh.");
+    log.info("No CallerBuddySongs.json found; starting fresh.");
     return [];
   }
   const text = await readTextFile(dirHandle, SONGS_JSON);
@@ -112,10 +112,10 @@ export async function loadSongsJson(
   try {
     data = JSON.parse(text) as unknown;
   } catch (err) {
-    log.error("Failed to parse songs.json:", err);
-    throw new Error("songs.json is not valid JSON");
+    log.error("Failed to parse CallerBuddySongs.json:", err);
+    throw new Error("CallerBuddySongs.json is not valid JSON");
   }
-  assert(Array.isArray(data), "songs.json must contain an array");
+  assert(Array.isArray(data), "CallerBuddySongs.json must contain an array");
   const songs: Song[] = [];
   let skipped = 0;
   for (const raw of data) {
@@ -126,11 +126,11 @@ export async function loadSongsJson(
   if (skipped > 0) {
     log.warn(`loadSongsJson: skipped ${skipped} invalid entr${skipped === 1 ? "y" : "ies"}`);
   }
-  log.info(`Loaded ${songs.length} songs from songs.json`);
+  log.info(`Loaded ${songs.length} songs from CallerBuddySongs.json`);
   return songs;
 }
 
-/** Save songs array to songs.json in the directory. Strips runtime-only fields. */
+/** Save songs array to CallerBuddySongs.json in the directory. Strips runtime-only fields. */
 export async function saveSongsJson(
   dirHandle: FileSystemDirectoryHandle,
   songs: Song[],
@@ -138,7 +138,7 @@ export async function saveSongsJson(
   const clean = songs.map(songForPersistence);
   const json = JSON.stringify(clean, null, 2);
   await writeTextFile(dirHandle, SONGS_JSON, json);
-  log.info(`Saved ${songs.length} songs to songs.json`);
+  log.info(`Saved ${songs.length} songs to CallerBuddySongs.json`);
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +187,7 @@ export function mergeSongs(scanned: Song[], persisted: Song[]): Song[] {
 /**
  * Reconcile persisted entries missing from the scan with conservative cleanup:
  * verify each orphan with fileExists, skip removal on suspicious scans, and
- * require two consecutive missed scans before deleting from songs.json.
+ * require two consecutive missed scans before deleting from CallerBuddySongs.json.
  */
 export async function applyConservativeOrphanCleanup(
   merged: Song[],
@@ -253,7 +253,7 @@ export async function applyConservativeOrphanCleanup(
 
   if (removed.length > 0) {
     log.info(
-      `Removed ${removed.length} song(s) from songs.json with no audio file on disk: ` +
+      `Removed ${removed.length} song(s) from CallerBuddySongs.json with no audio file on disk: ` +
         removed.map((s) => s.musicFile).join(", "),
     );
   }
@@ -277,7 +277,7 @@ export async function applyConservativeOrphanCleanup(
 }
 
 /**
- * Full load sequence: scan the directory, load persisted songs.json, merge,
+ * Full load sequence: scan the directory, load persisted CallerBuddySongs.json, merge,
  * and persist the result. Returns the merged song list.
  */
 export async function loadAndMergeSongs(
@@ -298,14 +298,14 @@ export async function loadAndMergeSongs(
     persisted,
     dirHandle,
   );
-  log.info(`loadAndMergeSongs: merged=${finalSongs.length}, saving songs.json…`);
+  log.info(`loadAndMergeSongs: merged=${finalSongs.length}, saving CallerBuddySongs.json…`);
 
   // Persist the merged result so new songs are saved
   try {
     await saveSongsJson(dirHandle, finalSongs);
-    log.info("loadAndMergeSongs: songs.json saved");
+    log.info("loadAndMergeSongs: CallerBuddySongs.json saved");
   } catch (err) {
-    log.warn("loadAndMergeSongs: could not save songs.json:", err);
+    log.warn("loadAndMergeSongs: could not save CallerBuddySongs.json:", err);
   }
   return finalSongs;
 }

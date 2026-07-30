@@ -140,7 +140,7 @@ export class PlaylistEditor extends LitElement {
     },
   });
 
-  /** Songs loaded from the current folder's songs.json + disk scan. */
+  /** Songs loaded from the current folder's CallerBuddySongs.json + disk scan. */
   @state() private localSongs: Song[] = [];
 
   /** Subdirectories in the current folder. */
@@ -384,7 +384,7 @@ export class PlaylistEditor extends LitElement {
 
   /**
    * Persisted song fields (e.g. lastUsed, playWeight) are written via updateSong;
-   * reload this folder’s songs.json + scan so the table is not stuck on stale in-memory objects.
+   * reload this folder’s CallerBuddySongs.json + scan so the table is not stuck on stale in-memory objects.
    */
   private onSongUpdated = () => {
     void this.reloadCurrentFolderFromDisk();
@@ -487,7 +487,7 @@ export class PlaylistEditor extends LitElement {
     this.loading = true;
     const seq = ++this.folderLoadSeq;
     try {
-      // Fast path: load songs.json first so the UI can render quickly.
+      // Fast path: load CallerBuddySongs.json first so the UI can render quickly.
       const t0 = performance.now();
       const persisted = await loadSongsJson(handle);
       const t1 = performance.now();
@@ -497,7 +497,7 @@ export class PlaylistEditor extends LitElement {
       this.localSongs = persisted;
       this.loading = false;
       log.info(
-        `playlist-editor: loaded songs.json (${persisted.length} songs) in ${(t1 - t0).toFixed(1)}ms`,
+        `playlist-editor: loaded CallerBuddySongs.json (${persisted.length} songs) in ${(t1 - t0).toFixed(1)}ms`,
       );
 
       // Background: list directories for folder rows (non-blocking UI).
@@ -538,7 +538,7 @@ export class PlaylistEditor extends LitElement {
       this.subfolders = [];
     } finally {
       if (seq === this.folderLoadSeq) {
-        // If we already flipped loading=false after songs.json, keep it off.
+        // If we already flipped loading=false after CallerBuddySongs.json, keep it off.
         this.loading = false;
         this.pendingSongTableFocus = true;
         this.requestUpdate();
@@ -1260,7 +1260,7 @@ export class PlaylistEditor extends LitElement {
           <p class="delete-confirm-body">
             Permanently delete <strong>${song.title}</strong>?
             This removes the audio file${hasLyrics ? " and lyrics file" : ""}
-            and its entry from songs.json. This cannot be undone.
+            and its entry from CallerBuddySongs.json. This cannot be undone.
           </p>
           <div class="delete-confirm-actions">
             <button

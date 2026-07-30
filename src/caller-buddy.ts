@@ -65,7 +65,7 @@ import {
 } from "./services/song-onboarding.js";
 import type { EditorTabData } from "./services/app-state.js";
 
-const SETTINGS_JSON = "settings.json";
+const SETTINGS_JSON = "CallerBuddySettings.json";
 
 export class CallerBuddy {
   readonly state = new AppState();
@@ -260,14 +260,14 @@ export class CallerBuddy {
         this.state.setSettings(mergeLegacyLyricsScaleFromDisk(normalized, raw));
         applyLyricsFontScaleFromSettings();
         persistLyricsScaleMirror();
-        log.info("Settings loaded from settings.json");
+        log.info("Settings loaded from CallerBuddySettings.json");
       } else {
         this.state.setSettings(defaultSettings());
         applyLyricsFontScaleFromSettings();
         persistLyricsScaleMirror();
       }
     } catch (err) {
-      log.warn("Could not load settings.json:", err);
+      log.warn("Could not load CallerBuddySettings.json:", err);
       this.state.setSettings(defaultSettings());
       applyLyricsFontScaleFromSettings();
       persistLyricsScaleMirror();
@@ -280,13 +280,13 @@ export class CallerBuddy {
     try {
       const json = JSON.stringify(this.state.settings, null, 2);
       await writeTextFile(handle, SETTINGS_JSON, json);
-      log.info("Settings saved to settings.json");
+      log.info("Settings saved to CallerBuddySettings.json");
     } catch (err) {
-      log.warn("Could not save settings.json:", err);
+      log.warn("Could not save CallerBuddySettings.json:", err);
     }
   }
 
-  /** Update a single setting and persist to settings.json. */
+  /** Update a single setting and persist to CallerBuddySettings.json. */
   async updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
     this.state.setSettings({ ...this.state.settings, [key]: value });
     await this.saveSettings();
@@ -302,7 +302,7 @@ export class CallerBuddy {
 
   /**
    * Subscribe to PLAYLIST_CHANGED so every add/remove/reorder/clear
-   * persists the current playlist paths into settings.json.
+   * persists the current playlist paths into CallerBuddySettings.json.
    */
   private listenForPlaylistChanges(): void {
     if (this.playlistListenerAttached) return;
@@ -385,7 +385,7 @@ export class CallerBuddy {
 
   /**
    * After a folder scan, sync playlist entries in that folder to scan filenames
-   * (matched by exact musicFile or label) and persist paths to settings.json.
+   * (matched by exact musicFile or label) and persist paths to CallerBuddySettings.json.
    */
   async syncPlaylistFilenamesFromFolder(
     dirHandle: FileSystemDirectoryHandle,
@@ -423,9 +423,9 @@ export class CallerBuddy {
   }
 
   /**
-   * Rebuild the in-memory playlist from the paths stored in settings.json.
+   * Rebuild the in-memory playlist from the paths stored in CallerBuddySettings.json.
    * Each path is relative to CallerBuddyRoot (e.g. "Christmas/Song.MP3" or
-   * just "Song.MP3" for root-level songs). Loads songs.json (or scans) from
+   * just "Song.MP3" for root-level songs). Loads CallerBuddySongs.json (or scans) from
    * each referenced subfolder to get full metadata.
    */
   private async restorePlaylist(rootHandle: FileSystemDirectoryHandle): Promise<void> {
@@ -508,7 +508,7 @@ export class CallerBuddy {
   // -----------------------------------------------------------------------
 
   /**
-   * Update a song's metadata and persist to songs.json in the song's folder.
+   * Update a song's metadata and persist to CallerBuddySongs.json in the song's folder.
    * Uses `opts.dirHandle` if provided, else song.dirHandle, else rootHandle.
    */
   async updateSong(
@@ -547,7 +547,7 @@ export class CallerBuddy {
 
   /**
    * Permanently delete a song: audio file, lyrics file (if present), and its
-   * songs.json entry. Also removes playlist rows and closes the player if this
+   * CallerBuddySongs.json entry. Also removes playlist rows and closes the player if this
    * song is currently playing.
    */
   async deleteSong(song: Song): Promise<void> {
@@ -600,10 +600,10 @@ export class CallerBuddy {
       const next = folderSongs.filter((s) => s.musicFile.toLowerCase() !== key);
       if (next.length !== folderSongs.length) {
         await saveSongsJson(handle, next);
-        log.info(`deleteSong: removed "${song.musicFile}" from songs.json`);
+        log.info(`deleteSong: removed "${song.musicFile}" from CallerBuddySongs.json`);
       }
     } catch (err) {
-      log.warn("deleteSong: could not update songs.json:", err);
+      log.warn("deleteSong: could not update CallerBuddySongs.json:", err);
     }
 
     this.state.removeSongOccurrencesFromPlaylist(song);
@@ -611,7 +611,7 @@ export class CallerBuddy {
   }
 
   /**
-   * Rename a song's audio (and lyrics, if present) files and update songs.json.
+   * Rename a song's audio (and lyrics, if present) files and update CallerBuddySongs.json.
    * Preserves all other metadata (rank, play history, loop points, etc.).
    *
    * @returns `{ ok: true }` on success, or `{ ok: false, conflictName }` when
@@ -720,9 +720,9 @@ export class CallerBuddy {
         folderSongs.push(updated);
       }
       await saveSongsJson(handle, folderSongs);
-      log.info(`renameSong: updated songs.json for "${updated.musicFile}"`);
+      log.info(`renameSong: updated CallerBuddySongs.json for "${updated.musicFile}"`);
     } catch (err) {
-      log.warn("renameSong: could not update songs.json:", err);
+      log.warn("renameSong: could not update CallerBuddySongs.json:", err);
       throw err;
     }
 
@@ -775,7 +775,7 @@ export class CallerBuddy {
   /**
    * Save lyrics Markdown to the song's lyrics file.
    * If the song had no lyrics file (new creation), updates song.lyricsFile
-   * in-memory and persists the change to songs.json.
+   * in-memory and persists the change to CallerBuddySongs.json.
    */
   async saveLyrics(song: Song, lyricsFilename: string, markdownContent: string): Promise<void> {
     const handle = song.dirHandle ?? this.state.rootHandle;
@@ -1315,7 +1315,7 @@ async function logSongAudioLoadFailure(
       if (sameLabel.length > 0 && !sameLabel.includes(song.musicFile)) {
         log.error(
           `Stored musicFile "${song.musicFile}" not on disk; same label: ${sameLabel.join(", ")} ` +
-            `(open this folder tab and wait for scan+merge to sync songs.json)`,
+            `(open this folder tab and wait for scan+merge to sync CallerBuddySongs.json)`,
         );
       }
     }

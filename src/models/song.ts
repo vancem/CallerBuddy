@@ -7,7 +7,7 @@
  * Lyrics use the same base name with a .md extension.
  */
 
-/** All per-song metadata persisted to songs.json. */
+/** All per-song metadata persisted to CallerBuddySongs.json. */
 export interface Song {
   /** Short recording-company label + number, e.g. "RYL 607" */
   label: string;
@@ -16,7 +16,7 @@ export interface Song {
   /** Relative path to the music file within CallerBuddyRoot */
   musicFile: string;
   /** Relative path to lyrics Markdown file within CallerBuddyRoot, empty if none.
-   * Runtime-only: set by directory scan / create-lyrics; not stored in songs.json. */
+   * Runtime-only: set by directory scan / create-lyrics; not stored in CallerBuddySongs.json. */
   lyricsFile: string;
   /** User-defined category tags (e.g. semicolon-separated: "Christmas; Patriotic") */
   categories: string;
@@ -54,14 +54,14 @@ export interface Song {
   /**
    * CallerBuddyRoot-relative path for this row in the Now Playing playlist
    * (e.g. "sub/Song.mp3"), used to persist checkbox state. Runtime-only;
-   * not stored in songs.json.
+   * not stored in CallerBuddySongs.json.
    */
   playlistRelPath?: string;
 
   /**
    * Runtime-only: the directory handle containing this song's files.
    * Set when songs are loaded by a playlist editor instance.
-   * NOT persisted to songs.json — stripped by saveSongsJson().
+   * NOT persisted to CallerBuddySongs.json — stripped by saveSongsJson().
    */
   dirHandle?: FileSystemDirectoryHandle;
 }
@@ -104,7 +104,7 @@ function pickNum(o: Record<string, unknown>, key: string, fallback: number): num
 const PLACEHOLDER_ORDER_ADDED = 0;
 
 /**
- * Parse one songs.json entry. Accepts legacy `category`; maps to `categories`.
+ * Parse one CallerBuddySongs.json entry. Accepts legacy `category`; maps to `categories`.
  * Returns null if `musicFile` is missing or invalid.
  */
 export function normalizeSongFromJson(raw: unknown): Song | null {

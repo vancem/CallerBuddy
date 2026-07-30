@@ -1,6 +1,6 @@
 /**
  * Play history: exponential decay weight (28-day half-life) and qualification
- * threshold for counting a “played” session in songs.json.
+ * threshold for counting a “played” session in CallerBuddySongs.json.
  */
 
 import type { Song } from "../models/song.js";

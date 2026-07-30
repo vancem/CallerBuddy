@@ -31,8 +31,8 @@ dist-ssr
 /test-data/
 
 # App-generated data files (created when CallerBuddyRoot is inside the project)
-songs.json
-settings.json
+CallerBuddySongs.json
+CallerBuddySettings.json
 
 # PWA artifacts (generated from templates by Vite plugin)
 public/manifest.json

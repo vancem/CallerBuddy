@@ -34,10 +34,14 @@ export default defineConfig({
     open: false, // use ctrl-click on the URL to open in browser
     watch: {
       // Ignore files that CallerBuddy writes at runtime.  Without this, writing
-      // songs.json or settings.json into a CallerBuddyRoot that lives inside
-      // the project tree (e.g. test-data/) triggers a Vite full-page reload
-      // that kills the async initialization flow mid-flight.
-      ignored: ["**/test-data/**", "**/songs.json", "**/settings.json"],
+      // CallerBuddySongs.json or CallerBuddySettings.json into a CallerBuddyRoot
+      // that lives inside the project tree (e.g. test-data/) triggers a Vite
+      // full-page reload that kills the async initialization flow mid-flight.
+      ignored: [
+        "**/test-data/**",
+        "**/CallerBuddySongs.json",
+        "**/CallerBuddySettings.json",
+      ],
     },
   },
 });

@@ -215,7 +215,7 @@ describe("loadAndMergeSongs orphan cleanup", () => {
   beforeEach(() => {
     resetOrphanRemovalPendingForTests();
     vi.clearAllMocks();
-    vi.mocked(fileExists).mockImplementation(async (_dir, filename) => filename === "songs.json");
+    vi.mocked(fileExists).mockImplementation(async (_dir, filename) => filename === "CallerBuddySongs.json");
     vi.mocked(readTextFile).mockResolvedValue(JSON.stringify([]));
     vi.mocked(writeTextFile).mockResolvedValue(undefined);
   });
@@ -225,7 +225,7 @@ describe("loadAndMergeSongs orphan cleanup", () => {
     const keep = makeSong({ musicFile: "keep.mp3" });
     vi.mocked(readTextFile).mockResolvedValue(JSON.stringify([keep, orphan]));
     vi.mocked(listDirectory).mockResolvedValue([{ name: "keep.mp3", kind: "file" }]);
-    vi.mocked(fileExists).mockImplementation(async (_dir, filename) => filename === "songs.json");
+    vi.mocked(fileExists).mockImplementation(async (_dir, filename) => filename === "CallerBuddySongs.json");
 
     const first = await loadAndMergeSongs(fakeDirHandle);
     expect(first.some((s) => s.musicFile === "old.mp3")).toBe(true);
@@ -304,13 +304,13 @@ describe("loadSongsJson", () => {
     vi.clearAllMocks();
   });
 
-  it("returns [] when songs.json does not exist", async () => {
+  it("returns [] when CallerBuddySongs.json does not exist", async () => {
     vi.mocked(fileExists).mockResolvedValue(false);
     const songs = await loadSongsJson(fakeDirHandle);
     expect(songs).toEqual([]);
   });
 
-  it("parses songs.json and returns array", async () => {
+  it("parses CallerBuddySongs.json and returns array", async () => {
     const stored = [makeSong({ musicFile: "a.mp3" })];
     vi.mocked(fileExists).mockResolvedValue(true);
     vi.mocked(readTextFile).mockResolvedValue(JSON.stringify(stored));
@@ -355,7 +355,7 @@ describe("saveSongsJson", () => {
 
     expect(writeTextFile).toHaveBeenCalledOnce();
     const [, filename, content] = vi.mocked(writeTextFile).mock.calls[0];
-    expect(filename).toBe("songs.json");
+    expect(filename).toBe("CallerBuddySongs.json");
     const parsed = JSON.parse(content);
     expect(parsed[0]).not.toHaveProperty("dirHandle");
     expect(parsed[0]).not.toHaveProperty("lyricsFile");

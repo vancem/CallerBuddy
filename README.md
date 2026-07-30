@@ -313,7 +313,7 @@ CallerBuddy/
       audio-engine.ts         #   Web Audio + SoundTouchJS playback
       bpm-detector.ts         #   Background BPM analysis
       file-system-service.ts  #   File System Access API wrapper
-      song-library.ts         #   Scan folders, load/merge/save songs.json
+      song-library.ts         #   Scan folders, load/merge/save CallerBuddySongs.json
       logger.ts               #   Logging with levels
     models/                   # Data models
       song.ts                 #   Song interface + parsing utilities

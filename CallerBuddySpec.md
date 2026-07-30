@@ -58,8 +58,8 @@ and lyrics (HTML or MD files) will be in this folder. In addition the app will
 put any persistent state it needs in this location.
 
 In addition to the original song (MP3) file and the possible lyric file (HTML or
-MD), the app will have some general settings that will be put in a settings.json
-file and a small table of data associated with each song in a songs.json file.
+MD), the app will have some general settings that will be put in a CallerBuddySettings.json
+file and a small table of data associated with each song in a CallerBuddySongs.json file.
 It is possible that these files are in the cloud and are being accessed
 simultaneously from two different devices. This is not a important scenario, so
 it is enough that the updates are atomic. If updates are lost (atomically) that
@@ -108,7 +108,7 @@ MD), but also includes
 - The _orderAdded_ of the song (JSON `orderAdded`). A positive integer indicating
   the order in which the song was added to the library within that CallerBuddy folder:
   each new file gets one more than the current maximum `orderAdded` in
-  `songs.json` (so values increase over time independent of table sort order).
+  `CallerBuddySongs.json` (so values increase over time independent of table sort order).
   Initial imports can be aligned with an external `rank.csv` `Order` column if desired.
 - The _lastUsed_ date of the song. This is the last time the song was played by
   CallerBuddy. This is useful to find songs the caller has not used (and should
@@ -127,7 +127,7 @@ MD), but also includes
 - The _deltaTempo_. A signed decimal number (in BPM) that CallerBuddy should
   adjust the music's tempo by
 
-This data will be serialized to a songs.json file when and data associated with
+This data will be serialized to a CallerBuddySongs.json file when and data associated with
 a song is modified by CallerBuddy.
 
 The loopStartTime and loopEndTime control song looping. If loopEndTIme is
@@ -151,7 +151,7 @@ is an associated HTML or MD file then we also know the lyrics. All the other
 fields have reasonable defaults. Thus CallerBuddy only needs the MP3 files to
 bootstrap a song database.
 
-Thus once the app has a CallerBuddyRoot directory, it can look for a songs.json,
+Thus once the app has a CallerBuddyRoot directory, it can look for a CallerBuddySongs.json,
 and generate one if needed (by scanning for MP3 files). These files can be
 displayed int what feels like a row and column table (spreadsheet) with
 filtering and the user can select songs to be included in the list.
@@ -301,7 +301,7 @@ points at) is the first non-grayed song in the list.
 There is a play button (probably a triangle pointing right). That will play the
 currently selected song. When the song is done it will be grayed out. There is a
 break timer on the right of this tab. It contains a textbox for the time of the
-break (default 5 min, user can set, and it is persisted in the settings.json
+break (default 5 min, user can set, and it is persisted in the CallerBuddySettings.json
 file), and a countdown display, and a button that turns the break timer on. WHen
 a song completes IF the break timer is on, it starts counting down, when it hits
 zero it will play a sound (we want a non-obtrusive sound) It should replay every
@@ -347,7 +347,7 @@ bottom slider, and can be set from there by moving the mark for each of these on
 the slider. The start and end loop values are shown with 2 digits after the
 decimal point so that users see the changes from nudges. Patter also has a
 'patterTime' countdown timer. There will be UI to set the amount of time
-((default 5 min, user can set, and it is persisted in the settings.json file)),
+((default 5 min, user can set, and it is persisted in the CallerBuddySettings.json file)),
 and a live countdown of how long the music has been running. When the countdown
 reaches zero a sound is played (again unobtrusive) once (unlike the break timer
 it will not chime again). The countdown continues past zero into negative
@@ -436,7 +436,7 @@ Because of this CallerBuddy needs to have good offline capabilities. In
 particular it will need some on-device caching (probably OPFS). CallerBuddy
 needs to test for network connectivity at least at startup, and ideally any time
 data is being fetched from CallerBuddyRoot, and if that fails, fall back to the
-local copy. (Thus Settings.json and songs.json need to have local copies). It
+local copy. (Thus CallerBuddySettings.json and CallerBuddySongs.json need to have local copies). It
 also need to remember if it is out of sync with the true CallerBuddyRoot, and
 have background pinging of the network (exponential backoff to a maximum of 2
 min) and flush any changes when connectivity is restored.

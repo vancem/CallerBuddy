@@ -1,7 +1,7 @@
 /**
  * Lyrics font scaling via `--cb-lyrics-font-size` on `:root`.
  *
- * Two persisted scales in settings.json: desktop (wide viewport) and phone
+ * Two persisted scales in CallerBuddySettings.json: desktop (wide viewport) and phone
  * (narrow ≤ ~700px), matching song-play split layout. The active scale follows
  * window size (resize updates which multiplier applies).
  */
@@ -67,7 +67,7 @@ function mirrorLyricsScalesToLocalStorage(settings: Settings): void {
   }
 }
 
-/** Merge optional localStorage mirrors before settings.json exists (welcome screen). */
+/** Merge optional localStorage mirrors before CallerBuddySettings.json exists (welcome screen). */
 function mergeLyricsScalesFromLocalStorage(): void {
   try {
     const d = localStorage.getItem(LS_DESKTOP);
@@ -111,7 +111,7 @@ function migrateLegacySingleLocalStorageScale(): void {
 }
 
 /**
- * One-time merge when loading settings.json from disk: if the file predates the
+ * One-time merge when loading CallerBuddySettings.json from disk: if the file predates the
  * dual-scale fields and legacy `cbLyricsScale` exists, apply it to both scales.
  */
 export function mergeLegacyLyricsScaleFromDisk(

@@ -149,7 +149,7 @@ of songs.
   BPM. Works well for electronic/rhythmic music like square dance tracks.
   Detection runs in the background after songs are loaded, processing one song
   at a time (sequential, per design philosophy). Results are persisted to
-  songs.json so each song is only analyzed once. The detected BPM is used as
+  CallerBuddySongs.json so each song is only analyzed once. The detected BPM is used as
   the reference for tempo adjustment calculations (replacing the default 128
   BPM assumption) and displayed in both the playlist editor and song-play UI.
   - Analysis window: for songs >45 seconds, we analyze 30 seconds starting at
@@ -331,7 +331,7 @@ purposes. This practice state is app wide (thus if a new song is played the
 state will be what it was for the last song), but not persistent restarting
 the app will reset it to practice being off.
   - The date the last song was played will be updated when 90% of the song is
-  played. In songs.json it will be stored as a date, but it will be displayed
+  played. In CallerBuddySongs.json it will be stored as a date, but it will be displayed
   in the song list editor as a 'last used' column which is the number of days
   ago the song was played (a tooltip on the column will explain this)
   - the weighted average will be computed as weighted exponential window of the
@@ -388,7 +388,7 @@ playlist editor → play).
   - DONE: `e2e/basic-flow.spec.ts` (mocked File System Access API). CI runs
   `npm run e2e` after build/unit tests (see GitHub Actions workflow).
 - [] Implement settings persistence for break timer and patter timer durations
-(currently settings are loaded but the UI doesn't update settings.json when
+(currently settings are loaded but the UI doesn't update CallerBuddySettings.json when
 the user changes timer values in the playlist-play or song-play views).
 - [] Song table column filters (like Google Sheets). Currently only a global
 text filter is implemented. Per-column dropdown filters would match the spec.
@@ -422,8 +422,8 @@ modification)?
   for this for V1 We should have tests that make sure that sounds are
   produced, but we don't need to validate that it is the right sound.
 - LOW: Should we use IndexedDB in addition to OPFS for metadata caching?
-  - OPFS is for large files. IndexedDB might be better for songs.json and
-  settings.json caching. However, OPFS can handle small JSON files too.
+  - OPFS is for large files. IndexedDB might be better for CallerBuddySongs.json and
+  CallerBuddySettings.json caching. However, OPFS can handle small JSON files too.
   DECISION: Start with OPFS for everything, evaluate if IndexedDB provides
   benefits during implementation.
   - DECISION: It is useful for the files in CallerBuddyRoot be text (json) files

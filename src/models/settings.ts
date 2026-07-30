@@ -1,5 +1,5 @@
 /**
- * Application-wide settings persisted to settings.json in CallerBuddyRoot.
+ * Application-wide settings persisted to CallerBuddySettings.json in CallerBuddyRoot.
  * See CallerBuddySpec.md for descriptions of user-configurable values.
  */
 
@@ -40,7 +40,7 @@ export interface Settings {
   playlistPlayedPaths: string[];
   /**
    * Lyrics body font scale in the player (0.7–1.3). Used when the layout is
-   * wide (viewport &gt; ~700px). Persisted in settings.json.
+   * wide (viewport &gt; ~700px). Persisted in CallerBuddySettings.json.
    */
   lyricsFontScaleDesktop: number;
   /**
