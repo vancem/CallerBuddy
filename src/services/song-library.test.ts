@@ -21,6 +21,7 @@ import {
   isSuspiciousScan,
   applyConservativeOrphanCleanup,
   resetOrphanRemovalPendingForTests,
+  persistedSongsEqual,
 } from "./song-library.js";
 import { listDirectory, readTextFile, writeTextFile, fileExists } from "./file-system-service.js";
 
@@ -232,6 +233,32 @@ describe("loadAndMergeSongs orphan cleanup", () => {
 
     const second = await loadAndMergeSongs(fakeDirHandle);
     expect(second.some((s) => s.musicFile === "old.mp3")).toBe(false);
+  });
+
+  it("skips writing CallerBuddySongs.json when merge is a no-op", async () => {
+    const keep = makeSong({ musicFile: "keep.mp3", rank: 5 });
+    vi.mocked(readTextFile).mockResolvedValue(JSON.stringify([keep]));
+    vi.mocked(listDirectory).mockResolvedValue([{ name: "keep.mp3", kind: "file" }]);
+
+    await loadAndMergeSongs(fakeDirHandle);
+
+    expect(writeTextFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("persistedSongsEqual", () => {
+  it("ignores runtime-only fields", () => {
+    const a = makeSong({ musicFile: "a.mp3", rank: 3 });
+    const b = makeSong({ musicFile: "a.mp3", rank: 3 });
+    (a as Song).dirHandle = {} as FileSystemDirectoryHandle;
+    (b as Song).lyricsFile = "a.md";
+    expect(persistedSongsEqual([a], [b])).toBe(true);
+  });
+
+  it("detects metadata differences", () => {
+    const a = makeSong({ musicFile: "a.mp3", rank: 3 });
+    const b = makeSong({ musicFile: "a.mp3", rank: 4 });
+    expect(persistedSongsEqual([a], [b])).toBe(false);
   });
 });
 

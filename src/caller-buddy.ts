@@ -238,6 +238,7 @@ export class CallerBuddy {
     log.info("activateRoot: playlist restored");
 
     this.listenForPlaylistChanges();
+    this.listenForDiskRefresh();
 
     log.info("activateRoot: opening playlist editor tab…");
     await this.state.openEditorTab(handle, handle.name);
@@ -248,16 +249,27 @@ export class CallerBuddy {
   // Settings
   // -----------------------------------------------------------------------
 
-  private async loadSettings(): Promise<void> {
+  /** Read and normalize CallerBuddySettings.json, or null if missing/unreadable. */
+  private async readSettingsFromDisk(): Promise<Settings | null> {
     const handle = this.state.rootHandle;
-    if (!handle) return;
+    if (!handle) return null;
     try {
       const exists = await fileExists(handle, SETTINGS_JSON);
-      if (exists) {
-        const text = await readTextFile(handle, SETTINGS_JSON);
-        const raw = JSON.parse(text) as Record<string, unknown>;
-        const normalized = normalizeSettings(raw);
-        this.state.setSettings(mergeLegacyLyricsScaleFromDisk(normalized, raw));
+      if (!exists) return null;
+      const text = await readTextFile(handle, SETTINGS_JSON);
+      const raw = JSON.parse(text) as Record<string, unknown>;
+      return mergeLegacyLyricsScaleFromDisk(normalizeSettings(raw), raw);
+    } catch (err) {
+      log.warn("Could not read CallerBuddySettings.json:", err);
+      return null;
+    }
+  }
+
+  private async loadSettings(): Promise<void> {
+    try {
+      const fromDisk = await this.readSettingsFromDisk();
+      if (fromDisk) {
+        this.state.setSettings(fromDisk);
         applyLyricsFontScaleFromSettings();
         persistLyricsScaleMirror();
         log.info("Settings loaded from CallerBuddySettings.json");
@@ -274,12 +286,20 @@ export class CallerBuddy {
     }
   }
 
-  async saveSettings(): Promise<void> {
+  /**
+   * Re-read settings from disk, apply `patch` on top, write, and update memory.
+   * Preserves concurrent field updates from another device (last-write-wins per patch).
+   */
+  async persistSettingsPatch(patch: Partial<Settings>): Promise<void> {
     const handle = this.state.rootHandle;
     if (!handle) return;
     try {
-      const json = JSON.stringify(this.state.settings, null, 2);
-      await writeTextFile(handle, SETTINGS_JSON, json);
+      const disk = (await this.readSettingsFromDisk()) ?? defaultSettings();
+      const next: Settings = { ...disk, ...patch };
+      await writeTextFile(handle, SETTINGS_JSON, JSON.stringify(next, null, 2));
+      this.state.setSettings(next);
+      applyLyricsFontScaleFromSettings();
+      persistLyricsScaleMirror();
       log.info("Settings saved to CallerBuddySettings.json");
     } catch (err) {
       log.warn("Could not save CallerBuddySettings.json:", err);
@@ -288,8 +308,65 @@ export class CallerBuddy {
 
   /** Update a single setting and persist to CallerBuddySettings.json. */
   async updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
-    this.state.setSettings({ ...this.state.settings, [key]: value });
-    await this.saveSettings();
+    await this.persistSettingsPatch({ [key]: value } as Partial<Settings>);
+  }
+
+  // -----------------------------------------------------------------------
+  // Soft re-read after cloud sync (focus / visibility)
+  // -----------------------------------------------------------------------
+
+  private diskRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private diskRefreshListenerAttached = false;
+  private diskRefreshInFlight = false;
+
+  private listenForDiskRefresh(): void {
+    if (this.diskRefreshListenerAttached) return;
+    this.diskRefreshListenerAttached = true;
+    const schedule = () => {
+      if (document.visibilityState && document.visibilityState !== "visible") return;
+      if (this.diskRefreshTimer) clearTimeout(this.diskRefreshTimer);
+      this.diskRefreshTimer = setTimeout(() => {
+        this.diskRefreshTimer = null;
+        void this.refreshPersistedStateFromDisk();
+      }, 400);
+    };
+    window.addEventListener("focus", schedule);
+    document.addEventListener("visibilitychange", schedule);
+  }
+
+  /**
+   * Re-read settings (and notify editors to soft-reload songs) after the window
+   * is focused again — typically when Google Drive / OneDrive has synced.
+   */
+  async refreshPersistedStateFromDisk(): Promise<void> {
+    const handle = this.state.rootHandle;
+    if (!handle) return;
+    // Local playlist edits still pending — don't clobber with disk.
+    if (this.playlistSaveTimer) return;
+    if (this.diskRefreshInFlight) return;
+    this.diskRefreshInFlight = true;
+    try {
+      const disk = await this.readSettingsFromDisk();
+      if (disk) {
+        const prev = this.state.settings;
+        if (JSON.stringify(prev) !== JSON.stringify(disk)) {
+          const pathsChanged =
+            JSON.stringify(prev.playlistPaths) !== JSON.stringify(disk.playlistPaths) ||
+            JSON.stringify(prev.playlistPlayedPaths) !==
+              JSON.stringify(disk.playlistPlayedPaths);
+          this.state.setSettings(disk);
+          applyLyricsFontScaleFromSettings();
+          persistLyricsScaleMirror();
+          log.info("Settings reloaded from disk after focus/visibility");
+          if (pathsChanged) {
+            await this.restorePlaylist(handle);
+          }
+        }
+      }
+      this.state.emit(StateEvents.DISK_REFRESHED);
+    } finally {
+      this.diskRefreshInFlight = false;
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -309,7 +386,10 @@ export class CallerBuddy {
     this.playlistListenerAttached = true;
     this.state.addEventListener(StateEvents.PLAYLIST_CHANGED, () => {
       if (this.playlistSaveTimer) clearTimeout(this.playlistSaveTimer);
-      this.playlistSaveTimer = setTimeout(() => this.persistPlaylistPaths(), 500);
+      this.playlistSaveTimer = setTimeout(() => {
+        this.playlistSaveTimer = null;
+        void this.persistPlaylistPaths();
+      }, 500);
     });
   }
 
@@ -327,12 +407,10 @@ export class CallerBuddy {
         playedOut.push(song.playlistRelPath ?? song.musicFile);
       }
     }
-    this.state.settings = {
-      ...this.state.settings,
+    await this.persistSettingsPatch({
       playlistPaths: paths,
       playlistPlayedPaths: playedOut,
-    };
-    await this.saveSettings();
+    });
     log.info(`Playlist persisted: ${paths.length} song(s), ${playedOut.length} marked played`);
   }
 
@@ -442,12 +520,10 @@ export class CallerBuddy {
       playedPaths.length !== rawPlayed.length ||
       playedPaths.some((p, i) => p !== rawPlayed[i]);
     if (pathsNeedMigration || playedNeedMigration) {
-      this.state.settings = {
-        ...this.state.settings,
+      await this.persistSettingsPatch({
         playlistPaths: paths,
         playlistPlayedPaths: playedPaths,
-      };
-      await this.saveSettings();
+      });
       log.info("restorePlaylist: migrated playlist paths to CallerBuddyRoot-relative form");
     }
 
@@ -875,7 +951,20 @@ export class CallerBuddy {
 
     if (detected > 0) {
       try {
-        await saveSongsJson(dirHandle, songs);
+        // Re-read before write so play-history / rank edits from another device
+        // are not wiped by a stale in-memory folder list.
+        const folderSongs = await loadSongsJson(dirHandle);
+        for (const song of needsBpm) {
+          if (song.originalTempo <= 0) continue;
+          const key = song.musicFile.toLowerCase();
+          const idx = folderSongs.findIndex((s) => s.musicFile.toLowerCase() === key);
+          if (idx >= 0) {
+            folderSongs[idx] = { ...folderSongs[idx], originalTempo: song.originalTempo };
+          } else {
+            folderSongs.push(song);
+          }
+        }
+        await saveSongsJson(dirHandle, folderSongs);
         log.info(`BPM detection for "${folderKey}": ${detected}/${needsBpm.length} songs updated`);
       } catch (err) {
         log.warn(`Could not persist BPM results for "${folderKey}":`, err);

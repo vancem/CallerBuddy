@@ -57,6 +57,12 @@ export const StateEvents = {
   PLAYLIST_CHANGED: "playlist-changed",
   /** Fires when a song's stored metadata was updated (e.g. volume or categories). */
   SONG_UPDATED: "song-updated",
+  /**
+   * Fires after a soft re-read of persisted JSON from disk (e.g. window focus
+   * after cloud sync). Listeners should refresh from disk without assuming a
+   * local write caused the change.
+   */
+  DISK_REFRESHED: "disk-refreshed",
   /** Fires when settings change. */
   SETTINGS_CHANGED: "settings-changed",
   /** Fires when a song starts playing. */

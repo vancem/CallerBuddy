@@ -181,6 +181,7 @@ export class PlaylistEditor extends LitElement {
       callerBuddy.state.settings.playlistPanelHeight ?? DEFAULT_PLAYLIST_PANEL_HEIGHT;
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
     callerBuddy.state.addEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
+    callerBuddy.state.addEventListener(StateEvents.DISK_REFRESHED, this.onDiskRefreshed);
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onAppStateChanged);
     this.lastSeenActiveTabId = callerBuddy.state.activeTabId;
@@ -192,6 +193,7 @@ export class PlaylistEditor extends LitElement {
     document.removeEventListener("keydown", this._boundKeydown);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
     callerBuddy.state.removeEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
+    callerBuddy.state.removeEventListener(StateEvents.DISK_REFRESHED, this.onDiskRefreshed);
     callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onAppStateChanged);
   }
@@ -389,6 +391,24 @@ export class PlaylistEditor extends LitElement {
   private onSongUpdated = () => {
     void this.reloadCurrentFolderFromDisk();
   };
+
+  /** Soft reload after focus/cloud sync — JSON only, no scan+merge rewrite. */
+  private onDiskRefreshed = () => {
+    if (this.editingCell) return;
+    void this.softReloadSongsFromDisk();
+  };
+
+  private async softReloadSongsFromDisk() {
+    const handle = this.currentHandle;
+    if (!handle || this.loading) return;
+    try {
+      const persisted = await loadSongsJson(handle);
+      for (const song of persisted) song.dirHandle = handle;
+      this.localSongs = persisted;
+    } catch (err) {
+      log.warn(`playlist-editor: soft reload failed for "${handle.name}":`, err);
+    }
+  }
 
   private async reloadCurrentFolderFromDisk() {
     if (!this.currentHandle) {

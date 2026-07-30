@@ -130,13 +130,22 @@ export async function loadSongsJson(
   return songs;
 }
 
+/** Persistable JSON form of a song list (stable for equality checks). */
+export function songsPersistenceJson(songs: Song[]): string {
+  return JSON.stringify(songs.map(songForPersistence));
+}
+
+/** True when two song lists would write identical CallerBuddySongs.json content. */
+export function persistedSongsEqual(a: Song[], b: Song[]): boolean {
+  return songsPersistenceJson(a) === songsPersistenceJson(b);
+}
+
 /** Save songs array to CallerBuddySongs.json in the directory. Strips runtime-only fields. */
 export async function saveSongsJson(
   dirHandle: FileSystemDirectoryHandle,
   songs: Song[],
 ): Promise<void> {
-  const clean = songs.map(songForPersistence);
-  const json = JSON.stringify(clean, null, 2);
+  const json = JSON.stringify(songs.map(songForPersistence), null, 2);
   await writeTextFile(dirHandle, SONGS_JSON, json);
   log.info(`Saved ${songs.length} songs to CallerBuddySongs.json`);
 }
@@ -298,14 +307,20 @@ export async function loadAndMergeSongs(
     persisted,
     dirHandle,
   );
-  log.info(`loadAndMergeSongs: merged=${finalSongs.length}, saving CallerBuddySongs.json…`);
-
-  // Persist the merged result so new songs are saved
-  try {
-    await saveSongsJson(dirHandle, finalSongs);
-    log.info("loadAndMergeSongs: CallerBuddySongs.json saved");
-  } catch (err) {
-    log.warn("loadAndMergeSongs: could not save CallerBuddySongs.json:", err);
+  // Persist only when merge changed something — avoids cloud-sync thrash when
+  // two machines open the same folder with no real catalog changes.
+  if (persistedSongsEqual(finalSongs, persisted)) {
+    log.info(
+      `loadAndMergeSongs: merged=${finalSongs.length}, no persistence changes; skipping save`,
+    );
+  } else {
+    log.info(`loadAndMergeSongs: merged=${finalSongs.length}, saving CallerBuddySongs.json…`);
+    try {
+      await saveSongsJson(dirHandle, finalSongs);
+      log.info("loadAndMergeSongs: CallerBuddySongs.json saved");
+    } catch (err) {
+      log.warn("loadAndMergeSongs: could not save CallerBuddySongs.json:", err);
+    }
   }
   return finalSongs;
 }
