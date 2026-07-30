@@ -76,6 +76,9 @@ export class WelcomeView extends LitElement {
 
         ${this.folderName
           ? html`
+              <p class="chosen">
+                Current folder: <strong>${this.folderName}</strong>
+              </p>
               <button
                 type="button"
                 class="primary welcome-reconnect"
@@ -104,14 +107,6 @@ export class WelcomeView extends LitElement {
 
         ${this.pickerError
           ? html`<p class="error" role="alert">${this.pickerError}</p>`
-          : ""}
-
-        ${this.folderName
-          ? html`
-              <p class="chosen">
-                Current folder: <strong>${this.folderName}</strong>
-              </p>
-            `
           : ""}
 
         <button
