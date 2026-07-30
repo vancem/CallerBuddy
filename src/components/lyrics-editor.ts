@@ -522,14 +522,17 @@ export class LyricsEditor extends LitElement {
       flex: 1;
       overflow: auto;
       outline: none;
-      cursor: text;
       padding: 16px;
       box-sizing: border-box;
       min-height: 0;
       min-width: 0;
-      /* Keep caret visible on light panels under OS dark mode. */
+      /* Keep I-beam (caret + mouse) visible on light panels; Windows OS dark
+         mode otherwise can flip it white-on-white until focus leaves the app. */
       color-scheme: light;
       caret-color: #202124;
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24' viewBox='0 0 16 24'%3E%3Cpath d='M3 1h10M8 1v22M3 23h10' stroke='%23fff' stroke-width='3.5' fill='none' stroke-linecap='square'/%3E%3Cpath d='M3 1h10M8 1v22M3 23h10' stroke='%23202124' stroke-width='1.5' fill='none' stroke-linecap='square'/%3E%3C/svg%3E")
+          8 12,
+        text;
     }
 
     .lyrics-editor:focus {
