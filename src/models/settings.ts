@@ -48,6 +48,11 @@ export interface Settings {
    * Separate from desktop so each mode keeps its own preference.
    */
   lyricsFontScalePhone: number;
+  /**
+   * Epoch ms of the last successful CallerBuddySongs.json.bak refresh.
+   * 0 means never. Used instead of file lastModified (unreliable on cloud drives).
+   */
+  lastBackupTime: number;
 }
 
 /** Returns a Settings object populated with default values. */
@@ -61,6 +66,7 @@ export function defaultSettings(): Settings {
     playlistPlayedPaths: [],
     lyricsFontScaleDesktop: DEFAULT_LYRICS_FONT_SCALE_DESKTOP,
     lyricsFontScalePhone: DEFAULT_LYRICS_FONT_SCALE_PHONE,
+    lastBackupTime: 0,
   };
 }
 
@@ -121,5 +127,6 @@ export function normalizeSettings(raw: unknown): Settings {
       LYRICS_FONT_SCALE_MIN,
       LYRICS_FONT_SCALE_MAX,
     ),
+    lastBackupTime: pickNum("lastBackupTime", defaults.lastBackupTime, 0),
   };
 }

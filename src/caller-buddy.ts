@@ -23,7 +23,7 @@ import {
   fileExists,
   listDirectory,
 } from "./services/file-system-service.js";
-import { loadSongsJson, saveSongsJson, loadAndMergeSongs, scanDirectory } from "./services/song-library.js";
+import { loadSongsJson, saveSongsJson, loadAndMergeSongs, scanDirectory, isSongsJsonBackupDue, maybeRefreshSongsJsonBackup } from "./services/song-library.js";
 import {
   WebAudioEngine,
   type AudioEngine,
@@ -242,6 +242,8 @@ export class CallerBuddy {
 
     log.info("activateRoot: opening playlist editor tab…");
     await this.state.openEditorTab(handle, handle.name);
+    // Off critical path: bak refresh must not block Loading (Drive file I/O can hang).
+    this.scheduleSongsJsonBackup();
     log.info("activateRoot: complete");
   }
 
@@ -309,6 +311,54 @@ export class CallerBuddy {
   /** Update a single setting and persist to CallerBuddySettings.json. */
   async updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
     await this.persistSettingsPatch({ [key]: value } as Partial<Settings>);
+  }
+
+  /**
+   * Fire-and-forget CallerBuddySongs.json.bak refresh using settings lastBackupTime
+   * (not file mtime). Skips immediately when within 72h — no file APIs on the skip path.
+   */
+  private scheduleSongsJsonBackup(): void {
+    const handle = this.state.rootHandle;
+    if (!handle) return;
+    const lastBackupTime = this.state.settings.lastBackupTime;
+    const nowMs = Date.now();
+    if (!isSongsJsonBackupDue(lastBackupTime, nowMs)) {
+      log.info(
+        `CallerBuddySongs.json.bak: skip (age ${Math.round((nowMs - lastBackupTime) / 3_600_000)}h)`,
+      );
+      return;
+    }
+    log.info(
+      `CallerBuddySongs.json.bak: scheduling (lastBackupTime=${lastBackupTime || "never"})`,
+    );
+    void this.runSongsJsonBackup(handle, lastBackupTime, nowMs);
+  }
+
+  private async runSongsJsonBackup(
+    handle: FileSystemDirectoryHandle,
+    lastBackupTime: number,
+    nowMs: number,
+  ): Promise<void> {
+    try {
+      const exists = await fileExists(handle, "CallerBuddySongs.json");
+      if (!exists) {
+        log.info("CallerBuddySongs.json.bak: skip (no CallerBuddySongs.json)");
+        return;
+      }
+      const text = await readTextFile(handle, "CallerBuddySongs.json");
+      JSON.parse(text);
+      const wrote = await maybeRefreshSongsJsonBackup(
+        handle,
+        text,
+        lastBackupTime,
+        nowMs,
+      );
+      if (wrote) {
+        await this.persistSettingsPatch({ lastBackupTime: nowMs });
+      }
+    } catch (err) {
+      log.warn("CallerBuddySongs.json.bak: failed:", err);
+    }
   }
 
   // -----------------------------------------------------------------------

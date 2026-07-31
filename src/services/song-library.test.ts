@@ -10,7 +10,6 @@ vi.mock("./file-system-service.js", () => ({
   readTextFile: vi.fn(),
   writeTextFile: vi.fn(),
   fileExists: vi.fn(),
-  getFileLastModified: vi.fn(),
 }));
 
 import {
@@ -23,20 +22,16 @@ import {
   applyConservativeOrphanCleanup,
   resetOrphanRemovalPendingForTests,
   persistedSongsEqual,
+  isSongsJsonBackupDue,
   maybeRefreshSongsJsonBackup,
+  SONGS_BAK_MAX_AGE_MS,
 } from "./song-library.js";
 import {
   listDirectory,
   readTextFile,
   writeTextFile,
   fileExists,
-  getFileLastModified,
 } from "./file-system-service.js";
-
-/** Fresh .bak so loadSongsJson / merge tests do not write backup copies. */
-function mockFreshSongsBak(): void {
-  vi.mocked(getFileLastModified).mockResolvedValue(Date.now());
-}
 
 // ---------------------------------------------------------------------------
 // Helper: create a minimal Song for merge tests
@@ -232,7 +227,6 @@ describe("loadAndMergeSongs orphan cleanup", () => {
     vi.mocked(fileExists).mockImplementation(async (_dir, filename) => filename === "CallerBuddySongs.json");
     vi.mocked(readTextFile).mockResolvedValue(JSON.stringify([]));
     vi.mocked(writeTextFile).mockResolvedValue(undefined);
-    mockFreshSongsBak();
   });
 
   it("requires two scans before removing a missing orphan", async () => {
@@ -366,7 +360,6 @@ describe("scanDirectory", () => {
 describe("loadSongsJson", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFreshSongsBak();
   });
 
   it("returns [] when CallerBuddySongs.json does not exist", async () => {
@@ -406,13 +399,28 @@ describe("loadSongsJson", () => {
     await expect(loadSongsJson(fakeDirHandle)).rejects.toThrow(/valid JSON/);
   });
 
-  it("does not refresh .bak when JSON is corrupt", async () => {
+  it("does not write .bak when JSON is corrupt", async () => {
     vi.mocked(fileExists).mockResolvedValue(true);
     vi.mocked(readTextFile).mockResolvedValue("not json");
-    vi.mocked(getFileLastModified).mockResolvedValue(null);
 
     await expect(loadSongsJson(fakeDirHandle)).rejects.toThrow(/valid JSON/);
     expect(writeTextFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("isSongsJsonBackupDue", () => {
+  it("is due when lastBackupTime is 0", () => {
+    expect(isSongsJsonBackupDue(0, Date.UTC(2026, 6, 30))).toBe(true);
+  });
+
+  it("is due when older than 72 hours", () => {
+    const now = Date.UTC(2026, 6, 30);
+    expect(isSongsJsonBackupDue(now - SONGS_BAK_MAX_AGE_MS - 1, now)).toBe(true);
+  });
+
+  it("is not due when fresher than 72 hours", () => {
+    const now = Date.UTC(2026, 6, 30);
+    expect(isSongsJsonBackupDue(now - 24 * 60 * 60 * 1000, now)).toBe(false);
   });
 });
 
@@ -424,11 +432,10 @@ describe("maybeRefreshSongsJsonBackup", () => {
     vi.mocked(writeTextFile).mockResolvedValue(undefined);
   });
 
-  it("creates .bak when missing", async () => {
-    vi.mocked(getFileLastModified).mockResolvedValue(null);
+  it("writes .bak when lastBackupTime is never", async () => {
+    const wrote = await maybeRefreshSongsJsonBackup(fakeDirHandle, sampleJson, 0);
 
-    await maybeRefreshSongsJsonBackup(fakeDirHandle, sampleJson);
-
+    expect(wrote).toBe(true);
     expect(writeTextFile).toHaveBeenCalledWith(
       fakeDirHandle,
       "CallerBuddySongs.json.bak",
@@ -438,10 +445,14 @@ describe("maybeRefreshSongsJsonBackup", () => {
 
   it("refreshes .bak when older than 72 hours", async () => {
     const now = Date.UTC(2026, 6, 30);
-    vi.mocked(getFileLastModified).mockResolvedValue(now - 73 * 60 * 60 * 1000);
+    const wrote = await maybeRefreshSongsJsonBackup(
+      fakeDirHandle,
+      sampleJson,
+      now - 73 * 60 * 60 * 1000,
+      now,
+    );
 
-    await maybeRefreshSongsJsonBackup(fakeDirHandle, sampleJson, now);
-
+    expect(wrote).toBe(true);
     expect(writeTextFile).toHaveBeenCalledWith(
       fakeDirHandle,
       "CallerBuddySongs.json.bak",
@@ -451,10 +462,14 @@ describe("maybeRefreshSongsJsonBackup", () => {
 
   it("skips .bak write when fresher than 72 hours", async () => {
     const now = Date.UTC(2026, 6, 30);
-    vi.mocked(getFileLastModified).mockResolvedValue(now - 24 * 60 * 60 * 1000);
+    const wrote = await maybeRefreshSongsJsonBackup(
+      fakeDirHandle,
+      sampleJson,
+      now - 24 * 60 * 60 * 1000,
+      now,
+    );
 
-    await maybeRefreshSongsJsonBackup(fakeDirHandle, sampleJson, now);
-
+    expect(wrote).toBe(false);
     expect(writeTextFile).not.toHaveBeenCalled();
   });
 });

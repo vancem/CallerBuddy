@@ -20,6 +20,7 @@ describe("defaultSettings", () => {
     expect(s.playlistPlayedPaths).toEqual([]);
     expect(s.lyricsFontScaleDesktop).toBe(DEFAULT_LYRICS_FONT_SCALE_DESKTOP);
     expect(s.lyricsFontScalePhone).toBe(DEFAULT_LYRICS_FONT_SCALE_PHONE);
+    expect(s.lastBackupTime).toBe(0);
   });
 
   it("returns a new object each call (no shared reference)", () => {
@@ -42,5 +43,15 @@ describe("normalizeSettings", () => {
       playlistPlayedPaths: ["a.mp3"],
     });
     expect(s.playlistPlayedPaths).toEqual(["a.mp3"]);
+  });
+
+  it("reads lastBackupTime", () => {
+    const s = normalizeSettings({ lastBackupTime: 1_700_000_000_000 });
+    expect(s.lastBackupTime).toBe(1_700_000_000_000);
+  });
+
+  it("defaults lastBackupTime when missing", () => {
+    const s = normalizeSettings({});
+    expect(s.lastBackupTime).toBe(0);
   });
 });
