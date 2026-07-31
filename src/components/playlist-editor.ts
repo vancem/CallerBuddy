@@ -403,7 +403,17 @@ export class PlaylistEditor extends LitElement {
     if (!handle || this.loading) return;
     try {
       const persisted = await loadSongsJson(handle);
-      for (const song of persisted) song.dirHandle = handle;
+      const prevByFile = new Map(
+        this.localSongs.map((s) => [s.musicFile.toLowerCase(), s]),
+      );
+      for (const song of persisted) {
+        song.dirHandle = handle;
+        // Older catalogs omitted lyricsFile; keep scan-derived pairing until JSON is rewritten.
+        if (!song.lyricsFile.trim()) {
+          const prev = prevByFile.get(song.musicFile.toLowerCase());
+          if (prev?.lyricsFile.trim()) song.lyricsFile = prev.lyricsFile;
+        }
+      }
       this.localSongs = persisted;
     } catch (err) {
       log.warn(`playlist-editor: soft reload failed for "${handle.name}":`, err);

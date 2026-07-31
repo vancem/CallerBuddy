@@ -258,15 +258,38 @@ describe("loadAndMergeSongs orphan cleanup", () => {
 
     expect(writeTextFile).not.toHaveBeenCalled();
   });
+
+  it("writes when scan discovers lyricsFile missing from the catalog", async () => {
+    const keep = makeSong({ musicFile: "keep.mp3", lyricsFile: "" });
+    vi.mocked(readTextFile).mockResolvedValue(JSON.stringify([keep]));
+    vi.mocked(listDirectory).mockResolvedValue([
+      { name: "keep.mp3", kind: "file" },
+      { name: "keep.md", kind: "file" },
+    ]);
+
+    await loadAndMergeSongs(fakeDirHandle);
+
+    const songsWrites = vi
+      .mocked(writeTextFile)
+      .mock.calls.filter(([, name]) => name === "CallerBuddySongs.json");
+    expect(songsWrites).toHaveLength(1);
+    expect(JSON.parse(songsWrites[0][2])[0].lyricsFile).toBe("keep.md");
+  });
 });
 
 describe("persistedSongsEqual", () => {
   it("ignores runtime-only fields", () => {
-    const a = makeSong({ musicFile: "a.mp3", rank: 3 });
-    const b = makeSong({ musicFile: "a.mp3", rank: 3 });
+    const a = makeSong({ musicFile: "a.mp3", rank: 3, lyricsFile: "a.md" });
+    const b = makeSong({ musicFile: "a.mp3", rank: 3, lyricsFile: "a.md" });
     (a as Song).dirHandle = {} as FileSystemDirectoryHandle;
-    (b as Song).lyricsFile = "a.md";
+    (a as Song).playlistRelPath = "folder/a.mp3";
     expect(persistedSongsEqual([a], [b])).toBe(true);
+  });
+
+  it("treats lyricsFile as persisted (singing vs patter)", () => {
+    const a = makeSong({ musicFile: "a.mp3", lyricsFile: "" });
+    const b = makeSong({ musicFile: "a.mp3", lyricsFile: "a.md" });
+    expect(persistedSongsEqual([a], [b])).toBe(false);
   });
 
   it("detects metadata differences", () => {
@@ -452,9 +475,21 @@ describe("saveSongsJson", () => {
     expect(filename).toBe("CallerBuddySongs.json");
     const parsed = JSON.parse(content);
     expect(parsed[0]).not.toHaveProperty("dirHandle");
-    expect(parsed[0]).not.toHaveProperty("lyricsFile");
+    expect(parsed[0].lyricsFile).toBe("");
     expect(parsed[0].musicFile).toBe("a.mp3");
     expect(parsed[0]).toHaveProperty("categories");
     expect(parsed[0]).not.toHaveProperty("category");
+  });
+
+  it("persists lyricsFile for singing calls", async () => {
+    const song = makeSong({
+      musicFile: "a.mp3",
+      lyricsFile: "a.md",
+    });
+
+    await saveSongsJson(fakeDirHandle, [song]);
+
+    const content = vi.mocked(writeTextFile).mock.calls[0][2];
+    expect(JSON.parse(content)[0].lyricsFile).toBe("a.md");
   });
 });
