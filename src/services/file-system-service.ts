@@ -189,6 +189,22 @@ export async function fileExists(
 }
 
 /**
+ * Return the file's lastModified timestamp (ms since epoch), or null if missing.
+ */
+export async function getFileLastModified(
+  dirHandle: FileSystemDirectoryHandle,
+  filename: string,
+): Promise<number | null> {
+  try {
+    const fileHandle = await dirHandle.getFileHandle(filename);
+    const file = await fileHandle.getFile();
+    return file.lastModified;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Delete a file from the directory.
  * Requires readwrite permission on the handle.
  */

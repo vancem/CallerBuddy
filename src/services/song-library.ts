@@ -23,10 +23,14 @@ import {
   readTextFile,
   writeTextFile,
   fileExists,
+  getFileLastModified,
 } from "./file-system-service.js";
 import { log, assert } from "./logger.js";
 
 const SONGS_JSON = "CallerBuddySongs.json";
+const SONGS_JSON_BAK = "CallerBuddySongs.json.bak";
+/** Refresh CallerBuddySongs.json.bak when missing or older than this. */
+const SONGS_BAK_MAX_AGE_MS = 72 * 60 * 60 * 1000;
 
 /** Max fraction of persisted entries removable in one pass before scan is treated as suspicious. */
 const MAX_ORPHAN_DROP_FRACTION = 0.5;
@@ -127,7 +131,34 @@ export async function loadSongsJson(
     log.warn(`loadSongsJson: skipped ${skipped} invalid entr${skipped === 1 ? "y" : "ies"}`);
   }
   log.info(`Loaded ${songs.length} songs from CallerBuddySongs.json`);
+  await maybeRefreshSongsJsonBackup(dirHandle, text);
   return songs;
+}
+
+/**
+ * Copy a known-good CallerBuddySongs.json into CallerBuddySongs.json.bak when
+ * the backup is missing or older than {@link SONGS_BAK_MAX_AGE_MS}.
+ * Only called after the primary file has been successfully parsed.
+ */
+export async function maybeRefreshSongsJsonBackup(
+  dirHandle: FileSystemDirectoryHandle,
+  songsJsonText: string,
+  nowMs: number = Date.now(),
+): Promise<void> {
+  try {
+    const bakModified = await getFileLastModified(dirHandle, SONGS_JSON_BAK);
+    if (bakModified !== null && nowMs - bakModified < SONGS_BAK_MAX_AGE_MS) {
+      return;
+    }
+    await writeTextFile(dirHandle, SONGS_JSON_BAK, songsJsonText);
+    log.info(
+      bakModified === null
+        ? `Created ${SONGS_JSON_BAK}`
+        : `Refreshed ${SONGS_JSON_BAK} (previous age ${Math.round((nowMs - bakModified) / 3_600_000)}h)`,
+    );
+  } catch (err) {
+    log.warn(`Could not refresh ${SONGS_JSON_BAK}:`, err);
+  }
 }
 
 /** Persistable JSON form of a song list (stable for equality checks). */
