@@ -287,9 +287,11 @@ app at
 [https://vancem.github.io/CallerBuddy/](https://vancem.github.io/CallerBuddy/)
 and the GitHub repo.
 
-Manage Google indexing in
-[Google Search Console](https://search.google.com/search-console)
-for the URL-prefix property `https://vancem.github.io/CallerBuddy/`.
+Manage indexing in:
+
+- [Google Search Console](https://search.google.com/search-console) — property
+  `https://vancem.github.io/CallerBuddy/`
+- [Bing Webmaster Tools](https://www.bing.com/webmasters) — same site URL
 
 ### `public/google9f9f34b405a49230.html`
 
@@ -304,6 +306,18 @@ re-verify ownership another way. Putting it only at the repo root does not work
 — Google checks the Pages URL above, not a `github.com/.../blob/...` path. The
 `github.com/vancem/CallerBuddy` repo page cannot use this HTML-file method (we
 do not control `github.com`).
+
+### `public/BingSiteAuth.xml`
+
+This file proves ownership to Bing (same pattern as Google’s HTML file). Bing
+Webmaster Tools issued it; after deploy it is served at:
+
+`https://vancem.github.io/CallerBuddy/BingSiteAuth.xml`
+
+**Keep this file in `public/` and do not rename or delete it** unless you
+re-verify in [Bing Webmaster Tools](https://www.bing.com/webmasters). Like the
+Google file, it must be published under the Pages URL, not only as a blob on
+`github.com`.
 
 ### GitHub About box
 
@@ -320,20 +334,24 @@ gh repo edit vancem/CallerBuddy --description "..." --homepage "https://vancem.g
 
 ### Ongoing maintenance
 
-- **Do not remove** `public/google9f9f34b405a49230.html` from the tree or from
-  production deploys (verification can break if it disappears).
-- After a major URL or homepage change, open
-  [Search Console](https://search.google.com/search-console) → **URL
-  inspection** → inspect `https://vancem.github.io/CallerBuddy/` → **Request
-  indexing** if Google shows it as not indexed or stale.
-- Periodically (every few months, or when someone reports “Google can’t find
-  us”): check `site:vancem.github.io/CallerBuddy` and `"CallerBuddy" vancem` in
-  an incognito window; skim Search Console **Pages** / **Performance** for
-  coverage drops or spikes in “Crawled – currently not indexed.”
+- **Do not remove** `public/google9f9f34b405a49230.html` or
+  `public/BingSiteAuth.xml` from the tree or from production deploys
+  (verification can break if either disappears).
+- After a major URL or homepage change, request a recrawl in
+  [Search Console](https://search.google.com/search-console) (**URL
+  inspection** → **Request indexing**) and in
+  [Bing Webmaster Tools](https://www.bing.com/webmasters) (URL submission /
+  Site Explorer) for `https://vancem.github.io/CallerBuddy/`.
+- Periodically (every few months, or when someone reports a search engine
+  can’t find us): check `site:vancem.github.io/CallerBuddy` and
+  `"CallerBuddy" vancem` in an incognito window on both Google and Bing; skim
+  Search Console and Bing Webmaster **Pages** / indexing reports for coverage
+  drops.
 - Keep the GitHub **About** description, homepage, and topics accurate when the
   product pitch changes.
-- Prefer inbound links from pages Google already knows (GitHub profile README,
-  Samples repo, caller forums, blog posts). Stars alone do little; links help.
+- Prefer inbound links from pages search engines already know (GitHub profile
+  README, Samples repo, caller forums, blog posts). Stars alone do little;
+  links help.
 - When improving crawlability of the app shell, keep a meaningful
   `<title>`, meta description, and some static text in `index.html` — the SPA
   body alone is nearly empty to non-JS crawlers.
