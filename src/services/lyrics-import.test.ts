@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
-import { importHtmlToMarkdown, importTextToMarkdown } from "./lyrics-import.js";
+import {
+  importHtmlToMarkdown,
+  importTextToMarkdown,
+  replaceLyricsHeader,
+} from "./lyrics-import.js";
 
 describe("importHtmlToMarkdown", () => {
   it("keeps cuesheet2 body text across all standard sections", () => {
@@ -75,5 +79,21 @@ describe("importTextToMarkdown", () => {
     expect(markdown).toContain("## Opener");
     expect(markdown).toContain("Circle");
     expect(markdown).toContain("## Figure");
+  });
+});
+
+describe("replaceLyricsHeader", () => {
+  it("replaces title and label, keeps body", () => {
+    const md = replaceLyricsHeader(
+      "# Old Title\n\n_(OLD 1)_\n\n## Opener\nCircle left\n",
+      "BS 2469",
+      "Witch Doctor",
+    );
+    expect(md).toContain("# Witch Doctor");
+    expect(md).toContain("_(BS 2469)_");
+    expect(md).not.toContain("Old Title");
+    expect(md).not.toContain("OLD 1");
+    expect(md).toContain("## Opener");
+    expect(md).toContain("Circle left");
   });
 });

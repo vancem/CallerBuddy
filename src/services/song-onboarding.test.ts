@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   analyzeZipForOnboarding,
   computeDestNames,
+  findMatchingMusicForLyrics,
   labelAndTitleFromMusicPath,
   _testOnly,
 } from "./song-onboarding.js";
@@ -164,6 +165,24 @@ describe("labelAndTitleFromMusicPath", () => {
       label: "SIR 804",
       title: "Wonderful Tonight",
     });
+  });
+});
+
+describe("findMatchingMusicForLyrics", () => {
+  const music = [
+    "folder/BS 2469 - Witch Doctor.mp3",
+    "folder/BS 2469 - Witch Doctor (BGV).mp3",
+    "other/RYL 145 - Love Grows.mp3",
+  ];
+
+  it("matches by basename ignoring extension and case", () => {
+    expect(
+      findMatchingMusicForLyrics("folder/BS 2469 - WITCH DOCTOR.html", music),
+    ).toBe("folder/BS 2469 - Witch Doctor.mp3");
+  });
+
+  it("returns empty when no music shares the lyrics basename", () => {
+    expect(findMatchingMusicForLyrics("notes/readme.html", music)).toBe("");
   });
 });
 
@@ -417,5 +436,30 @@ describe("analyzeZipForOnboarding", () => {
     const proposal = await analyzeZipForOnboarding("Song.zip", entries, async () => "");
     expect(proposal.lyricsHint).toMatch(/PDF/);
     expect(proposal.lyricsHint).toMatch(/Word/);
+  });
+
+  it("sorts allEntries and lyrics candidates by path", async () => {
+    const entries = [
+      "z-last.html",
+      "a/first.mp3",
+      "m-middle.md",
+      "b/second.html",
+    ];
+    const proposal = await analyzeZipForOnboarding(
+      "Song.zip",
+      entries,
+      async (path) => (path.endsWith(".md") ? "# Title\n\nBody" : "<p>x</p>"),
+    );
+    expect(proposal.allEntries).toEqual([
+      "a/first.mp3",
+      "b/second.html",
+      "m-middle.md",
+      "z-last.html",
+    ]);
+    expect(proposal.htmlCandidates.map((c) => c.path)).toEqual([
+      "b/second.html",
+      "m-middle.md",
+      "z-last.html",
+    ]);
   });
 });

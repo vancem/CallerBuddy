@@ -12,10 +12,12 @@
 
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
+import { repeat } from "lit/directives/repeat.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { StateEvents, TabType } from "../services/app-state.js";
 import {
   computeDestNames,
+  findMatchingMusicForLyrics,
   labelAndTitleFromMusicPath,
   rescrapeHtml,
   type OnboardingProposal,
@@ -123,6 +125,8 @@ export class SongOnboard extends LitElement {
   @state() private selectedMp3 = "";
   @state() private selectedHtml = "";
   @state() private lyricsMarkdown = "";
+  /** Bumps to remount lyrics-editor when the chosen source file changes. */
+  @state() private lyricsEditorGen = 0;
   /** Formatted vs Raw — restored from session when this tab remounts after Help. */
   @state() private lyricsEditorMode: LyricsEditorMode = getLyricsEditorSessionMode();
   @state() private lyricsHint = "";
@@ -147,6 +151,27 @@ export class SongOnboard extends LitElement {
   private collisionCheckSeq = 0;
 
   private proposal: OnboardingProposal | null = null;
+
+  protected updated(changed: Map<PropertyKey, unknown>) {
+    if (changed.has("selectedMp3") && this.selectedMp3) {
+      void this.scrollSelectedMp3IntoView();
+    }
+  }
+
+  private async scrollSelectedMp3IntoView() {
+    await this.updateComplete;
+    const list = this.shadowRoot?.querySelector(".contents-list") as HTMLElement | null;
+    const row = this.shadowRoot?.querySelector(
+      ".contents-entry.selected-mp3",
+    ) as HTMLElement | null;
+    if (!list || !row) return;
+    // Scroll only the contents list (not the whole right panel).
+    const listRect = list.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const delta =
+      rowRect.top - listRect.top - list.clientHeight / 2 + rowRect.height / 2;
+    list.scrollTop += delta;
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -255,13 +280,14 @@ export class SongOnboard extends LitElement {
     const name = this.isOpenableEntry(path)
       ? html`<a href="#" @click=${(ev: Event) => this.openSourceEntry(path, ev)}>${path}</a>`
       : path;
+    const isSelectedMp3 = path === this.selectedMp3;
     return html`
-      <div class="contents-entry">
+      <div class="contents-entry ${isSelectedMp3 ? "selected-mp3" : ""}">
         <span class="contents-select">
           ${this.isMp3Entry(path)
             ? html`<input type="radio" name="mp3"
                 .value=${path}
-                .checked=${path === this.selectedMp3}
+                .checked=${isSelectedMp3}
                 title=${this.mp3SelectTitle(path)}
                 @change=${this.onMp3Select} />`
             : nothing}
@@ -276,6 +302,18 @@ export class SongOnboard extends LitElement {
     this.selectedHtml = path;
     if (path) {
       try {
+        // Stamp editor # title / info from the lyrics filename when it carries
+        // a catalog label (e.g. "BS 2469 - Witch Doctor.html").
+        const fromPath = labelAndTitleFromMusicPath(path);
+        if (fromPath.label) {
+          this.label = fromPath.label;
+          this.songTitle = fromPath.title;
+        }
+        const musicPaths = this.mp3Candidates.map((c) => c.path);
+        const matchedMp3 = findMatchingMusicForLyrics(path, musicPaths);
+        if (matchedMp3) {
+          this.selectedMp3 = matchedMp3;
+        }
         this.lyricsMarkdown = await rescrapeHtml(
           path,
           (p) => callerBuddy.readOnboardingEntry(p),
@@ -283,14 +321,15 @@ export class SongOnboard extends LitElement {
           this.songTitle,
           (p) => callerBuddy.readOnboardingBinary(p),
         );
-        this.updateDestNames();
+        this.lyricsHint = "";
       } catch {
         this.lyricsMarkdown = "";
       }
     } else {
       this.lyricsMarkdown = "";
-      this.updateDestNames();
     }
+    this.lyricsEditorGen++;
+    this.updateDestNames();
   }
 
   /** Extensions we can open like File Explorer (view / play in a popup window). */
@@ -555,12 +594,18 @@ export class SongOnboard extends LitElement {
 
     return html`
       <div class="left-panel">
-        <lyrics-editor
-          .lyricsMarkdown=${this.lyricsMarkdown}
-          .editorMode=${this.lyricsEditorMode}
-          @lyrics-mode-change=${this.onLyricsEditorModeChange}
-          @lyrics-help=${this.onLyricsMarkdownHelp}
-        ></lyrics-editor>
+        ${repeat(
+          [this.lyricsEditorGen],
+          (g) => g,
+          () => html`
+            <lyrics-editor
+              .lyricsMarkdown=${this.lyricsMarkdown}
+              .editorMode=${this.lyricsEditorMode}
+              @lyrics-mode-change=${this.onLyricsEditorModeChange}
+              @lyrics-help=${this.onLyricsMarkdownHelp}
+            ></lyrics-editor>
+          `,
+        )}
       </div>
     `;
   }
@@ -571,6 +616,7 @@ export class SongOnboard extends LitElement {
       this.label || "",
     );
     this.lyricsHint = "";
+    this.lyricsEditorGen++;
     this.updateDestNames();
   }
 
@@ -652,13 +698,13 @@ export class SongOnboard extends LitElement {
           ? html`
             <div class="section">
               <h3>Lyrics Source File</h3>
-              <select @change=${this.onHtmlSelect}>
+              <select
+                .value=${this.selectedHtml}
+                @change=${this.onHtmlSelect}
+                title="Choose which source file to convert into the lyrics editor">
                 ${this.htmlCandidates.map(
                   (c) => html`
-                    <option value=${c.path}
-                      ?selected=${c.path === this.selectedHtml}>
-                      ${c.filename}
-                    </option>
+                    <option value=${c.path}>${c.path}</option>
                   `,
                 )}
                 <option value="">None (no lyrics)</option>
@@ -1012,6 +1058,11 @@ export class SongOnboard extends LitElement {
       gap: 4px;
       padding: 1px 0;
       white-space: nowrap;
+    }
+
+    .contents-entry.selected-mp3 {
+      background: color-mix(in srgb, var(--cb-accent, #4a9eff) 18%, transparent);
+      border-radius: 2px;
     }
 
     .contents-select {

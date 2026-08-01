@@ -47,6 +47,26 @@ export function importHtmlToMarkdown(
   return linesToMarkdown(lines, label, title);
 }
 
+/**
+ * Replace the leading `# title` and optional `_(label)_` info line, keeping the
+ * rest of the Markdown body. Used when the lyrics source file changes so the
+ * header matches the new filename-derived label/title.
+ */
+export function replaceLyricsHeader(
+  markdown: string,
+  label: string,
+  title: string,
+): string {
+  let rest = filterLyricsText(markdown).replace(/^\uFEFF/, "").trimStart();
+  rest = rest.replace(/^#\s+[^\n]*(?:\n+|$)/, "");
+  rest = rest.replace(/^_\([^)]*\)_\s*(?:\n+|$)/, "");
+  const parts: string[] = [`# ${title || "Untitled"}`];
+  if (label) parts.push(`_(${label})_`);
+  const body = rest.trimStart();
+  if (body) parts.push(body);
+  return parts.join("\n\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
+}
+
 /** Convert plain text (TXT file or paste) into CallerBuddy lyrics Markdown. */
 export function importTextToMarkdown(
   rawText: string,

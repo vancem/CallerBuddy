@@ -13,6 +13,7 @@
 
 import { LitElement, css, html, nothing, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { live } from "lit/directives/live.js";
 import { bumpLyricsScale } from "../utils/lyrics-scale.js";
 import { parseLyricsMarkdown } from "../utils/lyrics-markdown.js";
 import { htmlToLyricsMarkdown } from "../utils/html-to-lyrics-md.js";
@@ -75,12 +76,17 @@ export class LyricsEditor extends LitElement {
   }
 
   override updated(changed: Map<string, unknown>) {
-    if (this.editorMode === "formatted" && this.needsWysiwygSeed) {
-      this.seedWysiwygFromDraft();
-    }
-    if (changed.has("editorMode") && this.editorMode === "raw") {
-      const ta = this.getRawTextarea();
-      if (ta && ta.value !== this.draft) ta.value = this.draft;
+    // Parent may replace lyricsMarkdown (e.g. import "Lyrics Source File"
+    // dropdown). Reseed both surfaces — contenteditable is not property-bound,
+    // and a user-edited textarea needs `live` + an explicit value sync.
+    if (this.needsWysiwygSeed || changed.has("lyricsMarkdown")) {
+      if (this.editorMode === "formatted") {
+        this.seedWysiwygFromDraft();
+      } else {
+        const ta = this.getRawTextarea();
+        if (ta) ta.value = this.draft;
+        this.needsWysiwygSeed = false;
+      }
     }
   }
 
@@ -211,7 +217,7 @@ export class LyricsEditor extends LitElement {
                 class="lyrics-source"
                 spellcheck="true"
                 wrap="off"
-                .value=${this.draft}
+                .value=${live(this.draft)}
                 @input=${this.onRawInput}
                 @keydown=${this.onRawKeydown}
                 @paste=${this.onRawPaste}

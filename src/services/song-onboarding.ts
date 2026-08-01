@@ -12,7 +12,7 @@
  */
 
 import { toTitleCase } from "./html-scraper.js";
-import { importHtmlToMarkdown, importTextToMarkdown } from "./lyrics-import.js";
+import { importHtmlToMarkdown, importTextToMarkdown, replaceLyricsHeader } from "./lyrics-import.js";
 import { decodeHtmlBytes, filterLyricsText } from "../utils/lyrics-text-filter.js";
 import { scoreMp3Candidates, type Mp3Candidate } from "./mp3-candidate-scoring.js";
 
@@ -67,10 +67,11 @@ export async function analyzeZipForOnboarding(
   readEntry: (path: string) => Promise<string>,
   readBinary?: (path: string) => Promise<ArrayBuffer>,
 ): Promise<OnboardingProposal> {
-  const mp3Paths = entryPaths.filter((p) => isMusicExt(p));
-  const htmlPaths = entryPaths.filter((p) => isHtmlExt(p));
-  const mdPaths = entryPaths.filter((p) => p.toLowerCase().endsWith(".md"));
-  const txtPaths = entryPaths.filter((p) => p.toLowerCase().endsWith(".txt"));
+  const sortedPaths = sortPaths(entryPaths);
+  const mp3Paths = sortedPaths.filter((p) => isMusicExt(p));
+  const htmlPaths = sortedPaths.filter((p) => isHtmlExt(p));
+  const mdPaths = sortedPaths.filter((p) => p.toLowerCase().endsWith(".md"));
+  const txtPaths = sortedPaths.filter((p) => p.toLowerCase().endsWith(".txt"));
 
   // 1. Extract label
   const label = extractLabel(zipName, mp3Paths);
@@ -86,10 +87,10 @@ export async function analyzeZipForOnboarding(
   const title = extractTitle(zipName, mp3Paths, label, selectedMp3);
 
   // 5. Select best lyrics source (prefer .md, then HTML, then TXT)
-  const htmlCandidates: HtmlCandidate[] = [
-    ...mdPaths.map((p) => ({ path: p, filename: basename(p) })),
-    ...htmlPaths.map((p) => ({ path: p, filename: basename(p) })),
-  ];
+  const htmlCandidates: HtmlCandidate[] = sortPaths([
+    ...mdPaths,
+    ...htmlPaths,
+  ]).map((p) => ({ path: p, filename: basename(p) }));
   const selectedMd = selectBestMd(mdPaths, label, title);
   const selectedHtml = selectedMd || selectBestHtml(htmlPaths, label, title);
 
@@ -122,8 +123,8 @@ export async function analyzeZipForOnboarding(
     }
   }
 
-  const pdfPaths = entryPaths.filter((p) => p.toLowerCase().endsWith(".pdf"));
-  const wordPaths = entryPaths.filter((p) => /\.docx?$/i.test(p));
+  const pdfPaths = sortedPaths.filter((p) => p.toLowerCase().endsWith(".pdf"));
+  const wordPaths = sortedPaths.filter((p) => /\.docx?$/i.test(p));
   let lyricsHint = "";
   if (!lyricsMarkdown && (pdfPaths.length > 0 || wordPaths.length > 0)) {
     lyricsHint = pasteLyricsHint(pdfPaths.length > 0, wordPaths.length > 0);
@@ -142,11 +143,18 @@ export async function analyzeZipForOnboarding(
     htmlCandidates,
     selectedHtml,
     lyricsMarkdown,
-    allEntries: entryPaths,
+    allEntries: sortedPaths,
     destMp3Name,
     destLyricsName,
     lyricsHint,
   };
+}
+
+/** Stable path order for ZIP/folder file lists and lyrics-source dropdowns. */
+export function sortPaths(paths: string[]): string[] {
+  return [...paths].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" }),
+  );
 }
 
 /** Regenerate destination filenames when the user edits label/title. */
@@ -171,7 +179,7 @@ export async function rescrapeHtml(
   readBinary?: (path: string) => Promise<ArrayBuffer>,
 ): Promise<string> {
   if (htmlPath.toLowerCase().endsWith(".md")) {
-    return filterLyricsText(await readEntry(htmlPath));
+    return replaceLyricsHeader(await readEntry(htmlPath), label, title);
   }
   if (htmlPath.toLowerCase().endsWith(".txt")) {
     return importTextToMarkdown(await readEntry(htmlPath), label, title).markdown;
@@ -262,6 +270,35 @@ export function labelAndTitleFromMusicPath(path: string): { label: string; title
     ? cleanTitle(removeLabelFromString(name, label))
     : cleanTitle(name);
   return { label, title };
+}
+
+/**
+ * Find a music file that matches a lyrics path by basename (case-insensitive),
+ * e.g. "BS 2469 - Witch Doctor.html" → "BS 2469 - Witch Doctor.mp3".
+ */
+export function findMatchingMusicForLyrics(
+  lyricsPath: string,
+  musicPaths: string[],
+): string {
+  const lyricsBase = stripExtension(basename(lyricsPath)).toLowerCase();
+  if (!lyricsBase || musicPaths.length === 0) return "";
+
+  const exact = musicPaths.find(
+    (p) => stripExtension(basename(p)).toLowerCase() === lyricsBase,
+  );
+  if (exact) return exact;
+
+  // Lyrics basename may differ slightly from raw MP3 casing/punctuation after
+  // cleanTitle; compare using the same label/title parse used elsewhere.
+  const fromLyrics = labelAndTitleFromMusicPath(lyricsPath);
+  if (!fromLyrics.label || !fromLyrics.title) return "";
+  const ideal = `${fromLyrics.label} - ${fromLyrics.title}`.toLowerCase();
+  return (
+    musicPaths.find((p) => {
+      const { label, title } = labelAndTitleFromMusicPath(p);
+      return label && title && `${label} - ${title}`.toLowerCase() === ideal;
+    }) ?? ""
+  );
 }
 
 /**
