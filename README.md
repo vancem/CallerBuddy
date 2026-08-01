@@ -280,6 +280,66 @@ For **private device debugging** without a full deploy, `RELEASE.md` also docume
 
 ---
 
+## Search engine visibility
+
+Goal: searching for **CallerBuddy** (and **CallerBuddy vancem**) should find the
+app at
+[https://vancem.github.io/CallerBuddy/](https://vancem.github.io/CallerBuddy/)
+and the GitHub repo.
+
+Manage Google indexing in
+[Google Search Console](https://search.google.com/search-console)
+for the URL-prefix property `https://vancem.github.io/CallerBuddy/`.
+
+### `public/google9f9f34b405a49230.html`
+
+This file proves to Google that we own the GitHub Pages site. Search Console
+issued it; Vite copies everything in `public/` into `dist/`, so after deploy it
+is served at:
+
+`https://vancem.github.io/CallerBuddy/google9f9f34b405a49230.html`
+
+**Keep this file in `public/` and do not rename or delete it** unless you
+re-verify ownership another way. Putting it only at the repo root does not work
+— Google checks the Pages URL above, not a `github.com/.../blob/...` path. The
+`github.com/vancem/CallerBuddy` repo page cannot use this HTML-file method (we
+do not control `github.com`).
+
+### GitHub About box
+
+Crawlers lean on the repo **About** fields (right sidebar). Keep them filled:
+
+- **Description** — short product summary
+- **Website** — `https://vancem.github.io/CallerBuddy/`
+- **Topics** — e.g. `square-dance`, `caller`, `music-player`
+
+```bash
+gh repo view vancem/CallerBuddy --json description,homepageUrl,repositoryTopics
+gh repo edit vancem/CallerBuddy --description "..." --homepage "https://vancem.github.io/CallerBuddy/" --add-topic square-dance
+```
+
+### Ongoing maintenance
+
+- **Do not remove** `public/google9f9f34b405a49230.html` from the tree or from
+  production deploys (verification can break if it disappears).
+- After a major URL or homepage change, open
+  [Search Console](https://search.google.com/search-console) → **URL
+  inspection** → inspect `https://vancem.github.io/CallerBuddy/` → **Request
+  indexing** if Google shows it as not indexed or stale.
+- Periodically (every few months, or when someone reports “Google can’t find
+  us”): check `site:vancem.github.io/CallerBuddy` and `"CallerBuddy" vancem` in
+  an incognito window; skim Search Console **Pages** / **Performance** for
+  coverage drops or spikes in “Crawled – currently not indexed.”
+- Keep the GitHub **About** description, homepage, and topics accurate when the
+  product pitch changes.
+- Prefer inbound links from pages Google already knows (GitHub profile README,
+  Samples repo, caller forums, blog posts). Stars alone do little; links help.
+- When improving crawlability of the app shell, keep a meaningful
+  `<title>`, meta description, and some static text in `index.html` — the SPA
+  body alone is nearly empty to non-JS crawlers.
+
+---
+
 ## Ramp-Up Reading (in order)
 
 | File | What it covers |
@@ -325,7 +385,7 @@ CallerBuddy/
   scripts/
     generate-test-data.cjs    # Creates test WAV/HTML files
     inject-version.cjs        # Stamps version into source + manifest
-  public/                     # Static assets (icons, manifest, service worker)
+  public/                     # Static assets copied to dist (icons, manifest, SW, Google verify HTML)
 ```
 
 ---

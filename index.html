@@ -6,11 +6,77 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#dee1e6" />
-    <title>CallerBuddy</title>
+
+    <title>CallerBuddy — Square Dance Caller Music &amp; Lyrics</title>
+    <meta
+      name="description"
+      content="CallerBuddy is a Progressive Web App by Vance Morrison (vancem) for square dance callers: manage MP3 music and lyrics, build dance playlists, and play with independent pitch and tempo control."
+    />
+    <meta name="author" content="Vance Morrison" />
+    <link rel="canonical" href="https://vancem.github.io/CallerBuddy/" />
+
+    <!-- Open Graph / social previews -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CallerBuddy" />
+    <meta property="og:title" content="CallerBuddy — Square Dance Caller Music &amp; Lyrics" />
+    <meta
+      property="og:description"
+      content="PWA for square dance callers by Vance Morrison (vancem): music, lyrics, playlists, pitch and tempo. Live at vancem.github.io/CallerBuddy."
+    />
+    <meta property="og:url" content="https://vancem.github.io/CallerBuddy/" />
+    <meta property="og:image" content="https://vancem.github.io/CallerBuddy/callerBuddy.svg" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="CallerBuddy — Square Dance Caller Music &amp; Lyrics" />
+    <meta
+      name="twitter:description"
+      content="PWA for square dance callers by Vance Morrison (vancem): music, lyrics, playlists, pitch and tempo."
+    />
+
     <link rel="stylesheet" href="/src/index.css" />
     <script type="module" src="/src/main.ts"></script>
   </head>
   <body>
     <app-shell></app-shell>
+
+    <!--
+      Crawlable summary for search engines that read the raw HTML.
+      Visually clipped so it does not affect the PWA layout; tweak freely.
+    -->
+    <div
+      id="seo-intro"
+      style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0"
+    >
+      <h1>CallerBuddy</h1>
+      <p>
+        CallerBuddy is a Progressive Web App by Vance Morrison (GitHub:
+        <a href="https://github.com/vancem">vancem</a>) for square dance callers.
+        Manage a collection of music (MP3) and lyrics (HTML/Markdown), build
+        playlists for a dance, and play songs with independent pitch and tempo
+        control while reading lyrics on-screen.
+      </p>
+      <p>
+        Source:
+        <a href="https://github.com/vancem/CallerBuddy">github.com/vancem/CallerBuddy</a>.
+        App:
+        <a href="https://vancem.github.io/CallerBuddy/">vancem.github.io/CallerBuddy</a>.
+      </p>
+    </div>
+
+    <noscript>
+      <main>
+        <h1>CallerBuddy</h1>
+        <p>
+          CallerBuddy is a Progressive Web App by Vance Morrison (vancem) for
+          square dance callers to manage music and lyrics, build playlists, and
+          play with pitch and tempo control.
+        </p>
+        <p>
+          <a href="https://github.com/vancem/CallerBuddy">GitHub repository</a>
+          ·
+          <a href="https://vancem.github.io/CallerBuddy/">Live app</a>
+        </p>
+      </main>
+    </noscript>
   </body>
 </html>
