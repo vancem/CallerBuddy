@@ -937,7 +937,7 @@ export class PlaylistEditor extends LitElement {
                   ? html`<p class="muted table-empty">
                       ${this.filterText
                         ? "No songs match the filter."
-                        : "No songs found. Make sure your CallerBuddy folder contains audio files (MP3, M4A, or WAV)."}
+                        : "No songs found. Make sure your CallerBuddy folder contains MP3 audio files."}
                     </p>`
                   : nothing}
               `}

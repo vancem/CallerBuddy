@@ -1,7 +1,7 @@
 # CallerBuddy
 
 CallerBuddy is a Progressive Web App for square dance callers to manage a
-collection of music (MP3/WAV) and lyrics (HTML/MD), build playlists for a dance,
+collection of music (MP3) and lyrics (HTML/MD), build playlists for a dance,
 and play songs with independent pitch and tempo control while reading lyrics
 on-screen. It is loosely inspired by [SqView](https://www.SqView.se/download.php)
 but redesigned from scratch as a modern, cross-platform PWA.

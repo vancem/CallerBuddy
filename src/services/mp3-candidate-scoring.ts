@@ -1,5 +1,5 @@
 /**
- * Heuristic scoring for MP3 (and .m4a/.wav) candidates during ZIP onboarding.
+ * Heuristic scoring for music-file candidates during ZIP onboarding.
  * Lower score = more preferred. Rules are data-driven tables plus small helpers
  * for label-suffix and parenthetical parsing.
  */

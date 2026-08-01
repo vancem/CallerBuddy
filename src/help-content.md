@@ -47,8 +47,8 @@ your collection stays synced across devices.
 
 1. Open CallerBuddy. The **Welcome screen** appears.
 2. Click **Choose CallerBuddy folder**.
-3. Pick the folder that contains your MP3 (or M4A/WAV) music
-   files. If you are starting fresh, create a new empty folder
+3. Pick the folder that contains your MP3 music files. If you
+   are starting fresh, create a new empty folder
    and you can import songs later.
 4. CallerBuddy scans the folder and opens the
    **Playlist Editor**.

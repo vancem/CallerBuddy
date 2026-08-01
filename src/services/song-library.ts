@@ -1,8 +1,9 @@
 /**
  * Song library: scanning folders for music/lyrics and reading/writing CallerBuddySongs.json.
  *
- * When CallerBuddyRoot is set, this module scans for MP3, M4A, and WAV files, pairs
- * them with matching lyrics files, and builds or updates the CallerBuddySongs.json catalog.
+ * When CallerBuddyRoot is set, this module scans for music files (see
+ * models/song.ts), pairs them with matching lyrics files, and builds or updates
+ * the CallerBuddySongs.json catalog.
  *
  * File naming convention: "LABEL - TITLE.ext"
  * See CallerBuddySpec.md §"The Playlist Workflow" and models/song.ts.
