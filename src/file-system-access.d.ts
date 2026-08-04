@@ -5,8 +5,23 @@
  * Reference: https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API
  */
 
-interface FileSystemPickerOptions {
+interface FileSystemPermissionDescriptor {
   mode?: "read" | "readwrite";
+}
+
+/** Options for window.showDirectoryPicker(). */
+interface DirectoryPickerOptions {
+  /** Lets the browser remember a separate last-used folder per id. */
+  id?: string;
+  mode?: "read" | "readwrite";
+  startIn?:
+    | FileSystemHandle
+    | "desktop"
+    | "documents"
+    | "downloads"
+    | "music"
+    | "pictures"
+    | "videos";
 }
 
 interface FileSystemHandle {
@@ -14,10 +29,10 @@ interface FileSystemHandle {
   readonly name: string;
   isSameEntry(other: FileSystemHandle): Promise<boolean>;
   queryPermission(
-    descriptor?: FileSystemPickerOptions,
+    descriptor?: FileSystemPermissionDescriptor,
   ): Promise<PermissionState>;
   requestPermission(
-    descriptor?: FileSystemPickerOptions,
+    descriptor?: FileSystemPermissionDescriptor,
   ): Promise<PermissionState>;
 }
 
@@ -76,7 +91,7 @@ interface OpenFilePickerOptions {
 
 interface Window {
   showDirectoryPicker(
-    options?: FileSystemPickerOptions,
+    options?: DirectoryPickerOptions,
   ): Promise<FileSystemDirectoryHandle>;
   showOpenFilePicker(
     options?: OpenFilePickerOptions,

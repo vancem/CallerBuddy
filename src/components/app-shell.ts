@@ -24,6 +24,10 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { StateEvents, TabType, type EditorTabData, type TabInfo } from "../services/app-state.js";
+import {
+  DIR_PICKER_IMPORT_ID,
+  DIR_PICKER_ROOT_ID,
+} from "../services/file-system-service.js";
 import { APP_VERSION } from "../version.js";
 import { log, getRecentLogs, clearRecentLogs } from "../services/logger.js";
 import { isPhoneLikeTouchDevice } from "../utils/device-traits.js";
@@ -733,7 +737,10 @@ export class AppShell extends LitElement {
     log.info(`[ui] menu: Set CallerBuddy folder`);
     this.showMenu = false;
     try {
-      const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+      const handle = await window.showDirectoryPicker({
+        id: DIR_PICKER_ROOT_ID,
+        mode: "readwrite",
+      });
       await callerBuddy.setRoot(handle);
     } catch {
       // user cancelled or picker unavailable — do nothing
@@ -780,7 +787,10 @@ export class AppShell extends LitElement {
       return;
     }
     try {
-      const dirHandle = await window.showDirectoryPicker({ mode: "read" });
+      const dirHandle = await window.showDirectoryPicker({
+        id: DIR_PICKER_IMPORT_ID,
+        mode: "read",
+      });
       await callerBuddy.openSongOnboardFromFolder(dirHandle);
     } catch {
       // user cancelled or picker unavailable

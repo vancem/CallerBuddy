@@ -15,6 +15,7 @@ import type { PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { TabType } from "../services/app-state.js";
+import { DIR_PICKER_ROOT_ID } from "../services/file-system-service.js";
 import { APP_VERSION } from "../version.js";
 import { log } from "../services/logger.js";
 
@@ -171,7 +172,10 @@ export class WelcomeView extends LitElement {
       log.info(
         `[ui] pickFolder: starting fsApi=${!!document.fullscreenElement} opening directory picker…`,
       );
-      const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+      const handle = await window.showDirectoryPicker({
+        id: DIR_PICKER_ROOT_ID,
+        mode: "readwrite",
+      });
       this.loading = true;
       this.folderName = handle.name;
       log.info(

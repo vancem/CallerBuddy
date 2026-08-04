@@ -12,6 +12,11 @@
 
 import { log, assert } from "./logger.js";
 
+/** Directory-picker id for choosing/changing CallerBuddyRoot. */
+export const DIR_PICKER_ROOT_ID = "callerbuddy-root";
+/** Directory-picker id for importing a song folder (separate browser history). */
+export const DIR_PICKER_IMPORT_ID = "callerbuddy-import";
+
 // ---------------------------------------------------------------------------
 // IndexedDB helpers for persisting the FileSystemDirectoryHandle
 // ---------------------------------------------------------------------------
