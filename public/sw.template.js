@@ -26,6 +26,14 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (!event.request.url.startsWith(self.location.origin)) return;
 
+  // Demo music is large and fetched on demand — do not intercept (avoids the
+  // short network timeout and keeps install-time precache free of ~10MB assets).
+  try {
+    if (new URL(event.request.url).pathname.includes("/demo/")) return;
+  } catch {
+    /* ignore */
+  }
+
   // Navigation requests (HTML pages): network first with 1s timeout so we get
   // fresh content when online but don't hang long when offline.
   if (event.request.mode === "navigate") {

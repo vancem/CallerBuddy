@@ -178,6 +178,25 @@ export async function writeTextFile(
 }
 
 /**
+ * Write a binary file to the directory, creating it if necessary.
+ * Requires readwrite permission on the handle.
+ */
+export async function writeBinaryFile(
+  dirHandle: FileSystemDirectoryHandle,
+  filename: string,
+  contents: BufferSource,
+): Promise<void> {
+  log.debug(
+    `writeBinaryFile: writing "${filename}" (${contents.byteLength} bytes)…`,
+  );
+  const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(contents);
+  await writable.close();
+  log.debug(`writeBinaryFile: "${filename}" written successfully`);
+}
+
+/**
  * Check whether a file exists in the directory.
  * Returns true if the file exists, false otherwise.
  */

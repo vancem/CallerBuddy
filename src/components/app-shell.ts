@@ -62,6 +62,8 @@ export class AppShell extends LitElement {
   @state() private logCopyStatus = "";
   /** If we "should be fullscreen" but OS kicked us out, prompt to re-enter. */
   @state() private showFullscreenResumePrompt = false;
+  @state() private demoInstallInProgress = false;
+  @state() private demoInstallError = "";
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   private _boundFsChange = () => this.onFullscreenChange();
@@ -469,6 +471,9 @@ export class AppShell extends LitElement {
           ${!activeTab ? this.renderEmpty() : nothing}
         </main>
         ${this.showMenu ? this.renderMenu() : nothing}
+        ${callerBuddy.state.demoOfferPending
+          ? this.renderDemoOfferPrompt()
+          : nothing}
         ${this.showFullscreenResumePrompt
           ? this.renderFullscreenResumePrompt()
           : nothing}
@@ -532,6 +537,73 @@ export class AppShell extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private renderDemoOfferPrompt() {
+    return html`
+      <div
+        class="fs-startup-overlay"
+        @click=${() => {
+          if (!this.demoInstallInProgress) this.onDemoOfferNo();
+        }}
+      ></div>
+      <div
+        class="fs-startup-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="demo-offer-title"
+        @click=${(e: Event) => e.stopPropagation()}
+      >
+        <h2 id="demo-offer-title" class="fs-startup-title">
+          Add demo songs?
+        </h2>
+        <p class="fs-startup-body">
+          Your CallerBuddy folder is empty. Add two demo songs
+          (Maple Leaf Rag with sample lyrics, and The Entertainer) so you can
+          try the app? This downloads about 10&nbsp;MB and requires being online.
+        </p>
+        ${this.demoInstallError
+          ? html`<p class="demo-offer-error" role="alert">${this.demoInstallError}</p>`
+          : nothing}
+        <div class="fs-startup-actions">
+          <button
+            type="button"
+            class="fs-startup-primary"
+            autofocus
+            ?disabled=${this.demoInstallInProgress}
+            @click=${() => void this.onDemoOfferYes()}
+          >
+            ${this.demoInstallInProgress ? "Downloading…" : "Add demo songs"}
+          </button>
+          <button
+            type="button"
+            class="fs-startup-secondary"
+            ?disabled=${this.demoInstallInProgress}
+            @click=${this.onDemoOfferNo}
+          >
+            No thanks
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private onDemoOfferNo = () => {
+    this.demoInstallError = "";
+    callerBuddy.dismissDemoOffer();
+  };
+
+  private async onDemoOfferYes() {
+    this.demoInstallError = "";
+    this.demoInstallInProgress = true;
+    try {
+      await callerBuddy.acceptDemoOffer();
+    } catch (err) {
+      this.demoInstallError =
+        err instanceof Error ? err.message : "Could not download demo songs.";
+    } finally {
+      this.demoInstallInProgress = false;
+    }
   }
 
   /** Render the content for a non-keep-alive tab.
@@ -987,6 +1059,13 @@ export class AppShell extends LitElement {
       color: var(--cb-fg);
     }
 
+    .demo-offer-error {
+      margin: -0.5rem 0 1rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: var(--cb-danger, #c0392b);
+    }
+
     .fs-startup-actions {
       display: flex;
       flex-direction: column;
@@ -1003,6 +1082,12 @@ export class AppShell extends LitElement {
       cursor: pointer;
       background: var(--cb-accent);
       color: var(--cb-fg-on-accent);
+    }
+
+    .fs-startup-primary:disabled,
+    .fs-startup-secondary:disabled {
+      opacity: 0.65;
+      cursor: default;
     }
 
     .fs-startup-secondary {

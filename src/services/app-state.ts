@@ -95,6 +95,12 @@ export class AppState extends EventTarget {
   currentSong: Song | null = null;
 
   /**
+   * When true, the shell should offer to install optional demo songs into an
+   * empty first-time CallerBuddyRoot (no prior IndexedDB handle).
+   */
+  demoOfferPending = false;
+
+  /**
    * Wall-clock ms when the last qualifying song play ended, or null if none yet.
    * Session-only (not persisted across reloads); survives Now Playing tab close/reopen.
    */
@@ -122,6 +128,12 @@ export class AppState extends EventTarget {
   setRoot(handle: FileSystemDirectoryHandle): void {
     this.rootHandle = handle;
     this.emit(StateEvents.ROOT_CHANGED);
+  }
+
+  setDemoOfferPending(pending: boolean): void {
+    if (this.demoOfferPending === pending) return;
+    this.demoOfferPending = pending;
+    this.emit(StateEvents.CHANGED);
   }
 
   /** Update closable on all PlaylistEditor tabs based on current root. Call after setRoot. */

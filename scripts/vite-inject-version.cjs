@@ -66,6 +66,8 @@ function injectVersionPlugin() {
         if (seen.has(fileName)) continue;
         if (fileName === "sw.js" || fileName === "manifest.json") continue;
         if (fileName.endsWith(".map")) continue;
+        // On-demand demo music must not be precached (~10MB).
+        if (fileName.startsWith("demo/") || fileName.includes("/demo/")) continue;
         precacheUrls.push(fileName);
         seen.add(fileName);
       }
