@@ -559,8 +559,9 @@ export class AppShell extends LitElement {
         </h2>
         <p class="fs-startup-body">
           Your CallerBuddy folder is empty. Add two demo songs
-          (Maple Leaf Rag with sample lyrics, and The Entertainer) so you can
-          try the app? This downloads about 10&nbsp;MB and requires being online.
+          (When the Saints Go Marching In with singing-call lyrics, and Cotton
+          Eyed Joe patter) so you can try the app? This downloads about
+          8&nbsp;MB and requires being online.
         </p>
         ${this.demoInstallError
           ? html`<p class="demo-offer-error" role="alert">${this.demoInstallError}</p>`

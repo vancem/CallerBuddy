@@ -113,12 +113,6 @@ export class CallerBuddy {
     lastPlayingClockMs: number;
   } | null = null;
 
-  /**
-   * True when init found no root handle in IndexedDB. Cleared after the first
-   * successful setRoot so the demo-song offer runs at most once per "fresh" start.
-   */
-  private mayOfferDemoSongs = false;
-
   getPracticeMode(): boolean {
     return this.practiceMode;
   }
@@ -179,7 +173,6 @@ export class CallerBuddy {
 
     const storedHandle = await loadRootHandle();
     if (storedHandle) {
-      this.mayOfferDemoSongs = false;
       log.info(`init: found stored handle "${storedHandle.name}", checking permission…`);
       // Try to silently verify permission (no user gesture, may fail)
       const perm = await storedHandle.queryPermission({ mode: "readwrite" });
@@ -194,7 +187,6 @@ export class CallerBuddy {
       log.info("init: permission not granted; showing welcome.");
       this.state.rootHandle = storedHandle;
     } else {
-      this.mayOfferDemoSongs = true;
       log.info("init: no stored handle found");
     }
 
@@ -211,10 +203,6 @@ export class CallerBuddy {
    * Persists the handle, loads songs, opens the playlist editor.
    */
   async setRoot(handle: FileSystemDirectoryHandle): Promise<void> {
-    // Snapshot before we persist: offer demos only when IndexedDB had no root
-    // at init (true first-folder choice), not on reconnect / folder change.
-    const offerDemoIfEmpty = this.mayOfferDemoSongs;
-
     // Start the IndexedDB persist immediately (don't await yet) so we
     // survive back-button / quick navigation even if the user leaves
     // while ensurePermission is showing the prompt.
@@ -237,18 +225,6 @@ export class CallerBuddy {
     await stored;
     log.info("setRoot: activating root…");
     await this.activateRoot(handle);
-
-    if (offerDemoIfEmpty) {
-      this.mayOfferDemoSongs = false;
-      try {
-        if (await isDirectoryEmpty(handle)) {
-          log.info("setRoot: empty first-time root — offering demo songs");
-          this.state.setDemoOfferPending(true);
-        }
-      } catch (err) {
-        log.warn("setRoot: could not check whether root is empty:", err);
-      }
-    }
 
     log.info("setRoot: complete");
   }
@@ -282,6 +258,22 @@ export class CallerBuddy {
     }
   }
 
+  /**
+   * If the root folder has no files or subfolders, offer optional demo songs.
+   */
+  private async maybeOfferDemoSongs(
+    handle: FileSystemDirectoryHandle,
+  ): Promise<void> {
+    try {
+      if (await isDirectoryEmpty(handle)) {
+        log.info("maybeOfferDemoSongs: empty root — offering demo songs");
+        this.state.setDemoOfferPending(true);
+      }
+    } catch (err) {
+      log.warn("maybeOfferDemoSongs: could not check whether root is empty:", err);
+    }
+  }
+
   private async activateRoot(handle: FileSystemDirectoryHandle): Promise<void> {
     this.state.setRoot(handle);
     await this.state.updateEditorTabsClosable();
@@ -302,6 +294,7 @@ export class CallerBuddy {
     await this.state.openEditorTab(handle, handle.name);
     // Off critical path: bak refresh must not block Loading (Drive file I/O can hang).
     this.scheduleSongsJsonBackup();
+    await this.maybeOfferDemoSongs(handle);
     log.info("activateRoot: complete");
   }
 

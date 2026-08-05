@@ -96,7 +96,7 @@ export class AppState extends EventTarget {
 
   /**
    * When true, the shell should offer to install optional demo songs into an
-   * empty first-time CallerBuddyRoot (no prior IndexedDB handle).
+   * empty CallerBuddyRoot.
    */
   demoOfferPending = false;
 

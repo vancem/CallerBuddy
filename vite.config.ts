@@ -11,9 +11,9 @@ const { injectVersionPlugin } = require("./scripts/vite-inject-version.cjs");
 
 /** On-demand demo songs: served/copied from demoMusic/, never precached. */
 const DEMO_MUSIC_FILES = [
-  "Maple Leaf Rag.mp3",
-  "Maple Leaf Rag.md",
-  "Entertainer.mp3",
+  "When the Saints Go Marching In.mp3",
+  "When the Saints Go Marching In.md",
+  "Cotton Eyed Joe.mp3",
 ] as const;
 
 function demoContentType(name: string): string {

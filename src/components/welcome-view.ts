@@ -130,15 +130,15 @@ export class WelcomeView extends LitElement {
     try {
       this.loading = true;
       log.info(
-        `[ui] reconnect: starting fsApi=${!!document.fullscreenElement} requesting permission on existing handle…`,
+        `[ui] reconnect: starting fullscreen=${!!document.fullscreenElement} requesting permission on existing handle…`,
       );
       await callerBuddy.setRoot(handle);
       log.info(
-        `[ui] reconnect: setRoot done fsApi=${!!document.fullscreenElement}`,
+        `[ui] reconnect: setRoot done fullscreen=${!!document.fullscreenElement}`,
       );
     } catch (err) {
       log.error(
-        `[ui] reconnect: error fsApi=${!!document.fullscreenElement}:`,
+        `[ui] reconnect: error fullscreen=${!!document.fullscreenElement}:`,
         err,
       );
       this.pickerError =
@@ -170,7 +170,7 @@ export class WelcomeView extends LitElement {
       // Call the picker before any await/state update so the user-activation
       // gesture stays intact (File System Access API).
       log.info(
-        `[ui] pickFolder: starting fsApi=${!!document.fullscreenElement} opening directory picker…`,
+        `[ui] pickFolder: starting fullscreen=${!!document.fullscreenElement} opening directory picker…`,
       );
       const handle = await window.showDirectoryPicker({
         id: DIR_PICKER_ROOT_ID,
@@ -179,25 +179,28 @@ export class WelcomeView extends LitElement {
       this.loading = true;
       this.folderName = handle.name;
       log.info(
-        `[ui] pickFolder: user chose "${handle.name}" fsApi=${!!document.fullscreenElement}, calling setRoot…`,
+        `[ui] pickFolder: user chose "${handle.name}" fullscreen=${!!document.fullscreenElement}, calling setRoot…`,
       );
       await callerBuddy.setRoot(handle);
       log.info(
-        `[ui] pickFolder: setRoot done fsApi=${!!document.fullscreenElement}`,
+        `[ui] pickFolder: setRoot done fullscreen=${!!document.fullscreenElement}`,
       );
     } catch (err) {
-      // Chromium uses AbortError for real Cancel and for some failed
-      // selections (OneDrive/network folders, focus loss, permission quirks).
+      // Chromium uses AbortError for Cancel, blocked folders (Documents/
+      // Downloads/Desktop/etc.), and denied readwrite permission — same error.
       if (err instanceof Error && err.name === "AbortError") {
         log.warn(
-          `[ui] pickFolder: AbortError message="${err.message}" fsApi=${!!document.fullscreenElement}`,
+          `[ui] pickFolder: AbortError message="${err.message}" fullscreen=${!!document.fullscreenElement}`,
         );
         this.pickerError =
-          "Folder picker closed without granting access. ";
+          "Could not open that folder. Chrome blocks some locations " +
+          "(Documents, Downloads, Desktop, and similar). Pick a normal " +
+          "subfolder instead, and choose Allow if asked to edit files. " +
+          "Cancel also shows this message.";
         return;
       }
       log.error(
-        `[ui] pickFolder: error fsApi=${!!document.fullscreenElement}:`,
+        `[ui] pickFolder: error fullscreen=${!!document.fullscreenElement}:`,
         err,
       );
       this.pickerError =

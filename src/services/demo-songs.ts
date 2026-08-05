@@ -1,5 +1,5 @@
 /**
- * Optional first-run demo songs (Maple Leaf Rag + Entertainer).
+ * Optional first-run demo songs (Saints singing call + Cotton Eyed Joe patter).
  *
  * Assets live under `public/demo/` and are fetched only when the user accepts
  * the empty-folder offer — they are not bundled into the JS app shell.
@@ -14,9 +14,9 @@ import { log } from "./logger.js";
 
 /** Files copied into an empty CallerBuddyRoot when the user opts in. */
 export const DEMO_SONG_FILES = [
-  "Maple Leaf Rag.mp3",
-  "Maple Leaf Rag.md",
-  "Entertainer.mp3",
+  "When the Saints Go Marching In.mp3",
+  "When the Saints Go Marching In.md",
+  "Cotton Eyed Joe.mp3",
 ] as const;
 
 /** True when the directory has no files or subfolders. */
