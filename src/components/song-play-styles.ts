@@ -480,8 +480,9 @@ export const songPlayStyles = css`
     }
 
     .slider-container {
+      --cb-slider-h: 1.75rem;
       position: relative;
-      height: 1.75rem;
+      height: var(--cb-slider-h);
     }
 
     .slider-track {
@@ -513,6 +514,27 @@ export const songPlayStyles = css`
       background: var(--cb-progress);
       pointer-events: none;
       transition: width 0.1s linear;
+    }
+
+    .segment-labels {
+      display: flex;
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .segment-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      white-space: nowrap;
+      font-size: calc(var(--cb-slider-h) * 0.75);
+      font-weight: 600;
+      line-height: 1;
+      color: var(--cb-segment-label);
+      user-select: none;
     }
 
     .loop-marker {

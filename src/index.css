@@ -71,6 +71,7 @@
   --cb-progress:     hsla(var(--cb-hue), var(--cb-sat), 35%, 0.70);
   --cb-segment-even: rgba(0, 0, 0, 35%);
   --cb-segment-odd:  rgba(0, 0, 0, 10%);
+  --cb-segment-label: hsla(var(--cb-hue), var(--cb-sat), 42%, 0.70);
 
   /* ── Typography (unchanged) ───────────────────────────────────────── */
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,

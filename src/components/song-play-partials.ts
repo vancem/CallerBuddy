@@ -168,6 +168,16 @@ export type SliderCtx = {
   onLoopMarkerPointerUp: (e: PointerEvent) => void;
 };
 
+const SEGMENT_LABELS = [
+  "Opener",
+  "Figure 1",
+  "Figure 2",
+  "Break",
+  "Figure 3",
+  "Figure 4",
+  "Closer",
+] as const;
+
 export function renderSlider(ctx: SliderCtx): TemplateResult {
   const pct =
     ctx.effectiveDuration > 0
@@ -177,21 +187,31 @@ export function renderSlider(ctx: SliderCtx): TemplateResult {
     ctx.sourceDuration > 0 ? (ctx.loopStart / ctx.sourceDuration) * 100 : 0;
   const loopEndPct =
     ctx.sourceDuration > 0 ? (ctx.loopEnd / ctx.sourceDuration) * 100 : 0;
+  const segmentWidth = `${100 / SEGMENT_LABELS.length}%`;
 
   return html`
     <div class="slider-container">
       <div class="slider-track">
         <div class="segments">
-          ${[0, 1, 2, 3, 4, 5, 6].map(
-            (i) => html`
+          ${SEGMENT_LABELS.map(
+            (_label, i) => html`
               <div
                 class="segment ${i % 2 === 0 ? "even" : "odd"}"
-                style="width: ${100 / 7}%"
+                style="width: ${segmentWidth}"
               ></div>
             `,
           )}
         </div>
         <div class="progress" style="width: ${pct}%"></div>
+        <div class="segment-labels" aria-hidden="true">
+          ${SEGMENT_LABELS.map(
+            (label) => html`
+              <span class="segment-label" style="width: ${segmentWidth}"
+                >${label}</span
+              >
+            `,
+          )}
+        </div>
       </div>
 
       ${ctx.loopActive
