@@ -26,7 +26,7 @@ import { callerBuddy } from "../caller-buddy.js";
 import { StateEvents, TabType, type EditorTabData, type TabInfo } from "../services/app-state.js";
 import {
   DIR_PICKER_IMPORT_ID,
-  DIR_PICKER_ROOT_ID,
+  resetCallerBuddyBrowserState,
 } from "../services/file-system-service.js";
 import { APP_VERSION } from "../version.js";
 import { log, getRecentLogs, clearRecentLogs } from "../services/logger.js";
@@ -640,8 +640,13 @@ export class AppShell extends LitElement {
     return html`
       <div class="menu-overlay" @click=${this.closeMenu}></div>
       <div class="menu" role="menu">
-        <button class="menu-item" role="menuitem" @click=${this.onWelcome}>
-          Set CallerBuddy folder…
+        <button
+          class="menu-item"
+          role="menuitem"
+          title="Keeps song data. Clears settings and resets to first launch state"
+          @click=${this.onResetCallerBuddy}
+        >
+          Reset CallerBuddy
         </button>
         <button class="menu-item" role="menuitem" @click=${this.onImportSongZip}>
           Import Song from ZIP…
@@ -806,17 +811,14 @@ export class AppShell extends LitElement {
     this.showMenu = false;
   }
 
-  private async onWelcome() {
-    log.info(`[ui] menu: Set CallerBuddy folder`);
+  private async onResetCallerBuddy() {
+    log.info(`[ui] menu: Reset CallerBuddy`);
     this.showMenu = false;
     try {
-      const handle = await window.showDirectoryPicker({
-        id: DIR_PICKER_ROOT_ID,
-        mode: "readwrite",
-      });
-      await callerBuddy.setRoot(handle);
-    } catch {
-      // user cancelled or picker unavailable — do nothing
+      await resetCallerBuddyBrowserState(callerBuddy.state.rootHandle);
+    } catch (err) {
+      log.warn("Reset CallerBuddy failed:", err);
+      alert("Could not reset CallerBuddy. Try clearing site data in the browser.");
     }
   }
 

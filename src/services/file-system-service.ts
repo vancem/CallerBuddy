@@ -25,6 +25,7 @@ const IDB_NAME = "callerbuddy";
 const IDB_VERSION = 1;
 const IDB_STORE = "handles";
 const IDB_KEY = "root";
+const SETTINGS_JSON = "CallerBuddySettings.json";
 
 function openIDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -82,6 +83,94 @@ export async function loadRootHandle(): Promise<FileSystemDirectoryHandle | null
     log.warn("Could not load stored root handle:", err);
     return null;
   }
+}
+
+function deleteCallerBuddyIdb(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.deleteDatabase(IDB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+    // Other tabs/connections can block; resolve anyway so reset can reload.
+    req.onblocked = () => {
+      log.warn(
+        "deleteCallerBuddyIdb: blocked by another connection; continuing (reload will finish cleanup)",
+      );
+      resolve();
+    };
+  });
+}
+
+/**
+ * Clear origin-scoped browser state and reload so the next session matches
+ * first launch (welcome / pick folder). Deletes CallerBuddySettings.json when
+ * a root handle is available; leaves song files untouched.
+ */
+export async function resetCallerBuddyBrowserState(
+  rootHandle?: FileSystemDirectoryHandle | null,
+): Promise<void> {
+  log.info("resetCallerBuddyBrowserState: starting…");
+
+  let handle = rootHandle ?? null;
+  if (!handle) {
+    handle = await loadRootHandle();
+  }
+  if (handle) {
+    try {
+      if (await ensurePermission(handle)) {
+        if (await fileExists(handle, SETTINGS_JSON)) {
+          await deleteFile(handle, SETTINGS_JSON);
+          log.info("resetCallerBuddyBrowserState: deleted CallerBuddySettings.json");
+        } else {
+          log.info("resetCallerBuddyBrowserState: no CallerBuddySettings.json present");
+        }
+      } else {
+        log.warn(
+          "resetCallerBuddyBrowserState: no permission to delete CallerBuddySettings.json",
+        );
+      }
+    } catch (err) {
+      log.warn(
+        "resetCallerBuddyBrowserState: could not delete CallerBuddySettings.json:",
+        err,
+      );
+    }
+  } else {
+    log.info("resetCallerBuddyBrowserState: no root handle; skipping settings file");
+  }
+
+  log.info("resetCallerBuddyBrowserState: clearing origin storage…");
+
+  if ("serviceWorker" in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map((r) => r.unregister()));
+    log.info(`resetCallerBuddyBrowserState: unregistered ${regs.length} service worker(s)`);
+  }
+
+  if ("caches" in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+    log.info(`resetCallerBuddyBrowserState: cleared ${keys.length} cache(s)`);
+  }
+
+  try {
+    await Promise.race([
+      deleteCallerBuddyIdb(),
+      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+    ]);
+    log.info("resetCallerBuddyBrowserState: IndexedDB delete requested");
+  } catch (err) {
+    log.warn("resetCallerBuddyBrowserState: IndexedDB delete failed:", err);
+  }
+
+  try {
+    localStorage.clear();
+    sessionStorage.clear();
+  } catch (err) {
+    log.warn("resetCallerBuddyBrowserState: storage clear failed:", err);
+  }
+
+  log.info("resetCallerBuddyBrowserState: reloading…");
+  location.reload();
 }
 
 // ---------------------------------------------------------------------------
