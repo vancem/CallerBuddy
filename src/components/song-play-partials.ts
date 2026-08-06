@@ -190,7 +190,10 @@ export function renderSlider(ctx: SliderCtx): TemplateResult {
   const segmentWidth = `${100 / SEGMENT_LABELS.length}%`;
 
   return html`
-    <div class="slider-container">
+    <div
+      class="slider-container"
+      style="--cb-segment-count: ${SEGMENT_LABELS.length}"
+    >
       <div class="slider-track">
         <div class="segments">
           ${SEGMENT_LABELS.map(

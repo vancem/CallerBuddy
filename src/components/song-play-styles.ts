@@ -481,6 +481,9 @@ export const songPlayStyles = css`
 
     .slider-container {
       --cb-slider-h: 1.75rem;
+      /* Nearest size container for segment-label cqw (host is also a container). */
+      container-type: size;
+      container-name: cb-slider;
       position: relative;
       height: var(--cb-slider-h);
     }
@@ -530,7 +533,12 @@ export const songPlayStyles = css`
       justify-content: center;
       overflow: hidden;
       white-space: nowrap;
-      font-size: calc(var(--cb-slider-h) * 0.75);
+      /* Height-fit vs width-fit: portrait segments are narrow, so cqw caps size
+       * (~0.22 × segment width ≈ "Figure N" at weight 600). */
+      font-size: min(
+        calc(var(--cb-slider-h) * 0.75),
+        calc(100cqw / var(--cb-segment-count, 7) * 0.22)
+      );
       font-weight: 600;
       line-height: 1;
       color: var(--cb-segment-label);
