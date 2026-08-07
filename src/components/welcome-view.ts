@@ -1,12 +1,16 @@
 /**
  * Welcome / initialization screen.
  *
- * Shown on first launch or when the user wants to change the CallerBuddy folder.
- * New users get an in-app "Instructions to Create CallerBuddySongs" popup
- * (screenshots + steps) that walks them through the OS folder picker, since
- * the File System Access API can't create a subfolder of Documents directly
- * (Chrome blocks Documents/Downloads/Desktop as the picker's own target).
- * Returning users open their existing folder directly.
+ * Shown on first launch or when the stored CallerBuddyRoot handle needs a
+ * fresh permission gesture. New users get an in-app "Instructions to Create
+ * CallerBuddySongs" popup (screenshots + steps) that walks them through the
+ * OS folder picker, since the File System Access API can't create a subfolder
+ * of Documents directly (Chrome blocks Documents/Downloads/Desktop as the
+ * picker's own target). Returning users open their existing folder directly.
+ *
+ * If a stored handle exists but permission is not yet granted, the page
+ * offers "Reconnect to this folder" or "Reset CallerBuddy" (same reset as
+ * the hamburger menu) instead of the full Features / New / Returning copy.
  *
  * When a folder is chosen, CallerBuddy scans it for songs and opens the
  * playlist editor tab.
@@ -19,7 +23,10 @@ import type { PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { TabType } from "../services/app-state.js";
-import { DIR_PICKER_ROOT_ID } from "../services/file-system-service.js";
+import {
+  DIR_PICKER_ROOT_ID,
+  resetCallerBuddyBrowserState,
+} from "../services/file-system-service.js";
 import { APP_VERSION } from "../version.js";
 import { log } from "../services/logger.js";
 
@@ -72,7 +79,7 @@ export class WelcomeView extends LitElement {
    * Focus whichever button is the primary action for the current state, so
    * pressing Enter activates it: the instructions popup's "Open
    * CallerBuddySongs" button when it's open, "Reconnect to this folder" when
-   * a folder handle is already known, otherwise the Returning Users "Open
+   * a stored handle needs a gesture, otherwise the Returning Users "Open
    * CallerBuddySongs" button.
    */
   private tryFocusPrimaryAction() {
@@ -90,6 +97,11 @@ export class WelcomeView extends LitElement {
     });
   }
 
+  /** True when init found a stored root handle that still needs a user gesture. */
+  private get needsReconnect(): boolean {
+    return !!this.folderName;
+  }
+
   render() {
     return html`
       <div class="welcome">
@@ -101,108 +113,9 @@ export class WelcomeView extends LitElement {
           </p>
         </header>
 
-        <p class="features-label">Features include</p>
-        <ul class="features">
-          <li>
-            It is absolutely FREE, it even comes with a FREE demo patter and
-            singing call.
-          </li>
-          <li>
-            Setup is trivial, you are literally running CallerBuddy in the
-            browser right now!
-          </li>
-          <li>
-            Works on Windows, MacOS, Chromebooks, Android phones (sorry no
-            IPhone).
-          </li>
-          <li>
-            Works offline so you can play music without network access.
-          </li>
-          <li>
-            Music can be in the cloud, safe and available anywhere, but
-            available offline.
-          </li>
-          <li>
-            Tracks what music you have used recently, so you don’t repeat
-            yourself.
-          </li>
-          <li>
-            Adding songs is trivial (point it at the ZIP you bought, 90% of the
-            work is done).
-          </li>
-        </ul>
-
-        <section class="section">
-          <h2>New Users</h2>
-          <p>
-            If you are new to CallerBuddy, the best way to learn more is to
-            just try it out. You don't even need to install anything; you
-            just need an empty CallerBuddySongs folder. Just click on
-            <button
-              type="button"
-              class="secondary inline-btn"
-              @click=${this.openInstructions}
-            >
-              Instructions to Create CallerBuddySongs
-            </button>
-            to get started.
-          </p>
-        </section>
-
-        <section class="section">
-          <h2>Returning Users</h2>
-          ${this.folderName
-            ? html`
-                <p class="chosen">
-                  Current folder: <strong>${this.folderName}</strong>
-                </p>
-                <div class="actions">
-                  <button
-                    type="button"
-                    class="primary welcome-reconnect"
-                    @click=${this.reconnect}
-                    ?disabled=${this.loading}
-                  >
-                    ${this.loading ? "Loading…" : "Reconnect to this folder"}
-                  </button>
-                  <button
-                    type="button"
-                    class="secondary"
-                    @click=${this.pickFolder}
-                    ?disabled=${this.loading}
-                  >
-                    Choose a different folder
-                  </button>
-                </div>
-              `
-            : html`
-                <p>
-                  If you have a CallerBuddySongs folder, all you need to do is
-                  <button
-                    type="button"
-                    class="primary inline-btn welcome-open"
-                    @click=${this.pickFolder}
-                    ?disabled=${this.loading}
-                  >
-                    ${this.loading ? "Loading…" : "Open CallerBuddySongs"}
-                  </button>
-                </p>
-              `}
-        </section>
-
-        <section class="section">
-          <h2>Learning More</h2>
-          <p>
-            If you just want to learn more before taking the plunge,
-            <button
-              type="button"
-              class="text-link"
-              @click=${() => this.openHelp("tutorial")}
-            >
-              View CallerBuddy Help
-            </button>.
-          </p>
-        </section>
+        ${this.needsReconnect
+          ? this.renderReconnect()
+          : this.renderFirstLaunch()}
 
         ${this.pickerError
           ? html`<p class="error" role="alert">${this.pickerError}</p>`
@@ -211,82 +124,199 @@ export class WelcomeView extends LitElement {
         <p class="version" aria-label="App version">v${APP_VERSION}</p>
       </div>
 
-      ${this.showInstructions
-        ? html`
-            <div
-              class="prompt-overlay"
-              @click=${this.closeInstructions}
-            ></div>
-            <div
-              class="prompt-modal instructions-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="instructions-title"
-            >
-              <button
-                type="button"
-                class="modal-close"
-                aria-label="Close"
-                @click=${this.closeInstructions}
-              >
-                &times;
-              </button>
-              <h2 id="instructions-title" class="prompt-title">
-                Create a CallerBuddySongs Folder
-              </h2>
-              <p class="prompt-body">
-                To set up CallerBuddy for the first time, you need a new
-                empty folder where CallerBuddy can put songs. CallerBuddy
-                wants to do this in a way where you don't have to trust
-                CallerBuddy at all (only the browser), so CallerBuddy asks
-                the browser to open this folder, and that brings upt the
-                following dialog.
-              </p>
-              <img
-                class="instructions-img instructions-img-folder"
-                src=${assetUrl("CreateCallerBuddySongsFolder.png")}
-                alt="Browser folder picker: click New folder, type the name CallerBuddySongs, then click Select Folder"
-              />
-              <p class="prompt-body">
-                You can use the “New Folder” button in this dialog to create
-                a new folder, type the name
-                <strong>CallerBuddySongs</strong>, and then click
-                <strong>Select Folder</strong> to select this newly created
-                folder.
-              </p>
-              <p class="prompt-body">
-                Once you have done this, the browser will ask you if you
-                allow this site (that is CallerBuddy) to be able to modify
-                anything in the CallerBuddySongs folder you created. You
-                should click <strong>Allow</strong> and this will allow
-                CallerBuddy to access this folder to do its work.
-                CallerBuddy can ONLY access files in this folder, so running
-                CallerBuddy is quite safe.
-              </p>
-              <img
-                class="instructions-img instructions-img-confirm"
-                src=${assetUrl("CreateCallerBuddySongsFolderConfirmation.png")}
-                alt="Browser permission dialog: Allow this site to edit files in CallerBuddySongs"
-              />
-              <p class="prompt-body">
-                Once CallerBuddy has access to the CallerBuddySongs folder it
-                will ask you if you want some demo songs (say yes). At that
-                point you are ready to play with CallerBuddy.
-              </p>
-              <p class="prompt-body prompt-cta">
-                To get started type &lt;enter&gt; or click
-                <button
-                  type="button"
-                  class="primary inline-btn instructions-open"
-                  @click=${this.pickFolder}
-                  ?disabled=${this.loading}
-                >
-                  ${this.loading ? "Loading…" : "Open CallerBuddySongs"}
-                </button>
-              </p>
-            </div>
-          `
-        : ""}
+      ${this.showInstructions ? this.renderInstructions() : ""}
+    `;
+  }
+
+  /**
+   * Stored CallerBuddyRoot exists but permission needs a click: skip the
+   * marketing / New+Returning Users copy and offer reconnect or full reset.
+   */
+  private renderReconnect() {
+    return html`
+      <section class="section">
+        <h2>Detected an Existing CallerBuddySongs folder</h2>
+        <p class="chosen">
+          Current folder: <strong>${this.folderName}</strong>
+        </p>
+        <div class="actions">
+          <button
+            type="button"
+            class="primary welcome-reconnect"
+            @click=${this.reconnect}
+            ?disabled=${this.loading}
+          >
+            ${this.loading ? "Loading…" : "Reconnect to this folder"}
+          </button>
+          <button
+            type="button"
+            class="secondary"
+            title="Keeps song data. Clears settings and resets to first launch state"
+            @click=${this.resetCallerBuddy}
+            ?disabled=${this.loading}
+          >
+            Reset CallerBuddy
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  private renderFirstLaunch() {
+    return html`
+      <p class="features-label">Features include</p>
+      <ul class="features">
+        <li>
+          It is absolutely FREE, it even comes with a FREE demo patter and
+          singing call.
+        </li>
+        <li>
+          Setup is trivial, you are literally running CallerBuddy in the
+          browser right now!
+        </li>
+        <li>
+          Works on Windows, MacOS, Chromebooks, Android phones (sorry no
+          IPhone).
+        </li>
+        <li>
+          Works offline so you can play music without network access.
+        </li>
+        <li>
+          Music can be in the cloud, safe and available anywhere, but
+          available offline.
+        </li>
+        <li>
+          Tracks what music you have used recently, so you don’t repeat
+          yourself.
+        </li>
+        <li>
+          Adding songs is trivial (point it at the ZIP you bought, 90% of the
+          work is done).
+        </li>
+      </ul>
+
+      <section class="section">
+        <h2>New Users</h2>
+        <p>
+          If you are new to CallerBuddy, the best way to learn more is to
+          just try it out. You don't even need to install anything; you
+          just need an empty CallerBuddySongs folder. Just click on
+          <button
+            type="button"
+            class="secondary inline-btn"
+            @click=${this.openInstructions}
+          >
+            Instructions to Create CallerBuddySongs
+          </button>
+          to get started.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Returning Users</h2>
+        <p>
+          If you have a CallerBuddySongs folder, all you need to do is
+          <button
+            type="button"
+            class="primary inline-btn welcome-open"
+            @click=${this.pickFolder}
+            ?disabled=${this.loading}
+          >
+            ${this.loading ? "Loading…" : "Open CallerBuddySongs"}
+          </button>
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Learning More</h2>
+        <p>
+          If you just want to learn more before taking the plunge,
+          <button
+            type="button"
+            class="text-link"
+            @click=${() => this.openHelp("tutorial")}
+          >
+            View CallerBuddy Help
+          </button>.
+        </p>
+      </section>
+    `;
+  }
+
+  private renderInstructions() {
+    return html`
+      <div
+        class="prompt-overlay"
+        @click=${this.closeInstructions}
+      ></div>
+      <div
+        class="prompt-modal instructions-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="instructions-title"
+      >
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Close"
+          @click=${this.closeInstructions}
+        >
+          &times;
+        </button>
+        <h2 id="instructions-title" class="prompt-title">
+          Create a CallerBuddySongs Folder
+        </h2>
+        <p class="prompt-body">
+          To set up CallerBuddy for the first time, you need a new
+          empty folder where CallerBuddy can put songs. CallerBuddy
+          wants to do this in a way where you don't have to trust
+          CallerBuddy at all (only the browser), so CallerBuddy asks
+          the browser to open this folder, and that brings upt the
+          following dialog.
+        </p>
+        <img
+          class="instructions-img instructions-img-folder"
+          src=${assetUrl("CreateCallerBuddySongsFolder.png")}
+          alt="Browser folder picker: click New folder, type the name CallerBuddySongs, then click Select Folder"
+        />
+        <p class="prompt-body">
+          You can use the “New Folder” button in this dialog to create
+          a new folder, type the name
+          <strong>CallerBuddySongs</strong>, and then click
+          <strong>Select Folder</strong> to select this newly created
+          folder.
+        </p>
+        <p class="prompt-body">
+          Once you have done this, the browser will ask you if you
+          allow this site (that is CallerBuddy) to be able to modify
+          anything in the CallerBuddySongs folder you created. You
+          should click <strong>Allow</strong> and this will allow
+          CallerBuddy to access this folder to do its work.
+          CallerBuddy can ONLY access files in this folder, so running
+          CallerBuddy is quite safe.
+        </p>
+        <img
+          class="instructions-img instructions-img-confirm"
+          src=${assetUrl("CreateCallerBuddySongsFolderConfirmation.png")}
+          alt="Browser permission dialog: Allow this site to edit files in CallerBuddySongs"
+        />
+        <p class="prompt-body">
+          Once CallerBuddy has access to the CallerBuddySongs folder it
+          will ask you if you want some demo songs (say yes). At that
+          point you are ready to play with CallerBuddy.
+        </p>
+        <p class="prompt-body prompt-cta">
+          To get started type &lt;enter&gt; or click
+          <button
+            type="button"
+            class="primary inline-btn instructions-open"
+            @click=${this.pickFolder}
+            ?disabled=${this.loading}
+          >
+            ${this.loading ? "Loading…" : "Open CallerBuddySongs"}
+          </button>
+        </p>
+      </div>
     `;
   }
 
@@ -312,6 +342,21 @@ export class WelcomeView extends LitElement {
       this.pickerError =
         err instanceof Error ? err.message : "Could not reconnect.";
     } finally {
+      this.loading = false;
+    }
+  }
+
+  /** Same path as the hamburger-menu "Reset CallerBuddy" action. */
+  private async resetCallerBuddy() {
+    log.info(`[ui] welcome: Reset CallerBuddy`);
+    this.pickerError = "";
+    try {
+      this.loading = true;
+      await resetCallerBuddyBrowserState(callerBuddy.state.rootHandle);
+    } catch (err) {
+      log.warn("Reset CallerBuddy failed:", err);
+      this.pickerError =
+        "Could not reset CallerBuddy. Try clearing site data in the browser.";
       this.loading = false;
     }
   }
