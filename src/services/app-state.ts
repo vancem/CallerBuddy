@@ -101,6 +101,13 @@ export class AppState extends EventTarget {
   demoOfferPending = false;
 
   /**
+   * Set right after demo songs are installed into the CallerBuddyRoot. The
+   * root folder's PlaylistEditor claims this (sets it back to false) and
+   * shows a one-time "getting started" hint the next time it renders.
+   */
+  playlistGettingStartedHintPending = false;
+
+  /**
    * Wall-clock ms when the last qualifying song play ended, or null if none yet.
    * Session-only (not persisted across reloads); survives Now Playing tab close/reopen.
    */
@@ -133,6 +140,12 @@ export class AppState extends EventTarget {
   setDemoOfferPending(pending: boolean): void {
     if (this.demoOfferPending === pending) return;
     this.demoOfferPending = pending;
+    this.emit(StateEvents.CHANGED);
+  }
+
+  setPlaylistGettingStartedHintPending(pending: boolean): void {
+    if (this.playlistGettingStartedHintPending === pending) return;
+    this.playlistGettingStartedHintPending = pending;
     this.emit(StateEvents.CHANGED);
   }
 

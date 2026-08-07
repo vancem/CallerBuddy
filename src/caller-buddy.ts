@@ -249,6 +249,7 @@ export class CallerBuddy {
       await installDemoSongs(handle);
       await loadAndMergeSongs(handle);
       this.state.setDemoOfferPending(false);
+      this.state.setPlaylistGettingStartedHintPending(true);
       // Full folder reload (scan + JSON), same path as other disk mutations.
       this.state.emit(StateEvents.SONG_UPDATED);
       log.info("acceptDemoOffer: complete");

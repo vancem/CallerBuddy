@@ -138,12 +138,79 @@ Swing and promenade\\
   (window as any).showDirectoryPicker = () => Promise.resolve(mockHandle);
 }
 
+/**
+ * Mocks an *empty* CallerBuddyRoot (no files/subfolders), which triggers the
+ * "Add demo songs?" offer after the folder is chosen.
+ */
+function setupEmptyMockFileSystem() {
+  const files = new Map<string, ArrayBuffer | string>();
+
+  function createMockFileHandle(
+    filename: string,
+    fileMap: Map<string, ArrayBuffer | string>,
+  ) {
+    return {
+      name: filename,
+      kind: "file" as const,
+      async getFile() {
+        return new File([fileMap.get(filename) ?? ""], filename);
+      },
+      async createWritable() {
+        let data = "";
+        return {
+          async write(chunk: string) {
+            data += chunk;
+          },
+          async close() {
+            fileMap.set(filename, data);
+          },
+        };
+      },
+    };
+  }
+
+  const mockHandle = {
+    name: "EmptyFolder",
+    kind: "directory" as const,
+    async queryPermission() {
+      return "granted";
+    },
+    async requestPermission() {
+      return "granted";
+    },
+    async isSameEntry(other: { name: string }) {
+      return other.name === "EmptyFolder";
+    },
+    async *values() {
+      for (const [name] of files) {
+        yield { name, kind: "file" as const };
+      }
+    },
+    async getFileHandle(filename: string, options?: { create?: boolean }) {
+      if (files.has(filename) || options?.create) {
+        return createMockFileHandle(filename, files);
+      }
+      throw new DOMException(`File not found: ${filename}`, "NotFoundError");
+    },
+    async getDirectoryHandle() {
+      throw new DOMException("Not found", "NotFoundError");
+    },
+  };
+
+  (window as any).showDirectoryPicker = () => Promise.resolve(mockHandle);
+}
+
 // ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------
 
 async function setupPage(page: Page) {
   await page.addInitScript(setupMockFileSystem);
+  await page.goto("/");
+}
+
+async function setupEmptyFolderPage(page: Page) {
+  await page.addInitScript(setupEmptyMockFileSystem);
   await page.goto("/");
 }
 
@@ -235,6 +302,30 @@ test.describe("CallerBuddy basic flow", () => {
 
     await page.keyboard.press("Enter");
     await expect(page.locator("playlist-editor")).toBeVisible();
+  });
+
+  test("Add demo songs button keeps focus (not stolen by song table) so Enter clicks it", async ({
+    page,
+  }) => {
+    await setupEmptyFolderPage(page);
+
+    await page
+      .locator("welcome-view")
+      .getByRole("button", { name: "Open CallerBuddySongs" })
+      .click();
+
+    const modal = page.locator("app-shell").locator(".demo-offer-modal");
+    await expect(modal).toBeVisible();
+
+    const primaryBtn = modal.locator("button.fs-startup-primary");
+    // Regression check: loading the (empty) folder used to move focus to the
+    // song table after this button was focused, so Enter did nothing.
+    await expect(primaryBtn).toBeFocused();
+
+    await page.keyboard.press("Enter");
+    // Clicking "Add demo songs" flips the label to "Downloading…" even if the
+    // subsequent fetch later fails (no network in this test).
+    await expect(primaryBtn).toHaveText(/Downloading/);
   });
 
   test("new-user instructions popup opens folder via same Open CallerBuddySongs path", async ({

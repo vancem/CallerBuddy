@@ -107,6 +107,9 @@ export class PlaylistEditor extends LitElement {
   @state() private renameConflictName: string | null = null;
   @state() private renameInProgress = false;
 
+  /** One-time hint shown the first time this (root) editor renders after demo songs were added. */
+  @state() private showGettingStartedHint = false;
+
   @state() private editingCell: EditingCell | null = null;
   /** After Escape, skip one blur so we do not persist cancelled edits. */
   private skipNextBlurCommit = false;
@@ -186,6 +189,7 @@ export class PlaylistEditor extends LitElement {
     callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onAppStateChanged);
     this.lastSeenActiveTabId = callerBuddy.state.activeTabId;
     document.addEventListener("keydown", this._boundKeydown);
+    this.maybeClaimGettingStartedHint();
   }
 
   disconnectedCallback() {
@@ -215,9 +219,35 @@ export class PlaylistEditor extends LitElement {
     this.lastSeenActiveTabId = activeTabId;
     if (becameThisTab && !this.loading) {
       this.pendingSongTableFocus = true;
+    }
+    // Re-check on every state change (not just becameThisTab) so a pending
+    // table focus that was deferred by hasBlockingOverlay() (e.g. the "Add
+    // demo songs?" prompt) gets retried once that overlay clears.
+    if (this.pendingSongTableFocus) {
       this.requestUpdate();
     }
+
+    this.maybeClaimGettingStartedHint();
   };
+
+  /**
+   * Only the CallerBuddyRoot editor (not closable) claims this hint — demo
+   * songs are always installed into the root. Clearing the shared flag
+   * immediately means only the first editor instance to observe it will show
+   * it. Checked both on connect (in case it was set while unmounted) and on
+   * every app-state change (the common case: this editor is already the
+   * active, mounted tab when demo songs finish installing).
+   */
+  private maybeClaimGettingStartedHint() {
+    if (callerBuddy.state.playlistGettingStartedHintPending && !this.editorClosable) {
+      callerBuddy.state.setPlaylistGettingStartedHintPending(false);
+      this.showGettingStartedHint = true;
+    }
+  }
+
+  private dismissGettingStartedHint() {
+    this.showGettingStartedHint = false;
+  }
 
   /**
    * Stacked playlist-on-top layout. Prefer host box — viewport aspect MQs lie on WebAPK.
@@ -230,6 +260,14 @@ export class PlaylistEditor extends LitElement {
 
   private onKeydown(e: KeyboardEvent) {
     if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
+
+    if (this.showGettingStartedHint) {
+      if (e.key === "Enter" || e.key === "Escape") {
+        e.preventDefault();
+        this.dismissGettingStartedHint();
+      }
+      return;
+    }
 
     if (e.key === "Escape" && this.renameSongTarget) {
       e.preventDefault();
@@ -352,8 +390,20 @@ export class PlaylistEditor extends LitElement {
     el?.select();
   }
 
+  /** True while some dialog/overlay (in this editor or app-shell) should keep keyboard focus. */
+  private hasBlockingOverlay(): boolean {
+    return (
+      callerBuddy.state.demoOfferPending ||
+      this.showGettingStartedHint ||
+      Boolean(this.renameSongTarget) ||
+      Boolean(this.deleteConfirmSong) ||
+      Boolean(this.contextTarget)
+    );
+  }
+
   private focusSongTable() {
     if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
+    if (this.hasBlockingOverlay()) return;
     const table = this.renderRoot.querySelector(
       "table.song-table",
     ) as HTMLTableElement | null;
@@ -485,13 +535,26 @@ export class PlaylistEditor extends LitElement {
       }
     }
 
-    if (this.pendingSongTableFocus && !this.loading) {
+    // Don't consume the pending focus while some other dialog/overlay wants
+    // keyboard focus (e.g. the app-level "Add demo songs?" prompt, shown right
+    // after this tab becomes active for a freshly-chosen empty folder). Leave
+    // the flag set so it's retried once that overlay closes.
+    if (this.pendingSongTableFocus && !this.loading && !this.hasBlockingOverlay()) {
       this.pendingSongTableFocus = false;
       queueMicrotask(() => this.focusSongTable());
     }
 
     if (changed.has("keyboardShortcutSongKey") && this.keyboardShortcutSongKey) {
       queueMicrotask(() => this.scrollSelectedSongRowIntoView());
+    }
+
+    if (changed.has("showGettingStartedHint") && this.showGettingStartedHint) {
+      queueMicrotask(() => {
+        const btn = this.renderRoot.querySelector(
+          ".getting-started-primary",
+        ) as HTMLButtonElement | null;
+        btn?.focus();
+      });
     }
   }
 
@@ -949,6 +1012,7 @@ export class PlaylistEditor extends LitElement {
         ${this.renderContextMenu()}
         ${this.renderDeleteConfirm()}
         ${this.renderRenameDialog()}
+        ${this.renderGettingStartedHint()}
       </div>
     `;
   }
@@ -1156,6 +1220,42 @@ export class PlaylistEditor extends LitElement {
     } finally {
       this.renameInProgress = false;
     }
+  }
+
+  private renderGettingStartedHint() {
+    if (!this.showGettingStartedHint) return nothing;
+
+    return html`
+      <div
+        class="getting-started-overlay"
+        @click=${() => this.dismissGettingStartedHint()}
+      >
+        <div
+          class="getting-started-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="getting-started-title"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <h2 id="getting-started-title" class="getting-started-title">
+            Getting started
+          </h2>
+          <p class="getting-started-body">
+            To get started, click the <strong>+</strong> on songs to add them
+            to the playlist and click the <strong>Play</strong> to play them.
+          </p>
+          <div class="getting-started-actions">
+            <button
+              type="button"
+              class="getting-started-primary"
+              @click=${() => this.dismissGettingStartedHint()}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   private renderRenameDialog() {
@@ -2479,6 +2579,64 @@ export class PlaylistEditor extends LitElement {
       background: transparent;
       color: var(--cb-fg);
       border: 1px solid var(--cb-btn-border);
+    }
+
+    /* -- Getting started hint (shown once, after demo songs are added) ----- */
+
+    .getting-started-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 2100;
+    }
+
+    .getting-started-modal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(92vw, 24rem);
+      box-sizing: border-box;
+      padding: 1.25rem 1.35rem;
+      background: var(--cb-bg);
+      color: var(--cb-fg);
+      border: 1px solid var(--cb-border);
+      border-radius: 10px;
+      box-shadow: 0 12px 40px var(--cb-shadow);
+      z-index: 2101;
+    }
+
+    .getting-started-title {
+      margin: 0 0 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .getting-started-body {
+      margin: 0 0 1.1rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .getting-started-actions {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .getting-started-primary {
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 0.65em 1em;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
+    }
+
+    .getting-started-primary:hover {
+      background: var(--cb-accent-hover, var(--cb-accent));
     }
 
     /* -- Shared button styles ---------------------------------------------- */
