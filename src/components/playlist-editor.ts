@@ -1250,7 +1250,15 @@ export class PlaylistEditor extends LitElement {
           <p class="getting-started-body">
             To get started, click the <strong>+</strong> on songs to add them
             to the playlist and click the <strong>Play</strong> button (or &lt;Enter&gt;) to play
-            the playlist you created.
+            the playlist you created.  
+          </p>
+          <p> 
+            Clicking the ▶ button will play the song immediately.  
+          </p>
+          <p>
+            Click the
+            <span class="getting-started-help-glyph" aria-hidden="true">?</span>
+            button for help for this view.
           </p>
           <div class="getting-started-actions">
             <button
@@ -2661,6 +2669,22 @@ export class PlaylistEditor extends LitElement {
       margin: 0 0 1.1rem;
       font-size: 0.95rem;
       line-height: 1.5;
+    }
+
+    .getting-started-help-glyph {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 0.95rem;
+      height: 0.95rem;
+      margin: 0 0.15em;
+      vertical-align: 0.1em;
+      font-size: 0.6rem;
+      font-weight: 700;
+      line-height: 1;
+      border-radius: 50%;
+      border: 1px solid var(--cb-accent);
+      color: var(--cb-accent);
     }
 
     .getting-started-actions {
