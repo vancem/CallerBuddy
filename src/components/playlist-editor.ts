@@ -1242,7 +1242,7 @@ export class PlaylistEditor extends LitElement {
           </h2>
           <p class="getting-started-body">
             To get started, click the <strong>+</strong> on songs to add them
-            to the playlist and click the <strong>Play</strong> to play them.
+            to the playlist and click the <strong>Play</strong> button to play them.
           </p>
           <div class="getting-started-actions">
             <button

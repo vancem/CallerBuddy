@@ -284,17 +284,15 @@ export class WelcomeView extends LitElement {
           You can use the “New Folder” button in this dialog to create
           a new folder, type the name
           <strong>CallerBuddySongs</strong>, and then click
-          <strong>Select Folder</strong> to select this newly created
+          <strong>Select Folder</strong> (not &lt;enter&gt;) to select this newly created
           folder.
         </p>
         <p class="prompt-body">
           Once you have done this, the browser will ask you if you
-          allow this site (that is CallerBuddy) to be able to modify
+          allow this site (CallerBuddy) to be able to modify
           anything in the CallerBuddySongs folder you created. You
-          should click <strong>Allow</strong> and this will allow
-          CallerBuddy to access this folder to do its work.
-          CallerBuddy can ONLY access files in this folder, so running
-          CallerBuddy is quite safe.
+          should click <strong>Allow</strong> (not &lt;enter&gt;) and this 
+          will give CallerBuddy access to this folder to do its work.
         </p>
         <img
           class="instructions-img instructions-img-confirm"
@@ -550,6 +548,24 @@ export class WelcomeView extends LitElement {
 
     .inline-btn {
       margin: 0 0.15em;
+    }
+
+    /*
+     * Buttons embedded inline within wrapping paragraph text (as opposed to
+     * the standalone .actions row buttons) must fit within the surrounding
+     * text's line-height, or the wrapped line that holds the button grows
+     * taller than the paragraph's other lines. line-height:1 makes the
+     * button's own text box exactly its font-size, so the remaining budget
+     * (line-height 1.45 minus font-size minus the 1px top/bottom border)
+     * can go entirely to vertical padding while still matching the
+     * paragraph's line spacing exactly.
+     */
+    .primary.inline-btn,
+    .secondary.inline-btn {
+      padding-block: 0.15em;
+      /* 60% of the base .primary/.secondary horizontal padding (0.85em). */
+      padding-inline: 0.51em;
+      line-height: 1;
     }
 
     .secondary {
