@@ -741,6 +741,7 @@ export class SongPlay extends LitElement {
               isPatter(song)
                 ? this.duration > 0 && this.loopEnd > this.loopStart
                 : this.loopEnd > 0,
+            showSegmentLabels: !isPatter(song),
             onSliderInput: (e) => this.onSliderInput(e),
             onLoopMarkerPointerDown: (which, e) =>
               this.onLoopMarkerPointerDown(which, e),

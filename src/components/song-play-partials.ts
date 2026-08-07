@@ -162,6 +162,7 @@ export type SliderCtx = {
   loopStart: number;
   loopEnd: number;
   loopActive: boolean;
+  showSegmentLabels: boolean;
   onSliderInput: (e: Event) => void;
   onLoopMarkerPointerDown: (which: "start" | "end", e: PointerEvent) => void;
   onLoopMarkerPointerMove: (e: PointerEvent) => void;
@@ -206,15 +207,19 @@ export function renderSlider(ctx: SliderCtx): TemplateResult {
           )}
         </div>
         <div class="progress" style="width: ${pct}%"></div>
-        <div class="segment-labels" aria-hidden="true">
-          ${SEGMENT_LABELS.map(
-            (label) => html`
-              <span class="segment-label" style="width: ${segmentWidth}"
-                >${label}</span
-              >
-            `,
-          )}
-        </div>
+        ${ctx.showSegmentLabels
+          ? html`
+              <div class="segment-labels" aria-hidden="true">
+                ${SEGMENT_LABELS.map(
+                  (label) => html`
+                    <span class="segment-label" style="width: ${segmentWidth}"
+                      >${label}</span
+                    >
+                  `,
+                )}
+              </div>
+            `
+          : nothing}
       </div>
 
       ${ctx.loopActive
