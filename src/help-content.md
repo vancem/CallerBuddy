@@ -4,6 +4,15 @@
 
 CallerBuddy is a web-based program that Square Dance Callers can use to play music during performances.   Its main features are 
 
+<div id="security"></div>
+
+## CallerBuddy Security
+
+This section is a placeholder for CallerBuddy’s security notes. Fill in details
+about folder permissions, what the app can and cannot access, offline use, and
+how your music stays on your device (or in your cloud drive). Dummy text for
+now — replace with the real security copy.
+
 ## Where you can use CallerBuddy
 
  1. Can run in your browser or as a desktop lauched application.   The app
@@ -31,6 +40,8 @@ CallerBuddy is a web-based program that Square Dance Callers can use to play mus
  3. 
 
 
+<div id="first-dance"></div>
+
 This walkthrough takes you from a fresh install all the way through
 calling a complete square dance. By the end you will have picked a
 folder, added songs, built a playlist, and played through it with
@@ -46,10 +57,15 @@ folder or one inside a cloud drive like OneDrive or Google Drive, so
 your collection stays synced across devices.
 
 1. Open CallerBuddy. The **Welcome screen** appears.
-2. Click **Choose CallerBuddy folder**.
-3. Pick the folder that contains your MP3 music files. If you
-   are starting fresh, create a new empty folder
-   and you can import songs later.
+2. New users: click **Instructions to Create CallerBuddySongs**
+   for a step-by-step walkthrough (with screenshots) of creating
+   an empty **CallerBuddySongs** folder using the browser's folder
+   picker, then click **Open CallerBuddySongs** from inside those
+   instructions. Returning users: click **Open CallerBuddySongs**
+   directly and pick your existing folder.
+3. If the folder is empty, CallerBuddy offers optional free demo
+   songs so you can try the app immediately. You can also import
+   your own music later.
 4. CallerBuddy scans the folder and opens the
    **Playlist Editor**.
 

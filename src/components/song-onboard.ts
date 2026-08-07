@@ -834,7 +834,7 @@ export class SongOnboard extends LitElement {
       padding: 6px 12px;
       font: inherit;
       cursor: pointer;
-      border: 1px solid var(--cb-border, #666);
+      border: 1px solid var(--cb-btn-border, #666);
       border-radius: 4px;
       background: var(--cb-input-bg, #2a2a2a);
       color: var(--cb-fg, #eee);
@@ -861,7 +861,7 @@ export class SongOnboard extends LitElement {
       font-size: 0.7rem;
       font-weight: 700;
       border-radius: 50%;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       background: var(--cb-input-bg);
       color: var(--cb-fg-secondary);
       cursor: pointer;
@@ -954,7 +954,7 @@ export class SongOnboard extends LitElement {
 
     .cancel-btn {
       background: none;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       color: var(--cb-fg);
       padding: 8px 18px;
       border-radius: 4px;

@@ -808,7 +808,7 @@ export class PlaylistPlay extends LitElement {
 
     .play-actions button:not(.primary) {
       border-radius: 6px;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       background: var(--cb-input-bg);
       color: var(--cb-fg);
       cursor: pointer;
@@ -898,7 +898,7 @@ export class PlaylistPlay extends LitElement {
       font-size: 0.8rem;
       padding: 4px 10px;
       border-radius: 4px;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       background: var(--cb-input-bg);
       color: var(--cb-fg);
       cursor: pointer;

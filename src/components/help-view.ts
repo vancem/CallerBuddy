@@ -23,7 +23,9 @@ interface TocEntry {
 }
 
 const TOC: TocEntry[] = [
-  { id: "tutorial", title: "Your First Dance" },
+  { id: "tutorial", title: "Welcome to CallerBuddy" },
+  { id: "security", title: "CallerBuddy Security" },
+  { id: "first-dance", title: "Your First Dance" },
   { id: "tut-setup", title: "Setting up your folder", indent: true },
   { id: "tut-playlist", title: "Building a playlist", indent: true },
   { id: "tut-playing", title: "Playing the dance", indent: true },

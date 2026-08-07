@@ -152,7 +152,7 @@ async function goToEditor(page: Page) {
   await setupPage(page);
   await page
     .locator("welcome-view")
-    .locator("button.primary")
+    .getByRole("button", { name: "Open CallerBuddySongs" })
     .click();
   await expect(page.locator("playlist-editor")).toBeVisible();
 }
@@ -175,9 +175,84 @@ test.describe("CallerBuddy basic flow", () => {
     await setupPage(page);
 
     await expect(page.locator("welcome-view")).toBeVisible();
-    const btn = page.locator("welcome-view").locator("button.primary");
-    await expect(btn).toBeVisible();
-    await expect(btn).toContainText("Choose CallerBuddy folder");
+    await expect(
+      page
+        .locator("welcome-view")
+        .getByRole("button", { name: "Instructions to Create CallerBuddySongs" }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator("welcome-view")
+        .getByRole("button", { name: "Open CallerBuddySongs" }),
+    ).toBeVisible();
+  });
+
+  test("Open CallerBuddySongs is focused on load so Enter activates it", async ({
+    page,
+  }) => {
+    await setupPage(page);
+
+    const openBtn = page
+      .locator("welcome-view")
+      .locator("button.welcome-open");
+    await expect(openBtn).toBeFocused();
+
+    await page.keyboard.press("Enter");
+    await expect(page.locator("playlist-editor")).toBeVisible();
+  });
+
+  test("Instructions button is styled as a secondary (non-blue) button", async ({
+    page,
+  }) => {
+    await setupPage(page);
+
+    const instructionsBtn = page
+      .locator("welcome-view")
+      .getByRole("button", { name: "Instructions to Create CallerBuddySongs" });
+    await expect(instructionsBtn).toHaveClass(/secondary/);
+
+    const openBtn = page
+      .locator("welcome-view")
+      .locator("button.welcome-open");
+    await expect(openBtn).toHaveClass(/primary/);
+  });
+
+  test("Enter activates the focused Open CallerBuddySongs button inside the instructions popup", async ({
+    page,
+  }) => {
+    await setupPage(page);
+
+    await page
+      .locator("welcome-view")
+      .getByRole("button", { name: "Instructions to Create CallerBuddySongs" })
+      .click();
+
+    const modal = page.locator("welcome-view").locator(".instructions-modal");
+    await expect(modal).toBeVisible();
+
+    const modalOpenBtn = modal.locator("button.instructions-open");
+    await expect(modalOpenBtn).toBeFocused();
+
+    await page.keyboard.press("Enter");
+    await expect(page.locator("playlist-editor")).toBeVisible();
+  });
+
+  test("new-user instructions popup opens folder via same Open CallerBuddySongs path", async ({
+    page,
+  }) => {
+    await setupPage(page);
+
+    await page
+      .locator("welcome-view")
+      .getByRole("button", { name: "Instructions to Create CallerBuddySongs" })
+      .click();
+
+    const modal = page.locator("welcome-view").locator(".instructions-modal");
+    await expect(modal).toBeVisible();
+    await expect(modal.locator("img.instructions-img")).toHaveCount(2);
+
+    await modal.getByRole("button", { name: "Open CallerBuddySongs" }).click();
+    await expect(page.locator("playlist-editor")).toBeVisible();
   });
 
   test("loads songs after choosing folder", async ({ page }) => {

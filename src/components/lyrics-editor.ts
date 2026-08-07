@@ -482,7 +482,7 @@ export class LyricsEditor extends LitElement {
       font: inherit;
       font-size: 0.85rem;
       padding: 4px 10px;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       border-radius: 4px;
       background: var(--cb-input-bg);
       color: var(--cb-fg);

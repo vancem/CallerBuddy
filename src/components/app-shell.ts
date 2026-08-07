@@ -1101,7 +1101,7 @@ export class AppShell extends LitElement {
       cursor: pointer;
       background: transparent;
       color: var(--cb-fg);
-      border: 1px solid var(--cb-border-strong);
+      border: 1px solid var(--cb-btn-border);
     }
 
     .fs-resume-overlay {
@@ -1159,7 +1159,7 @@ export class AppShell extends LitElement {
     .log-btn {
       background: var(--cb-bg);
       color: var(--cb-fg);
-      border: 1px solid var(--cb-border-strong);
+      border: 1px solid var(--cb-btn-border);
       border-radius: 4px;
       padding: 6px 12px;
       font-size: 0.9rem;

@@ -1906,7 +1906,7 @@ export class PlaylistEditor extends LitElement {
       width: 1.75rem;
       height: 1.75rem;
       padding: 0;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       border-radius: 6px;
       background: var(--cb-input-bg);
       color: var(--cb-fg-secondary);
@@ -1956,7 +1956,7 @@ export class PlaylistEditor extends LitElement {
     .rank-filter-compare {
       min-width: 2.5rem;
       padding: 4px 8px;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       border-radius: 6px;
       background: var(--cb-input-bg);
       color: var(--cb-fg);
@@ -2364,7 +2364,7 @@ export class PlaylistEditor extends LitElement {
       cursor: pointer;
       background: transparent;
       color: var(--cb-fg);
-      border: 1px solid var(--cb-border-strong, var(--cb-border));
+      border: 1px solid var(--cb-btn-border);
     }
 
     /* -- Rename dialog ----------------------------------------------------- */
@@ -2478,7 +2478,7 @@ export class PlaylistEditor extends LitElement {
       cursor: pointer;
       background: transparent;
       color: var(--cb-fg);
-      border: 1px solid var(--cb-border-strong, var(--cb-border));
+      border: 1px solid var(--cb-btn-border);
     }
 
     /* -- Shared button styles ---------------------------------------------- */
@@ -2505,7 +2505,7 @@ export class PlaylistEditor extends LitElement {
 
     .secondary {
       border-radius: 6px;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       padding: 6px 16px;
       font-size: 0.9rem;
       background: transparent;

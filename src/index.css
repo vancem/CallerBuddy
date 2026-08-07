@@ -46,6 +46,10 @@
   /* ── Borders ──────────────────────────────────────────────────────── */
   --cb-border:        #dadce0;
   --cb-border-strong: #bdc1c6;
+  /* Outline/secondary button borders need strong contrast since colour is
+     their only visual boundary (no fill). Kept separate from --cb-border(-strong)
+     so panels/inputs/menus can stay subtle while buttons stay visible. */
+  --cb-btn-border:     #000000;
 
   /* ── Interactive states ───────────────────────────────────────────── */
   /* Intentionally no gray wash on hover (flat UI); cursor / focus / accents carry affordance. */

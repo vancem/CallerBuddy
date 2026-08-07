@@ -149,7 +149,7 @@ export const songPlayStyles = css`
 
     .nudge {
       padding: 4px 8px;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       border-radius: 4px;
       background: var(--cb-input-bg);
       color: var(--cb-fg);
@@ -232,7 +232,7 @@ export const songPlayStyles = css`
       font-size: 0.7rem;
       font-weight: 700;
       border-radius: 50%;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       background: var(--cb-input-bg);
       color: var(--cb-fg-secondary);
       cursor: pointer;
@@ -324,7 +324,7 @@ export const songPlayStyles = css`
 
     .ctrl-btn {
       background: none;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       color: var(--cb-fg);
       font-size: 1.1rem;
       width: 2.25rem;
@@ -382,7 +382,7 @@ export const songPlayStyles = css`
 
     .adj-btn {
       background: none;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       color: var(--cb-fg);
       padding: 4px 10px;
       border-radius: 4px;
@@ -597,7 +597,7 @@ export const songPlayStyles = css`
 
     .secondary {
       border-radius: 6px;
-      border: 1px solid var(--cb-border);
+      border: 1px solid var(--cb-btn-border);
       padding: 6px 14px;
       font-size: 0.85rem;
       background: transparent;
@@ -728,7 +728,7 @@ export const songPlayStyles = css`
       cursor: pointer;
       background: transparent;
       color: var(--cb-fg);
-      border: 1px solid var(--cb-border-strong);
+      border: 1px solid var(--cb-btn-border);
     }
 
     .lyrics-exit-secondary {
@@ -739,7 +739,7 @@ export const songPlayStyles = css`
       cursor: pointer;
       background: transparent;
       color: var(--cb-fg);
-      border: 1px solid var(--cb-border-strong);
+      border: 1px solid var(--cb-btn-border);
     }
 
     /* Narrow / phone layout (host aspect — not viewport; fixes WebAPK; matches editor) */
