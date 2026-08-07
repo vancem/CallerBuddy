@@ -151,14 +151,14 @@ export const songPlayStyles = css`
       padding: 4px 8px;
       border: 1px solid var(--cb-btn-border);
       border-radius: 4px;
-      background: var(--cb-input-bg);
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       cursor: pointer;
       font-size: 0.8rem;
     }
 
     .nudge:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .patter-timer-controls.timer-disabled .patter-row,
@@ -233,7 +233,7 @@ export const songPlayStyles = css`
       font-weight: 700;
       border-radius: 50%;
       border: 1px solid var(--cb-btn-border);
-      background: var(--cb-input-bg);
+      background: var(--cb-btn-bg);
       color: var(--cb-fg-secondary);
       cursor: pointer;
       vertical-align: middle;
@@ -243,7 +243,7 @@ export const songPlayStyles = css`
     }
 
     .ctx-help-btn:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
       color: var(--cb-fg);
     }
 
@@ -323,7 +323,7 @@ export const songPlayStyles = css`
     }
 
     .ctrl-btn {
-      background: none;
+      background: var(--cb-btn-bg);
       border: 1px solid var(--cb-btn-border);
       color: var(--cb-fg);
       font-size: 1.1rem;
@@ -337,7 +337,7 @@ export const songPlayStyles = css`
     }
 
     .ctrl-btn:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .ctrl-btn.play-btn {
@@ -381,7 +381,7 @@ export const songPlayStyles = css`
     }
 
     .adj-btn {
-      background: none;
+      background: var(--cb-btn-bg);
       border: 1px solid var(--cb-btn-border);
       color: var(--cb-fg);
       padding: 4px 10px;
@@ -391,7 +391,7 @@ export const songPlayStyles = css`
     }
 
     .adj-btn:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .adj-hint {
@@ -600,13 +600,13 @@ export const songPlayStyles = css`
       border: 1px solid var(--cb-btn-border);
       padding: 6px 14px;
       font-size: 0.85rem;
-      background: transparent;
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       cursor: pointer;
     }
 
     .secondary:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .primary {
@@ -726,7 +726,7 @@ export const songPlayStyles = css`
       font-size: 0.95rem;
       font-family: inherit;
       cursor: pointer;
-      background: transparent;
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       border: 1px solid var(--cb-btn-border);
     }
@@ -737,7 +737,7 @@ export const songPlayStyles = css`
       font-size: 0.95rem;
       font-family: inherit;
       cursor: pointer;
-      background: transparent;
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       border: 1px solid var(--cb-btn-border);
     }

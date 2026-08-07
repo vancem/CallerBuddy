@@ -809,13 +809,13 @@ export class PlaylistPlay extends LitElement {
     .play-actions button:not(.primary) {
       border-radius: 6px;
       border: 1px solid var(--cb-btn-border);
-      background: var(--cb-input-bg);
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       cursor: pointer;
     }
 
     .play-actions button:not(.primary):hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     /* -- Info panel --------------------------------------------------------- */
@@ -899,13 +899,13 @@ export class PlaylistPlay extends LitElement {
       padding: 4px 10px;
       border-radius: 4px;
       border: 1px solid var(--cb-btn-border);
-      background: var(--cb-input-bg);
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       cursor: pointer;
     }
 
     .break-start-stop:hover:not(:disabled) {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .break-start-stop:disabled {

@@ -484,7 +484,7 @@ export class LyricsEditor extends LitElement {
       padding: 4px 10px;
       border: 1px solid var(--cb-btn-border);
       border-radius: 4px;
-      background: var(--cb-input-bg);
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       cursor: pointer;
       min-width: 2rem;
@@ -492,7 +492,7 @@ export class LyricsEditor extends LitElement {
     }
 
     .toolbar-btn:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .toolbar-btn.section-btn {

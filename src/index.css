@@ -46,9 +46,10 @@
   /* ── Borders ──────────────────────────────────────────────────────── */
   --cb-border:        #dadce0;
   --cb-border-strong: #bdc1c6;
-  /* Outline/secondary button borders need strong contrast since colour is
-     their only visual boundary (no fill). Kept separate from --cb-border(-strong)
-     so panels/inputs/menus can stay subtle while buttons stay visible. */
+  /* Secondary (non-accent) buttons: light gray fill + strong border so they
+     read as controls on white surfaces. Kept separate from panel/input tokens. */
+  --cb-btn-bg:         #d6d6d6;
+  --cb-btn-bg-hover:   #c8c8c8;
   --cb-btn-border:     #000000;
 
   /* ── Interactive states ───────────────────────────────────────────── */

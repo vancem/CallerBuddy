@@ -1121,7 +1121,7 @@ export class AppShell extends LitElement {
       font-size: 0.95rem;
       font-family: inherit;
       cursor: pointer;
-      background: transparent;
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       border: 1px solid var(--cb-btn-border);
     }
@@ -1179,7 +1179,7 @@ export class AppShell extends LitElement {
     }
 
     .log-btn {
-      background: var(--cb-bg);
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       border: 1px solid var(--cb-btn-border);
       border-radius: 4px;
@@ -1189,7 +1189,7 @@ export class AppShell extends LitElement {
     }
 
     .log-btn:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .log-body {

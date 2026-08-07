@@ -2008,7 +2008,7 @@ export class PlaylistEditor extends LitElement {
       padding: 0;
       border: 1px solid var(--cb-btn-border);
       border-radius: 6px;
-      background: var(--cb-input-bg);
+      background: var(--cb-btn-bg);
       color: var(--cb-fg-secondary);
       font-size: 1.15rem;
       line-height: 1;
@@ -2017,7 +2017,7 @@ export class PlaylistEditor extends LitElement {
 
     .filter-clear:hover {
       color: var(--cb-fg);
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .filter-input {
@@ -2058,7 +2058,7 @@ export class PlaylistEditor extends LitElement {
       padding: 4px 8px;
       border: 1px solid var(--cb-btn-border);
       border-radius: 6px;
-      background: var(--cb-input-bg);
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       font-size: 0.8rem;
       font-variant-numeric: tabular-nums;
@@ -2066,7 +2066,7 @@ export class PlaylistEditor extends LitElement {
     }
 
     .rank-filter-compare:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .rank-filter-input {
@@ -2462,7 +2462,7 @@ export class PlaylistEditor extends LitElement {
       font-size: 0.95rem;
       font-family: inherit;
       cursor: pointer;
-      background: transparent;
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       border: 1px solid var(--cb-btn-border);
     }
@@ -2576,7 +2576,7 @@ export class PlaylistEditor extends LitElement {
       font-size: 0.95rem;
       font-family: inherit;
       cursor: pointer;
-      background: transparent;
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       border: 1px solid var(--cb-btn-border);
     }
@@ -2666,13 +2666,13 @@ export class PlaylistEditor extends LitElement {
       border: 1px solid var(--cb-btn-border);
       padding: 6px 16px;
       font-size: 0.9rem;
-      background: transparent;
+      background: var(--cb-btn-bg);
       color: var(--cb-fg);
       cursor: pointer;
     }
 
     .secondary:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .icon-btn {

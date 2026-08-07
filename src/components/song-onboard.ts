@@ -836,7 +836,7 @@ export class SongOnboard extends LitElement {
       cursor: pointer;
       border: 1px solid var(--cb-btn-border, #666);
       border-radius: 4px;
-      background: var(--cb-input-bg, #2a2a2a);
+      background: var(--cb-btn-bg, #d6d6d6);
       color: var(--cb-fg, #eee);
     }
 
@@ -862,7 +862,7 @@ export class SongOnboard extends LitElement {
       font-weight: 700;
       border-radius: 50%;
       border: 1px solid var(--cb-btn-border);
-      background: var(--cb-input-bg);
+      background: var(--cb-btn-bg);
       color: var(--cb-fg-secondary);
       cursor: pointer;
       vertical-align: middle;
@@ -872,7 +872,7 @@ export class SongOnboard extends LitElement {
     }
 
     .ctx-help-btn:hover {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
       color: var(--cb-fg);
     }
 
@@ -953,7 +953,7 @@ export class SongOnboard extends LitElement {
     }
 
     .cancel-btn {
-      background: none;
+      background: var(--cb-btn-bg);
       border: 1px solid var(--cb-btn-border);
       color: var(--cb-fg);
       padding: 8px 18px;
@@ -962,7 +962,7 @@ export class SongOnboard extends LitElement {
       font-size: 0.9rem;
     }
 
-    .cancel-btn:hover:not(:disabled) { background: var(--cb-hover); }
+    .cancel-btn:hover:not(:disabled) { background: var(--cb-btn-bg-hover); }
     .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* -- Overwrite confirm dialog ------------------------------------------ */

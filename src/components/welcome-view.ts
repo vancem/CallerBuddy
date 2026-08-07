@@ -135,7 +135,8 @@ export class WelcomeView extends LitElement {
   private renderReconnect() {
     return html`
       <section class="section">
-        <h2>Detected an Existing CallerBuddySongs folder</h2>
+        <h2>Returning User</h2>
+        <p>Detected an existing CallerBuddySongs folder</p>
         <p class="chosen">
           Current folder: <strong>${this.folderName}</strong>
         </p>
@@ -556,14 +557,14 @@ export class WelcomeView extends LitElement {
       padding: 0.3em 0.85em;
       font-size: 0.95rem;
       font-family: inherit;
-      background-color: transparent;
+      background-color: var(--cb-btn-bg);
       color: var(--cb-fg);
       border: 1px solid var(--cb-btn-border, #000);
       cursor: pointer;
     }
 
     .secondary:hover:not(:disabled) {
-      background: var(--cb-hover);
+      background: var(--cb-btn-bg-hover);
     }
 
     .primary:disabled,
