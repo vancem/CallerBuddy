@@ -11,10 +11,12 @@
  * by the markdown Vite plugin (see vite.config.ts).
  */
 
-import { LitElement, css, html } from "lit";
+import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { html as helpHtml } from "../help-content.md";
+import { callerBuddy } from "../caller-buddy.js";
+import { StateEvents } from "../services/app-state.js";
 
 interface TocEntry {
   id: string;
@@ -35,10 +37,15 @@ const TOC: TocEntry[] = [
   { id: "howto-playlist", title: "Build and manage playlists", indent: true },
   { id: "howto-pitch-tempo", title: "Adjust pitch and tempo", indent: true },
   { id: "howto-loops", title: "Set up loop points for patter", indent: true },
+  { id: "howto-patter-timer", title: "Use the patter timer", indent: true },
   { id: "howto-break-timer", title: "Use the break timer", indent: true },
   { id: "howto-lyrics", title: "Edit or create lyrics", indent: true },
   { id: "howto-lyrics-markdown", title: "Lyrics Markdown", indent: true },
   { id: "howto-categories", title: "Categories, rank, and filtering", indent: true },
+  { id: "pages", title: "Page Overviews" },
+  { id: "page-playlist-editor", title: "Playlist Editor", indent: true },
+  { id: "page-now-playing", title: "Now Playing", indent: true },
+  { id: "page-song-player", title: "Song Player", indent: true },
   { id: "shortcuts", title: "Keyboard Shortcuts" },
   { id: "glossary", title: "Glossary" },
 ];
@@ -48,7 +55,25 @@ export class HelpView extends LitElement {
   /** Optional section id to scroll to when the Help tab opens (e.g. from Markdown help). */
   @property({ type: String }) sectionId = "";
 
+  /** True when the Help tab is the active shell tab; gates the ArrowLeft-to-go-back shortcut. */
+  @property({ type: Boolean }) active = false;
+
   @state() private activeSection = "";
+
+  private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
+  private _boundStateChanged = () => this.requestUpdate();
+
+  connectedCallback() {
+    super.connectedCallback();
+    document.addEventListener("keydown", this._boundKeydown);
+    callerBuddy.state.addEventListener(StateEvents.CHANGED, this._boundStateChanged);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener("keydown", this._boundKeydown);
+    callerBuddy.state.removeEventListener(StateEvents.CHANGED, this._boundStateChanged);
+  }
 
   override updated(changed: Map<string, unknown>) {
     if (changed.has("sectionId") && this.sectionId) {
@@ -63,10 +88,35 @@ export class HelpView extends LitElement {
     el?.scrollIntoView({ behavior, block: "start" });
   }
 
+  /** ArrowLeft returns to the page that opened Help (same target as the Back button). */
+  private onKeydown(e: KeyboardEvent) {
+    if (!this.active) return;
+    if (e.key !== "ArrowLeft" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!callerBuddy.state.peekBackTarget()) return;
+    e.preventDefault();
+    this.goBack();
+  }
+
+  private goBack() {
+    callerBuddy.state.goBack();
+  }
+
   render() {
+    const canGoBack = !!callerBuddy.state.peekBackTarget();
     return html`
       <div class="help-layout">
         <nav class="toc" aria-label="Help table of contents">
+          ${canGoBack
+            ? html`
+                <button
+                  class="back-btn"
+                  title="Back to where you opened Help from (\u2190)"
+                  @click=${this.goBack}
+                >
+                  \u2190 Back
+                </button>
+              `
+            : nothing}
           <h2>Help</h2>
           <ul>
             ${TOC.map(
@@ -115,6 +165,26 @@ export class HelpView extends LitElement {
       margin: 0 0 12px;
       font-size: 1rem;
       font-weight: 600;
+    }
+
+    .back-btn {
+      display: block;
+      width: 100%;
+      margin: 0 0 14px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      text-align: left;
+      background: none;
+      color: var(--cb-accent);
+      border: 1px solid var(--cb-accent);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .back-btn:hover {
+      background: var(--cb-accent-subtle);
+      color: var(--cb-accent-hover);
+      border-color: var(--cb-accent-hover);
     }
 
     .toc ul {

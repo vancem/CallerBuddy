@@ -295,7 +295,14 @@ export class PlaylistPlay extends LitElement {
     return html`
       <div class="play-view ${isInactive ? "inactive" : ""}">
         <aside class="playlist-panel" style="${playlistPanelStyle}">
-          <h2>Playlist</h2>
+          <div class="panel-heading">
+            <h2>Playlist</h2>
+            <button
+              class="ctx-help-btn"
+              title="Help for the whole Now Playing page"
+              @click=${() => this.openHelpSection("page-now-playing")}
+            >?</button>
+          </div>
           ${playlist.length === 0
             ? html`<p class="muted">Playlist is empty.</p>`
             : html`
@@ -507,6 +514,11 @@ export class PlaylistPlay extends LitElement {
     callerBuddy.state.closeTabByType(TabType.PlaylistPlay);
   }
 
+  /** Open the Help tab (as a singleton) scrolled to a section; Help's Back button / ArrowLeft returns here. */
+  private openHelpSection(sectionId: string) {
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, { sectionId });
+  }
+
   // -- Break timer ----------------------------------------------------------
 
   private toggleBreakTimer(e: Event) {
@@ -693,10 +705,42 @@ export class PlaylistPlay extends LitElement {
       background: color-mix(in srgb, var(--cb-accent) 15%, transparent);
     }
 
-    .playlist-panel h2 {
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
       margin: 0 0 8px;
+    }
+
+    .playlist-panel h2 {
+      margin: 0;
       font-size: 1rem;
       font-weight: 600;
+    }
+
+    .ctx-help-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 1.125rem;
+      height: 1.125rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-radius: 50%;
+      border: 1px solid var(--cb-accent);
+      background: none;
+      color: var(--cb-accent);
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .ctx-help-btn:hover {
+      background: none;
+      border-color: var(--cb-accent-hover);
+      color: var(--cb-accent-hover);
     }
 
     .playlist-list {

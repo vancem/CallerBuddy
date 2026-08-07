@@ -222,9 +222,10 @@ next time you play the song, the same adjustments apply.
 ## Set up loop points for patter
 
 Patter songs (those without lyrics) automatically show loop
-controls instead of lyrics when played. Looping lets the music
-repeat a section seamlessly so you can call for as long as you
-need.
+controls instead of lyrics when played. Patter always loops: by
+default the whole file repeats (slightly before the very end for
+a clean jump). Looping lets the music repeat a shorter section
+seamlessly instead, so you can call for as long as you need.
 
 1. Play a patter song. The left panel shows
    **Loop Start** and **Loop End** controls.
@@ -242,6 +243,24 @@ need.
 
 Loop points are saved per song so you only need to set them
 once. The progress bar also shows the loop region visually.
+
+<div id="howto-patter-timer"></div>
+
+## Use the patter timer
+
+While playing a patter song, the left panel (below the loop
+controls) also shows a patter timer that counts down while the
+music plays.
+
+1. Set the **Duration (min)** field to how long you
+   want to call for.
+2. Make sure the **Enabled** checkbox is on (or press
+   <kbd>Ctrl+T</kbd>) if you want a chime.
+3. When the countdown reaches zero, a chime sounds and repeats
+   while overtime; the counter keeps going into negative (shown
+   in red) either way, so you can see how far over time you are.
+
+Your duration setting is saved and reused next time.
 
 <div id="howto-break-timer"></div>
 
@@ -337,6 +356,76 @@ excellent and 0 means avoid).
 - The rank filter lets you show songs with rank
   **≥** or **&lt;** a threshold.
   Leave it empty to disable.
+
+<div id="pages"></div>
+
+# Page Overviews
+
+Each main screen has a <strong>?</strong> button of its own (top
+of the Playlist pane, or top-right of the Song Player) that jumps
+straight here for a full overview of that screen.
+
+<div id="page-playlist-editor"></div>
+
+## Playlist Editor
+
+The Playlist Editor is where you browse a folder of songs and
+build the playlist you'll perform. The left pane is your
+**Playlist**; the right pane is the **song table** for the
+current folder.
+
+- Add songs by dragging a row into the playlist, double-clicking
+  a row, right-clicking for a menu, or clicking the row's
+  **+** button.
+- Reorder the playlist by dragging items; remove one with its
+  **×** button.
+- The song table can be filtered by text (title, label,
+  categories) and by rank, and sorted by clicking any column
+  header. Click a **Categories** or **Rank** cell to edit it
+  inline.
+- Subfolders appear as rows — click one to open it in its own
+  tab (it shares the same playlist).
+- **Play** opens Now Playing; **Clear**/**Restore** manage the
+  whole playlist; non-root folder tabs also have **Close**.
+- Shortcuts: <kbd>Ctrl+F</kbd> focus the filter,
+  <kbd>Ctrl+R</kbd> focus the rank filter,
+  <kbd>+</kbd>/<kbd>=</kbd> add the selected row,
+  <kbd>P</kbd> play it now, <kbd>↑</kbd>/<kbd>↓</kbd> change the
+  selected row, <kbd>Enter</kbd> play the playlist.
+
+See "Building a playlist" and "Categories, rank, and filtering"
+above for more detail.
+
+<div id="page-now-playing"></div>
+
+## Now Playing
+
+Now Playing shows the playlist queue you'll work through during
+the dance, with a break timer and clock alongside it.
+
+- Click a song to select it (or use <kbd>↑</kbd>/<kbd>↓</kbd>),
+  then **Play** (or double-click) to open the Song Player.
+- Each song has a played checkbox; toggle it with
+  <kbd>M</kbd>. **⟲ Reset** clears all of them so you can
+  replay the whole list.
+- <kbd>Delete</kbd> removes the selected song from the playlist.
+- The **break timer** counts down between songs — see
+  "Use the break timer" above for details.
+
+<div id="page-song-player"></div>
+
+## Song Player
+
+The Song Player plays one song at a time, with a **?** button in
+the top-right corner of the left pane that opens this overview.
+
+- **Singing calls** show scrolling lyrics on the left; the right
+  panel has transport, Volume/Pitch/Tempo, and Categories/Rank.
+- **Patter** songs show loop controls and a patter timer on the
+  left instead of lyrics.
+- See "Adjust pitch and tempo", "Set up loop points for patter",
+  "Use the patter timer", and "Edit or create lyrics" above for
+  details on each control.
 
 <div id="shortcuts"></div>
 

@@ -138,7 +138,6 @@ export class SongOnboard extends LitElement {
   @state() private sourceName = "";
   @state() private sourceType: "zip" | "folder" = "zip";
   @state() private importing = false;
-  @state() private showImportHelp = false;
   /** Destination filenames that already exist in the import folder. */
   @state() private collisionNames: string[] = [];
   /** Confirm dialog when Import is pressed while collisions remain. */
@@ -621,9 +620,12 @@ export class SongOnboard extends LitElement {
   }
 
   private onLyricsMarkdownHelp() {
-    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
-      sectionId: "howto-lyrics-markdown",
-    });
+    this.openHelpSection("howto-lyrics-markdown");
+  }
+
+  /** Open the Help tab (as a singleton) scrolled to a section; Help's Back button / ArrowLeft returns here. */
+  private openHelpSection(sectionId: string) {
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, { sectionId });
   }
 
   private onLyricsEditorModeChange(e: CustomEvent<{ mode: LyricsEditorMode }>) {
@@ -637,19 +639,9 @@ export class SongOnboard extends LitElement {
       <div class="right-panel">
         <div class="panel-heading">
           Import Song from ${sourceLabel}
-          <button class="ctx-help-btn" title="How does import work?"
-            @click=${() => { this.showImportHelp = !this.showImportHelp; }}>?</button>
+          <button class="ctx-help-btn" title="Open help: Import songs"
+            @click=${() => this.openHelpSection("howto-import")}>?</button>
         </div>
-        ${this.showImportHelp ? html`
-          <div class="ctx-help-panel">
-            CallerBuddy analyzed the ${sourceLabel.toLowerCase()} and guessed the
-            record label, title, which music file to use, and cleaned up the
-            lyrics. Review each section below&mdash;you can change the label,
-            title, pick a different MP3, or edit the lyrics on the left.
-            When you click <strong>Import</strong>, the music and lyrics files
-            are copied into your CallerBuddy folder using the standard
-            <code>LABEL - Title</code> naming convention.
-          </div>` : nothing}
         <p class="explain">
           We analyzed <strong>${this.sourceName}</strong> and made our
           best guesses below. Edit anything that looks wrong, then click
@@ -861,9 +853,9 @@ export class SongOnboard extends LitElement {
       font-size: 0.7rem;
       font-weight: 700;
       border-radius: 50%;
-      border: 1px solid var(--cb-btn-border);
-      background: var(--cb-btn-bg);
-      color: var(--cb-fg-secondary);
+      border: 1px solid var(--cb-accent);
+      background: none;
+      color: var(--cb-accent);
       cursor: pointer;
       vertical-align: middle;
       margin-left: 6px;
@@ -872,24 +864,9 @@ export class SongOnboard extends LitElement {
     }
 
     .ctx-help-btn:hover {
-      background: var(--cb-btn-bg-hover);
-      color: var(--cb-fg);
-    }
-
-    .ctx-help-panel {
-      font-size: 0.8rem;
-      line-height: 1.5;
-      color: var(--cb-fg-secondary);
-      background: var(--cb-hover);
-      border-radius: 6px;
-      padding: 8px 10px;
-    }
-
-    .ctx-help-panel code {
-      background: var(--cb-input-bg);
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-size: 0.85em;
+      background: none;
+      border-color: var(--cb-accent-hover);
+      color: var(--cb-accent-hover);
     }
 
     .explain {

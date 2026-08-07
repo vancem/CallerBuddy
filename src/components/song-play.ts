@@ -104,10 +104,6 @@ export class SongPlay extends LitElement {
   private patterAlarmInterval: number | null = null;
   @state() private patterAlarmFired = false;
 
-  @state() private showLoopHelp = false;
-  @state() private showAdjustHelp = false;
-  @state() private showPatterTimerHelp = false;
-
   // Phone portrait split: controls (top) vs lyrics (bottom)
   @state() private mobileControlsSplitPct = 1 / 3;
   private draggingMobileSplit = false;
@@ -666,31 +662,36 @@ export class SongPlay extends LitElement {
       <div class="song-play">
         <!-- Left panel: lyrics or loop controls -->
         <div class="left-panel">
-          ${this.editing || isSingingCall(song)
-            ? this.renderLyrics()
-            : renderPatterControls({
-                loopStart: this.loopStart,
-                loopEnd: this.loopEnd,
-                showLoopHelp: this.showLoopHelp,
-                showPatterTimerHelp: this.showPatterTimerHelp,
-                patterTimerEnabled: this.patterTimerEnabled,
-                patterMinutes: this.patterMinutes,
-                patterCountdown: this.patterCountdown,
-                toggleLoopHelp: () => {
-                  this.showLoopHelp = !this.showLoopHelp;
-                },
-                togglePatterTimerHelp: () => {
-                  this.showPatterTimerHelp = !this.showPatterTimerHelp;
-                },
-                onLoopBoxKeydown: (which, e) => this.onLoopBoxKeydown(which, e),
-                onLoopBtnMousedown: (e) => this.onLoopBtnMousedown(e),
-                nudgeLoop: (which, d) => this.nudgeLoop(which, d),
-                setLoopFromCurrent: (which) => this.setLoopFromCurrent(which),
-                onPatterTimerEnabledChange: (e) =>
-                  this.onPatterTimerEnabledChange(e),
-                onPatterMinutesChange: (e) => this.onPatterMinutesChange(e),
-                onPatterMinutesKeydown: (e) => this.onPatterMinutesKeydown(e),
-              })}
+          <div class="left-panel-scroll">
+            ${this.editing || isSingingCall(song)
+              ? this.renderLyrics()
+              : renderPatterControls({
+                  loopStart: this.loopStart,
+                  loopEnd: this.loopEnd,
+                  patterTimerEnabled: this.patterTimerEnabled,
+                  patterMinutes: this.patterMinutes,
+                  patterCountdown: this.patterCountdown,
+                  onLoopHelp: () => this.openHelpSection("howto-loops"),
+                  onPatterTimerHelp: () => this.openHelpSection("howto-patter-timer"),
+                  onLoopBoxKeydown: (which, e) => this.onLoopBoxKeydown(which, e),
+                  onLoopBtnMousedown: (e) => this.onLoopBtnMousedown(e),
+                  nudgeLoop: (which, d) => this.nudgeLoop(which, d),
+                  setLoopFromCurrent: (which) => this.setLoopFromCurrent(which),
+                  onPatterTimerEnabledChange: (e) =>
+                    this.onPatterTimerEnabledChange(e),
+                  onPatterMinutesChange: (e) => this.onPatterMinutesChange(e),
+                  onPatterMinutesKeydown: (e) => this.onPatterMinutesKeydown(e),
+                })}
+          </div>
+          ${!this.editing
+            ? html`
+                <button
+                  class="ctx-help-btn page-help-btn"
+                  title="Help for the whole Song Player page"
+                  @click=${() => this.openHelpSection("page-song-player")}
+                >?</button>
+              `
+            : nothing}
         </div>
 
         <div
@@ -940,9 +941,12 @@ export class SongPlay extends LitElement {
   }
 
   private onLyricsMarkdownHelp() {
-    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
-      sectionId: "howto-lyrics-markdown",
-    });
+    this.openHelpSection("howto-lyrics-markdown");
+  }
+
+  /** Open the Help tab (as a singleton) scrolled to a section; Help's Back button / ArrowLeft returns here. */
+  private openHelpSection(sectionId: string) {
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, { sectionId });
   }
 
   /** Edit/create lyrics (when not editing) plus Close — same exit path as Esc / End or track end. */
@@ -1111,22 +1115,13 @@ export class SongPlay extends LitElement {
   private renderAdjustments(song: Song) {
     return html`
       <div class="adjustments">
-        <button class="ctx-help-btn adj-help-btn" title="What do these controls do?"
-          @click=${() => { this.showAdjustHelp = !this.showAdjustHelp; }}>?</button>
-        ${this.showAdjustHelp ? html`
-          <div class="ctx-help-panel">
-            <strong>Volume</strong> (0&ndash;100): playback loudness.
-            <strong>Pitch</strong>: shift in half-steps (+ = higher, &minus; = lower).
-            <strong>Tempo</strong>: BPM change from the original speed (+ = faster, &minus; = slower).
-            All adjustments are saved per song and apply automatically next time.
-            Keys: <kbd>v</kbd>/<kbd>V</kbd> volume, <kbd>p</kbd>/<kbd>P</kbd> pitch,
-            <kbd>t</kbd>/<kbd>T</kbd> tempo.
-          </div>` : nothing}
         <div class="adj-row">
           <span class="adj-label">Volume</span>
           <button class="adj-btn" title="Decrease volume (v)" @click=${() => this.adjustVolume(-5)}>◄</button>
           <span class="adj-value">${song.volume}</span>
           <button class="adj-btn" title="Increase volume (V)" @click=${() => this.adjustVolume(5)}>►</button>
+          <button class="ctx-help-btn adj-help-btn" title="Open help: Adjust pitch and tempo"
+            @click=${() => this.openHelpSection("howto-pitch-tempo")}>?</button>
         </div>
         <div class="adj-row">
           <span class="adj-label">Pitch</span>

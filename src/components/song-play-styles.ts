@@ -34,10 +34,24 @@ export const songPlayStyles = css`
     .left-panel {
       grid-column: 1;
       grid-row: 1;
-      overflow-y: auto;
+      position: relative;
       border-right: none;
       min-width: 0;
       min-height: 0;
+    }
+
+    .left-panel-scroll {
+      height: 100%;
+      overflow-y: auto;
+    }
+
+    /* Page-level help ("?" for the whole Song Player screen); sits over the
+       lyrics/patter content without affecting its layout or width. */
+    .page-help-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 2;
     }
 
     .lyrics-content {
@@ -232,9 +246,9 @@ export const songPlayStyles = css`
       font-size: 0.7rem;
       font-weight: 700;
       border-radius: 50%;
-      border: 1px solid var(--cb-btn-border);
-      background: var(--cb-btn-bg);
-      color: var(--cb-fg-secondary);
+      border: 1px solid var(--cb-accent);
+      background: none;
+      color: var(--cb-accent);
       cursor: pointer;
       vertical-align: middle;
       margin-left: 6px;
@@ -243,33 +257,13 @@ export const songPlayStyles = css`
     }
 
     .ctx-help-btn:hover {
-      background: var(--cb-btn-bg-hover);
-      color: var(--cb-fg);
+      background: none;
+      border-color: var(--cb-accent-hover);
+      color: var(--cb-accent-hover);
     }
 
     .adj-help-btn {
-      align-self: flex-end;
-      margin-bottom: 2px;
-    }
-
-    .ctx-help-panel {
-      font-size: 0.8rem;
-      line-height: 1.5;
-      color: var(--cb-fg-secondary);
-      background: var(--cb-hover);
-      border-radius: 6px;
-      padding: 8px 10px;
-      margin-bottom: 6px;
-    }
-
-    .ctx-help-panel kbd {
-      display: inline-block;
-      padding: 1px 4px;
-      font-family: inherit;
-      font-size: 0.8em;
-      background: var(--cb-input-bg);
-      border: 1px solid var(--cb-border);
-      border-radius: 3px;
+      margin-left: 4px;
     }
 
     /* -- Right panel: controls and info ------------------------------------ */

@@ -9,13 +9,11 @@ import { formatCountdown } from "../utils/format.js";
 export type PatterControlsCtx = {
   loopStart: number;
   loopEnd: number;
-  showLoopHelp: boolean;
-  showPatterTimerHelp: boolean;
   patterTimerEnabled: boolean;
   patterMinutes: number;
   patterCountdown: number;
-  toggleLoopHelp: () => void;
-  togglePatterTimerHelp: () => void;
+  onLoopHelp: () => void;
+  onPatterTimerHelp: () => void;
   onLoopBoxKeydown: (which: "start" | "end", e: KeyboardEvent) => void;
   onLoopBtnMousedown: (e: Event) => void;
   nudgeLoop: (which: "start" | "end", delta: number) => void;
@@ -29,18 +27,9 @@ export function renderPatterControls(ctx: PatterControlsCtx): TemplateResult {
   return html`
     <div class="patter-controls">
       <h3>Loop Controls
-        <button class="ctx-help-btn" title="What are loop controls?"
-          @click=${ctx.toggleLoopHelp}>?</button>
+        <button class="ctx-help-btn" title="Open help: Set up loop points for patter"
+          @click=${ctx.onLoopHelp}>?</button>
       </h3>
-      ${ctx.showLoopHelp ? html`
-        <div class="ctx-help-panel">
-          Patter always loops. By default the whole file repeats (slightly before
-          the very end for a clean jump). Set <strong>Loop Start</strong> and
-          <strong>Loop End</strong> to use a shorter region. Click
-          <strong>Set</strong> to capture the current playback position,
-          then fine-tune with the nudge buttons (&plusmn;10ms or &plusmn;100ms).
-          Points are saved per song.
-        </div>` : nothing}
       <div class="loop-box" tabindex="0"
            title="Click to focus \u2014 ←/→ nudge \u00b110ms, Ctrl+←/→ nudge \u00b1100ms, Enter = Set"
            @keydown=${(e: KeyboardEvent) => ctx.onLoopBoxKeydown("start", e)}>
@@ -87,17 +76,9 @@ export function renderPatterControls(ctx: PatterControlsCtx): TemplateResult {
       <hr />
 
       <h3>Patter Timer
-        <button class="ctx-help-btn" title="What is the patter timer?"
-          @click=${ctx.togglePatterTimerHelp}>?</button>
+        <button class="ctx-help-btn" title="Open help: Use the patter timer"
+          @click=${ctx.onPatterTimerHelp}>?</button>
       </h3>
-      ${ctx.showPatterTimerHelp ? html`
-        <div class="ctx-help-panel">
-          The patter timer counts down while the music plays. Set the
-          duration in minutes. When enabled, a chime sounds at zero and
-          repeats while overtime; the counter continues into negative
-          (red) either way so you can see how far over time you are.
-          Your duration setting is saved.
-        </div>` : nothing}
       <div class="patter-timer-controls">
         <div class="patter-toggle-row">
           <label class="patter-toggle"

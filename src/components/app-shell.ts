@@ -482,6 +482,7 @@ export class AppShell extends LitElement {
                   .sectionId=${(tabs.find((t) => t.type === TabType.Help)?.data as
                     | { sectionId?: string }
                     | undefined)?.sectionId ?? ""}
+                  .active=${activeTab?.type === TabType.Help}
                 ></help-view>
               </div>`
             : nothing}
@@ -581,10 +582,9 @@ export class AppShell extends LitElement {
           Add demo songs?
         </h2>
         <p class="fs-startup-body">
-          Your CallerBuddy folder is empty. Add two demo songs
-          (When the Saints Go Marching In with singing-call lyrics, and Cotton
-          Eyed Joe patter) so you can try the app? This downloads about
-          8&nbsp;MB and requires being online.
+          You need some songs to properly experience CallerBuddy's
+          user interface. CallerBuddy can Add two 
+          <strong>free</strong> demo songs for this purpose.  
         </p>
         ${this.demoInstallError
           ? html`<p class="demo-offer-error" role="alert">${this.demoInstallError}</p>`
