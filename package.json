@@ -1,7 +1,7 @@
 {
   "name": "callerbuddy",
   "private": true,
-  "version": "0.1.0-pre.273",
+  "version": "0.1.0-pre.274",
   "type": "module",
   "scripts": {
     "inject-version": "node scripts/inject-version.cjs",
@@ -22,6 +22,8 @@
     "jszip": "^3.10.1",
     "lit": "^3.3.1",
     "marked": "^18.0.7",
+    "marked-custom-heading-id": "^2.0.17",
+    "marked-gfm-heading-id": "^4.1.4",
     "soundtouchjs": "^0.3.0",
     "web-audio-beat-detector": "^8.2.35"
   },

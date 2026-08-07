@@ -88,6 +88,22 @@ export class HelpView extends LitElement {
     el?.scrollIntoView({ behavior, block: "start" });
   }
 
+  /**
+   * Hash links in help markdown (e.g. [Security](#security)) live inside the
+   * Lit shadow root, so the browser's default #fragment navigation cannot find
+   * the targets. Intercept in-content hash clicks and scroll within the shadow.
+   */
+  private onContentClick(e: Event) {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const anchor = target.closest("a");
+    if (!anchor) return;
+    const href = anchor.getAttribute("href");
+    if (!href || !href.startsWith("#") || href.length < 2) return;
+    e.preventDefault();
+    this.scrollToSection(decodeURIComponent(href.slice(1)));
+  }
+
   /** ArrowLeft returns to the page that opened Help (same target as the Back button). */
   private onKeydown(e: KeyboardEvent) {
     if (!this.active) return;
@@ -132,7 +148,7 @@ export class HelpView extends LitElement {
           </ul>
         </nav>
 
-        <article class="content">
+        <article class="content" @click=${this.onContentClick}>
           ${unsafeHTML(helpHtml)}
         </article>
       </div>
@@ -236,8 +252,7 @@ export class HelpView extends LitElement {
       font-weight: 600;
     }
 
-    .content h1:first-child,
-    .content div[id]:first-child + h1 {
+    .content h1:first-child {
       margin-top: 0;
     }
 
@@ -277,7 +292,17 @@ export class HelpView extends LitElement {
       font-size: 0.9em;
     }
 
-    .content div[id] {
+    .content a {
+      color: var(--cb-accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .content a:hover {
+      color: var(--cb-accent-hover);
+    }
+
+    .content :is(h1, h2, h3)[id] {
       scroll-margin-top: 16px;
     }
 

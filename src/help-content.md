@@ -1,12 +1,8 @@
-<div id="tutorial"></div>
-
-# Welcome to CallerBuddy
+# Welcome to CallerBuddy {#tutorial}
 
 CallerBuddy is a web-based program that Square Dance Callers can use to play music during performances.   Its main features are 
 
-<div id="security"></div>
-
-## CallerBuddy Security
+## CallerBuddy Security {#security}
 
 This section is a placeholder for CallerBuddy’s security notes. Fill in details
 about folder permissions, what the app can and cannot access, offline use, and
@@ -40,16 +36,14 @@ now — replace with the real security copy.
  3. 
 
 
-<div id="first-dance"></div>
+# Your First Dance {#first-dance}
 
 This walkthrough takes you from a fresh install all the way through
 calling a complete square dance. By the end you will have picked a
 folder, added songs, built a playlist, and played through it with
 break timers and everything you need on stage.
 
-<div id="tut-setup"></div>
-
-## 1. Setting up your folder
+## 1. Setting up your folder {#tut-setup}
 
 CallerBuddy keeps all its data — music files, lyrics, and
 settings — in a single folder you choose. This can be a local
@@ -75,9 +69,7 @@ your collection stays synced across devices.
 label and title from the filename automatically. Lyrics files use
 the same base name with a `.md` extension.
 
-<div id="tut-playlist"></div>
-
-## 2. Building a playlist
+## 2. Building a playlist {#tut-playlist}
 
 The Playlist Editor shows a song table on the right and your
 playlist on the left. There are several ways to add songs:
@@ -98,9 +90,7 @@ You can filter the song table using the text box above it. It
 searches title, label, and categories. There is also a rank
 filter to show only songs above or below a threshold.
 
-<div id="tut-playing"></div>
-
-## 3. Playing the dance
+## 3. Playing the dance {#tut-playing}
 
 1. Click **▶ Play** in the playlist panel.
    This opens the **Now Playing** screen.
@@ -126,16 +116,12 @@ filter to show only songs above or below a threshold.
 and the Song Player helps you keep track of the time of day, so
 you know when the dance should wrap up.
 
-<div id="howto"></div>
-
-# How-to Guides
+# How-to Guides {#howto}
 
 Quick recipes for common tasks. Each guide assumes you already
 have CallerBuddy set up with a folder.
 
-<div id="howto-import"></div>
-
-## Import songs from a ZIP file
+## Import songs from a ZIP file {#howto-import}
 
 Songs from square-dance music publishers usually come as ZIP
 archives containing MP3 files and HTML or Markdown lyrics.
@@ -156,9 +142,7 @@ archives containing MP3 files and HTML or Markdown lyrics.
    creates the properly named files in your folder and
    refreshes the song library.
 
-<div id="howto-import-folder"></div>
-
-## Import songs from a folder
+## Import songs from a folder {#howto-import-folder}
 
 If your songs were already extracted from a ZIP (or came as loose
 files), use the folder import instead.
@@ -168,9 +152,7 @@ files), use the folder import instead.
 3. The same Import Review screen appears. Review and click
    **Import**.
 
-<div id="howto-playlist"></div>
-
-## Build and manage playlists
+## Build and manage playlists {#howto-playlist}
 
 CallerBuddy has one active playlist at a time. Songs are added
 from the Playlist Editor (see the tutorial above for the
@@ -198,9 +180,7 @@ you can add songs from different folders.
   (Ctrl+R) unchecks all played marks so you can replay
   the entire list.
 
-<div id="howto-pitch-tempo"></div>
-
-## Adjust pitch and tempo
+## Adjust pitch and tempo {#howto-pitch-tempo}
 
 While a song is playing, the right panel shows Volume, Pitch,
 and Tempo controls.
@@ -217,9 +197,7 @@ and Tempo controls.
 Changes are saved to your song library automatically. The
 next time you play the song, the same adjustments apply.
 
-<div id="howto-loops"></div>
-
-## Set up loop points for patter
+## Set up loop points for patter {#howto-loops}
 
 Patter songs (those without lyrics) automatically show loop
 controls instead of lyrics when played. Patter always loops: by
@@ -244,9 +222,7 @@ seamlessly instead, so you can call for as long as you need.
 Loop points are saved per song so you only need to set them
 once. The progress bar also shows the loop region visually.
 
-<div id="howto-patter-timer"></div>
-
-## Use the patter timer
+## Use the patter timer {#howto-patter-timer}
 
 While playing a patter song, the left panel (below the loop
 controls) also shows a patter timer that counts down while the
@@ -262,9 +238,7 @@ music plays.
 
 Your duration setting is saved and reused next time.
 
-<div id="howto-break-timer"></div>
-
-## Use the break timer
+## Use the break timer {#howto-break-timer}
 
 The break timer in the Now Playing view counts down between
 songs. It helps you keep breaks consistent during a dance.
@@ -279,9 +253,7 @@ songs. It helps you keep breaks consistent during a dance.
 5. Press <kbd>S</kbd> or click **Start/Stop**
    to manually control the timer.
 
-<div id="howto-lyrics"></div>
-
-## Edit or create lyrics
+## Edit or create lyrics {#howto-lyrics}
 
 While a singing call is playing, click
 **Edit Lyrics** to open the built-in editor. If
@@ -303,9 +275,7 @@ the song has no lyrics file yet, the button reads
 Lyrics are saved as Markdown files alongside the MP3, using the
 same `LABEL - Title.md` naming convention.
 
-<div id="howto-lyrics-markdown"></div>
-
-## Lyrics Markdown
+## Lyrics Markdown {#howto-lyrics-markdown}
 
 CallerBuddy lyrics use a small Markdown subset:
 
@@ -332,9 +302,7 @@ I'm only one call away\
 When you import a ZIP or folder that contains HTML lyrics,
 CallerBuddy converts them to this Markdown format automatically.
 
-<div id="howto-categories"></div>
-
-## Categories, rank, and filtering
+## Categories, rank, and filtering {#howto-categories}
 
 Each song can have **categories** (free-form
 tags separated by semicolons, e.g. "Christmas; Patriotic")
@@ -357,17 +325,13 @@ excellent and 0 means avoid).
   **≥** or **&lt;** a threshold.
   Leave it empty to disable.
 
-<div id="pages"></div>
-
-# Page Overviews
+# Page Overviews {#pages}
 
 Each main screen has a <strong>?</strong> button of its own (top
 of the Playlist pane, or top-right of the Song Player) that jumps
 straight here for a full overview of that screen.
 
-<div id="page-playlist-editor"></div>
-
-## Playlist Editor
+## Playlist Editor {#page-playlist-editor}
 
 The Playlist Editor is where you browse a folder of songs and
 build the playlist you'll perform. The left pane is your
@@ -396,9 +360,7 @@ current folder.
 See "Building a playlist" and "Categories, rank, and filtering"
 above for more detail.
 
-<div id="page-now-playing"></div>
-
-## Now Playing
+## Now Playing {#page-now-playing}
 
 Now Playing shows the playlist queue you'll work through during
 the dance, with a break timer and clock alongside it.
@@ -412,9 +374,7 @@ the dance, with a break timer and clock alongside it.
 - The **break timer** counts down between songs — see
   "Use the break timer" above for details.
 
-<div id="page-song-player"></div>
-
-## Song Player
+## Song Player {#page-song-player}
 
 The Song Player plays one song at a time, with a **?** button in
 the top-right corner of the left pane that opens this overview.
@@ -427,9 +387,7 @@ the top-right corner of the left pane that opens this overview.
   "Use the patter timer", and "Edit or create lyrics" above for
   details on each control.
 
-<div id="shortcuts"></div>
-
-# Keyboard Shortcuts
+# Keyboard Shortcuts {#shortcuts}
 
 ## Global (all views)
 
@@ -475,9 +433,7 @@ the top-right corner of the left pane that opens this overview.
 | <kbd>Ctrl+←</kbd> / <kbd>Ctrl+→</kbd> | Nudge ±100 ms |
 | <kbd>Enter</kbd> | Set loop point to current playback position |
 
-<div id="glossary"></div>
-
-# Glossary
+# Glossary {#glossary}
 
 <dl>
 <dt>CallerBuddy folder (root)</dt>

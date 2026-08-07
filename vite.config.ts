@@ -2,9 +2,15 @@
 import { createRequire } from "module";
 import { copyFileSync, createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { marked } from "marked";
+import { Marked } from "marked";
+import customHeadingId from "marked-custom-heading-id";
+import { gfmHeadingId } from "marked-gfm-heading-id";
 import type { Connect, Plugin } from "vite";
 import { defineConfig } from "vite";
+
+/** Help markdown only: GFM auto-slugs + explicit `{#id}` (custom wins when present). */
+const helpMarked = new Marked();
+helpMarked.use(gfmHeadingId(), customHeadingId());
 
 const require = createRequire(import.meta.url);
 const { injectVersionPlugin } = require("./scripts/vite-inject-version.cjs");
@@ -94,7 +100,7 @@ function markdownPlugin(): Plugin {
     name: "vite-markdown",
     transform(code, id) {
       if (!id.endsWith(".md")) return;
-      const html = marked.parse(code, { async: false }) as string;
+      const html = helpMarked.parse(code, { async: false }) as string;
       return { code: `export const html = ${JSON.stringify(html)};`, map: null };
     },
   };
