@@ -20,7 +20,7 @@
  * File System `requestPermission()`, which also requires a user gesture).
  */
 
-import { LitElement, css, html, nothing } from "lit";
+import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import { StateEvents, TabType, type EditorTabData, type TabInfo } from "../services/app-state.js";
@@ -70,6 +70,10 @@ export class AppShell extends LitElement {
   private _boundPopstate = () => this.onPopstate();
   private _boundAppReengaged = () => this.onAppReengaged();
   private _resumeCheckTimer: number | null = null;
+  /** Tracks demoOfferPending across renders (it lives in callerBuddy.state, not
+   *  a Lit reactive property) so we can focus "Add demo songs" only on the
+   *  false→true transition, not on every unrelated state-change re-render. */
+  private _prevDemoOfferPending = false;
 
   connectedCallback() {
     super.connectedCallback();
@@ -408,6 +412,25 @@ export class AppShell extends LitElement {
     this.requestUpdate();
   };
 
+  protected override updated(changed: PropertyValues<this>): void {
+    super.updated(changed);
+    const pending = callerBuddy.state.demoOfferPending;
+    if (pending && !this._prevDemoOfferPending) {
+      this.tryFocusDemoOfferPrimary();
+    }
+    this._prevDemoOfferPending = pending;
+  }
+
+  /** Focus "Add demo songs" so pressing Enter activates it immediately. */
+  private tryFocusDemoOfferPrimary() {
+    queueMicrotask(() => {
+      const btn = this.renderRoot.querySelector(
+        ".demo-offer-modal .fs-startup-primary",
+      ) as HTMLButtonElement | null;
+      if (btn && !btn.disabled) btn.focus();
+    });
+  }
+
   render() {
     const { tabs, activeTabId } = callerBuddy.state;
     const activeTab = callerBuddy.state.getActiveTab();
@@ -548,7 +571,7 @@ export class AppShell extends LitElement {
         }}
       ></div>
       <div
-        class="fs-startup-modal"
+        class="fs-startup-modal demo-offer-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="demo-offer-title"
@@ -570,7 +593,6 @@ export class AppShell extends LitElement {
           <button
             type="button"
             class="fs-startup-primary"
-            autofocus
             ?disabled=${this.demoInstallInProgress}
             @click=${() => void this.onDemoOfferYes()}
           >
