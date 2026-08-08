@@ -430,15 +430,17 @@ export class AppState extends EventTarget {
   }
 
   /**
-   * Remove a closable tab. Idempotent for unknown ids.
+   * Remove a tab. Idempotent for unknown ids.
+   * Non-closable tabs are left alone unless `force` is true (used to dismiss
+   * Welcome after the root playlist editor is open).
    * Always assigns a new `tabs` array so Lit-bound tab UI stays in sync even
    * when the closed tab was not active.
    */
-  closeTab(id: string): void {
+  closeTab(id: string, opts?: { force?: boolean }): void {
     const idx = this.tabs.findIndex((t) => t.id === id);
     if (idx < 0) return;
     const tab = this.tabs[idx];
-    if (!tab.closable) return;
+    if (!tab.closable && !opts?.force) return;
     this.setTabs(this.tabs.filter((t) => t.id !== id));
     this.tabBackStack = this.tabBackStack.filter((tid) => tid !== id);
     this.tabForwardStack = this.tabForwardStack.filter((tid) => tid !== id);
@@ -449,10 +451,10 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.CHANGED);
   }
 
-  /** Close the first tab of the given type, if present and closable. */
-  closeTabByType(type: TabType): void {
+  /** Close the first tab of the given type, if present (and closable, unless forced). */
+  closeTabByType(type: TabType, opts?: { force?: boolean }): void {
     const tab = this.tabs.find((t) => t.type === type);
-    if (tab) this.closeTab(tab.id);
+    if (tab) this.closeTab(tab.id, opts);
   }
 
   getActiveTab(): TabInfo | undefined {

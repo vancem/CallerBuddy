@@ -293,6 +293,11 @@ export class CallerBuddy {
 
     log.info("activateRoot: opening playlist editor tab…");
     await this.state.openEditorTab(handle, handle.name);
+    // Welcome is only for first launch / reconnect. Once the root is active the
+    // handle is authorized — keep Welcome off the tab bar and back stack so
+    // Android system Back from the editor does not revive the reconnect UI.
+    // (Reset CallerBuddy is the path back to a fresh Welcome.)
+    this.state.closeTabByType(TabType.Welcome, { force: true });
     // Off critical path: bak refresh must not block Loading (Drive file I/O can hang).
     this.scheduleSongsJsonBackup();
     await this.maybeOfferDemoSongs(handle);

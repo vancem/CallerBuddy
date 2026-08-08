@@ -323,6 +323,19 @@ describe("AppState", () => {
       expect(state.tabs[0].id).toBe(id);
     });
 
+    it("closeTab with force removes non-closable tabs and scrub back stack", () => {
+      const welcomeId = state.openTab(TabType.Welcome, "Welcome", false);
+      const editorId = state.openTab(TabType.PlaylistEditor, "Root", false);
+      expect(state.peekBackTarget()).toBe(welcomeId);
+
+      state.closeTabByType(TabType.Welcome, { force: true });
+
+      expect(state.tabs.map((t) => t.id)).toEqual([editorId]);
+      expect(state.activeTabId).toBe(editorId);
+      expect(state.peekBackTarget()).toBeNull();
+      expect(state.goBack()).toBe(false);
+    });
+
     it("closeTab activates a neighbor when active tab is closed", () => {
       const id1 = state.openTab(TabType.PlaylistEditor, "A");
       const id2 = state.openTab(TabType.PlaylistPlay, "B");

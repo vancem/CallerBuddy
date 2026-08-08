@@ -12,8 +12,9 @@
  * offers "Reconnect to this folder" or "Reset CallerBuddy" (same reset as
  * the hamburger menu) instead of the full Features / New / Returning copy.
  *
- * When a folder is chosen, CallerBuddy scans it for songs and opens the
- * playlist editor tab.
+ * When a folder is chosen (or reconnect succeeds), CallerBuddy activates the
+ * root, opens the playlist editor, and dismisses this tab so it cannot be
+ * reached again via Back — Reset CallerBuddy reloads into a fresh Welcome.
  *
  * See CallerBuddySpec.md §"Welcome Screen UI".
  */

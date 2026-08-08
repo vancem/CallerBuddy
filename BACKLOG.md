@@ -218,8 +218,30 @@ was used previously.
 browser sessions.
   - Rationale: The File System Access API supports storing handles in IndexedDB.
   This lets the app remember the user's chosen folder without re-prompting.
-  - Android: Permission often reverts to "prompt" after reload. The welcome view
-  offers "Reconnect to this folder" so the user can re-grant with one tap.
+  - **Startup skip-welcome vs reconnect (Windows vs phone quirk):** On launch,
+  `CallerBuddy.init()` loads the stored handle and calls
+  `queryPermission({ mode: "readwrite" })` with no user gesture.
+    - **Windows / desktop Chrome/Edge:** Permission is often still `"granted"`.
+      Init silently activates the root, loads songs, and opens the playlist
+      editor — no welcome screen.
+    - **Android (and similar):** After reload or process death, permission
+      usually reverts to `"prompt"`. We still have the handle in IndexedDB, but
+      `requestPermission()` requires a **user gesture** and cannot run during
+      silent init. Showing the editor without access would fail; calling
+      `requestPermission` without a tap is impossible. So we keep the handle on
+      state, open Welcome, and show **Reconnect to this folder** (one tap
+      re-grants on the existing handle — no folder picker). Optional **Reset
+      CallerBuddy** clears browser state if the user wants a fresh start.
+    - **Dismiss Welcome after root is active:** Once `activateRoot` opens the
+      playlist editor, Welcome is force-closed (removed from tabs and the tab
+      back stack). System Back / in-app Back from the root editor therefore does
+      nothing instead of returning to a reconnect Welcome that is no longer
+      needed. The only way back to Welcome is **Reset CallerBuddy** (reload).
+    - Related: do not steal the first tap for Fullscreen API
+      `requestFullscreen()` — that consumed the gesture needed for reconnect
+      (see Mobile viewport & fullscreen above).
+    - Code: `caller-buddy.ts` `init()` / `activateRoot()`, `welcome-view.ts`
+      reconnect UI, `ensurePermission()` in `file-system-service.ts`.
 - PWA manifest and service worker configuration (manifest structure, caching
 strategy, offline fallback, install prompt).
   - Manifest: display mode standalone; icons at 192px and 512px; theme colors
@@ -476,10 +498,9 @@ context is suspended ?
   - Browsers require a user gesture before playing audio. The WebAudioEngine
   calls context.resume() on play(), but if this fails, audio won't play. Need
   to verify this works reliably and add user-facing feedback if it doesn't.
-- [] MEDIUM: Reconnect flow when stored root handle has no permission.
-  - When the app loads and finds a stored directory handle but doesn't have
-  permission (user hasn't gestured yet), the welcome screen shows but doesn't
-  clearly indicate that the user just needs to re-authorize. Consider adding a
-  "Reconnect to [folder name]" button that re-requests permission on the
-  stored handle without requiring a new folder picker flow.
+- [x] MEDIUM: Reconnect flow when stored root handle has no permission.
+  - Done: Welcome shows **Reconnect to this folder** / **Reset CallerBuddy**
+  when a stored handle exists but permission is not granted. Design rationale
+  (Windows silent grant vs Android gesture-required) is in Design Decisions
+  under IndexedDB handle persistence.
 
