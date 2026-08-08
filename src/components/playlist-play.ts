@@ -398,7 +398,7 @@ export class PlaylistPlay extends LitElement {
               <span class="clock-value">${this.clockTime}</span>
             </div>
             <div class="last-song time-row">
-              <span class="time-label">Last Song:</span>
+              <span class="time-label" title="The clock time the last song ended (break started)">Last Song:</span>
               <span class="time-value">${this.formatLastSongEnded()}</span>
             </div>
           </div>

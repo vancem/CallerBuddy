@@ -1124,7 +1124,7 @@ export class SongPlay extends LitElement {
             @click=${() => this.openHelpSection("howto-pitch-tempo")}>?</button>
         </div>
         <div class="adj-row">
-          <span class="adj-label">Pitch</span>
+          <span class="adj-label" title="Relative pitch to original, each unit is 1/12 of an octave">Pitch</span>
           <button class="adj-btn" title="Decrease pitch (p)" @click=${() => this.adjustPitch(-1)}>◄</button>
           <span class="adj-value">${song.pitch > 0 ? "+" : ""}${song.pitch}</span>
           <button class="adj-btn" title="Increase pitch (P)" @click=${() => this.adjustPitch(1)}>►</button>
@@ -1180,15 +1180,15 @@ export class SongPlay extends LitElement {
     return html`
       <div class="time-info">
         <div class="time-row">
-          <span class="time-label">Position</span>
+          <span class="time-label" title="The position currently being played (always < Duration)">Position</span>
           <span class="time-value">${formatTime(effectivePosition)}</span>
         </div>
         <div class="time-row">
-          <span class="time-label">Duration</span>
+          <span class="time-label" title="Total song length">Duration</span>
           <span class="time-value">${formatTime(effectiveDuration)}</span>
         </div>
         <div class="time-row">
-          <span class="time-label">Elapsed</span>
+          <span class="time-label" title="Total time the player played so far (pauses don't count)">Elapsed</span>
           <span class="time-value">${formatTime(this.totalElapsed)}</span>
         </div>
         <div class="time-row clock-row">
