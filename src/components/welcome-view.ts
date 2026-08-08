@@ -288,7 +288,8 @@ export class WelcomeView extends LitElement {
           wants to do this in a way where you don't have to trust
           CallerBuddy at all (only the browser), so CallerBuddy asks
           the browser to open this folder, and that brings up the
-          following dialog.
+          following dialog. (The image is for windows, the other platforms 
+          are analogous)
         </p>
         <img
           class="instructions-img instructions-img-folder"
@@ -296,7 +297,7 @@ export class WelcomeView extends LitElement {
           alt="Browser folder picker: click New folder, type the name CallerBuddySongs, then click Select Folder"
         />
         <p class="prompt-body">
-          You can use the “New Folder” button in this dialog to create
+          You can use the “New Folder” functionality in this dialog to create
           a new folder, type the name
           <strong>CallerBuddySongs</strong>, and then click
           <strong>Select Folder</strong> (not &lt;enter&gt;) to select this newly created
