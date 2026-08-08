@@ -228,6 +228,20 @@ export class WelcomeView extends LitElement {
           </button>
         </p>
       </section>
+      
+        <section class="section">
+        <h2>Running CallerBuddy outside the Browser</h2>
+        <p>
+          If you want to install CallerBuddy as a normal app see 
+          <button
+            type="button"
+            class="text-link"
+            @click=${() => this.openHelp("outside-the-browser")}
+          >
+            How to Install CallerBuddy Help
+          </button>.
+        </p>
+      </section>
 
       <section class="section">
         <h2>Learning More</h2>
@@ -273,7 +287,7 @@ export class WelcomeView extends LitElement {
           empty folder where CallerBuddy can put songs. CallerBuddy
           wants to do this in a way where you don't have to trust
           CallerBuddy at all (only the browser), so CallerBuddy asks
-          the browser to open this folder, and that brings upt the
+          the browser to open this folder, and that brings up the
           following dialog.
         </p>
         <img

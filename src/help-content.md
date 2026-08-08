@@ -9,6 +9,10 @@ about folder permissions, what the app can and cannot access, offline use, and
 how your music stays on your device (or in your cloud drive). Dummy text for
 now — replace with the real security copy.
 
+## Running CallerBuddy Outside the Browsers as an App {#outside-the-browser}
+
+TODO: Finish
+
 ## Where you can use CallerBuddy
 
  1. Can run in your browser or as a desktop lauched application.   The app
