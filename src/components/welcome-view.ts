@@ -228,20 +228,6 @@ export class WelcomeView extends LitElement {
           </button>
         </p>
       </section>
-      
-        <section class="section">
-        <h2>Running CallerBuddy outside the Browser</h2>
-        <p>
-          If you want to install CallerBuddy as a normal app see 
-          <button
-            type="button"
-            class="text-link"
-            @click=${() => this.openHelp("outside-the-browser")}
-          >
-            How to Install CallerBuddy Help
-          </button>.
-        </p>
-      </section>
 
       <section class="section">
         <h2>Learning More</h2>
@@ -250,7 +236,7 @@ export class WelcomeView extends LitElement {
           <button
             type="button"
             class="text-link"
-            @click=${() => this.openHelp("tutorial")}
+            @click=${() => this.openHelp("welcome")}
           >
             View CallerBuddy Help
           </button>.

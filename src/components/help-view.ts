@@ -8,7 +8,8 @@
  *  - A glossary of square-dance terms used in the app
  *
  * Content lives in src/help-content.md and is compiled to HTML at build time
- * by the markdown Vite plugin (see vite.config.ts).
+ * by the markdown Vite plugin (see vite.config.ts). Relative images under
+ * src/images/ are bundled as Vite assets and rewritten to hashed URLs.
  */
 
 import { LitElement, css, html, nothing } from "lit";
@@ -25,7 +26,7 @@ interface TocEntry {
 }
 
 const TOC: TocEntry[] = [
-  { id: "tutorial", title: "Welcome to CallerBuddy" },
+  { id: "welcome", title: "Welcome to CallerBuddy" },
   { id: "security", title: "CallerBuddy Security" },
   { id: "first-dance", title: "Your First Dance" },
   { id: "tut-setup", title: "Setting up your folder", indent: true },
@@ -300,6 +301,13 @@ export class HelpView extends LitElement {
 
     .content a:hover {
       color: var(--cb-accent-hover);
+    }
+
+    .content img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0.75em auto;
     }
 
     .content :is(h1, h2, h3)[id] {

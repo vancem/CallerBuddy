@@ -1,7 +1,7 @@
 {
   "name": "callerbuddy",
   "private": true,
-  "version": "0.1.0-pre.278",
+  "version": "0.1.0-pre.279",
   "type": "module",
   "scripts": {
     "inject-version": "node scripts/inject-version.cjs",

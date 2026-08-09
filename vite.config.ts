@@ -1,7 +1,7 @@
 /// <reference types="vitest/config" />
 import { createRequire } from "module";
 import { copyFileSync, createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { Marked } from "marked";
 import customHeadingId from "marked-custom-heading-id";
 import { gfmHeadingId } from "marked-gfm-heading-id";
@@ -95,13 +95,84 @@ function demoMusicPlugin(): Plugin {
   };
 }
 
+/**
+ * Turn relative `<img src="...">` paths into Vite asset imports so help images
+ * are emitted to dist and get correct URLs (with `base`) at runtime.
+ * Absolute / remote / data URLs are left unchanged.
+ */
+function bundleRelativeHelpImages(
+  html: string,
+  mdFilePath: string,
+): { parts: string[]; importLines: string[] } {
+  const mdDir = dirname(mdFilePath);
+  const importLines: string[] = [];
+  const parts: string[] = [];
+  let lastIndex = 0;
+
+  const re = /<img\b([^>]*?)\bsrc=(["'])([^"']+)\2([^>]*)>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html)) !== null) {
+    const src = match[3];
+    const full = match[0];
+    const before = match[1];
+    const quote = match[2];
+    const after = match[4];
+
+    if (/^(?:https?:|data:|\/\/)/i.test(src) || src.startsWith("/")) {
+      continue;
+    }
+
+    const abs = resolve(mdDir, decodeURIComponent(src));
+    if (!existsSync(abs)) {
+      console.warn(`[vite-markdown] missing image "${src}" (from ${mdFilePath})`);
+      continue;
+    }
+
+    const index = importLines.length;
+    let relImport = relative(mdDir, abs).replace(/\\/g, "/");
+    if (!relImport.startsWith(".")) relImport = `./${relImport}`;
+
+    const varName = `__mdImg${index}`;
+    importLines.push(`import ${varName} from ${JSON.stringify(relImport)};`);
+
+    parts.push(html.slice(lastIndex, match.index));
+    parts.push(`<img${before}src=${quote}`);
+    parts.push(varName); // sentinel: import binding, not a string literal
+    parts.push(`${quote}${after}>`);
+    lastIndex = match.index + full.length;
+  }
+  parts.push(html.slice(lastIndex));
+
+  return { parts, importLines };
+}
+
+/** Build `export const html = "…" + __mdImg0 + "…" + …` from mixed string/binding parts. */
+function helpHtmlExportExpression(parts: string[], importCount: number): string {
+  if (importCount === 0) {
+    return `export const html = ${JSON.stringify(parts.join(""))};`;
+  }
+  const expr = parts
+    .map((part) =>
+      /^__mdImg\d+$/.test(part) ? part : JSON.stringify(part),
+    )
+    .join(" + ");
+  return `export const html = ${expr};`;
+}
+
 function markdownPlugin(): Plugin {
   return {
     name: "vite-markdown",
     transform(code, id) {
+      // Ignore virtual ids with queries (e.g. "?raw") that are not help markdown.
       if (!id.endsWith(".md")) return;
-      const html = helpMarked.parse(code, { async: false }) as string;
-      return { code: `export const html = ${JSON.stringify(html)};`, map: null };
+      const parsed = helpMarked.parse(code, { async: false }) as string;
+      const { parts, importLines } = bundleRelativeHelpImages(parsed, id);
+      return {
+        code: [...importLines, helpHtmlExportExpression(parts, importLines.length)].join(
+          "\n",
+        ),
+        map: null,
+      };
     },
   };
 }
