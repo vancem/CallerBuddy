@@ -678,7 +678,7 @@ export class PlaylistEditor extends LitElement {
             <button
               class="ctx-help-btn"
               title="Help for the whole Playlist Editor page"
-              @click=${() => this.openHelpSection("page-playlist-editor")}
+              @click=${() => this.openHelpSection("playlist-editor")}
             >?</button>
           </div>
           ${playlist.length === 0

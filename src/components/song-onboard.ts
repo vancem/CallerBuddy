@@ -620,7 +620,7 @@ export class SongOnboard extends LitElement {
   }
 
   private onLyricsMarkdownHelp() {
-    this.openHelpSection("howto-lyrics-markdown");
+    this.openHelpSection("lyrics-markdown");
   }
 
   /** Open the Help tab (as a singleton) scrolled to a section; Help's Back button / ArrowLeft returns here. */
@@ -640,7 +640,7 @@ export class SongOnboard extends LitElement {
         <div class="panel-heading">
           Import Song from ${sourceLabel}
           <button class="ctx-help-btn" title="Open help: Import songs"
-            @click=${() => this.openHelpSection("howto-import")}>?</button>
+            @click=${() => this.openHelpSection("import-songs-from-a-zip-file")}>?</button>
         </div>
         <p class="explain">
           We analyzed <strong>${this.sourceName}</strong> and made our

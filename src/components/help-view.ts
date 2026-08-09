@@ -25,29 +25,30 @@ interface TocEntry {
   indent?: boolean;
 }
 
+/** IDs match GitHub/GFM heading slugs from help-content.md (marked-gfm-heading-id). */
 const TOC: TocEntry[] = [
-  { id: "welcome", title: "Welcome to CallerBuddy" },
-  { id: "security", title: "CallerBuddy Security" },
-  { id: "first-dance", title: "Your First Dance" },
-  { id: "tut-setup", title: "Setting up your folder", indent: true },
-  { id: "tut-playlist", title: "Building a playlist", indent: true },
-  { id: "tut-playing", title: "Playing the dance", indent: true },
-  { id: "howto", title: "How-to Guides" },
-  { id: "howto-import", title: "Import songs from a ZIP", indent: true },
-  { id: "howto-import-folder", title: "Import from a folder", indent: true },
-  { id: "howto-playlist", title: "Build and manage playlists", indent: true },
-  { id: "howto-pitch-tempo", title: "Adjust pitch and tempo", indent: true },
-  { id: "howto-loops", title: "Set up loop points for patter", indent: true },
-  { id: "howto-patter-timer", title: "Use the patter timer", indent: true },
-  { id: "howto-break-timer", title: "Use the break timer", indent: true },
-  { id: "howto-lyrics", title: "Edit or create lyrics", indent: true },
-  { id: "howto-lyrics-markdown", title: "Lyrics Markdown", indent: true },
-  { id: "howto-categories", title: "Categories, rank, and filtering", indent: true },
-  { id: "pages", title: "Page Overviews" },
-  { id: "page-playlist-editor", title: "Playlist Editor", indent: true },
-  { id: "page-now-playing", title: "Now Playing", indent: true },
-  { id: "page-song-player", title: "Song Player", indent: true },
-  { id: "shortcuts", title: "Keyboard Shortcuts" },
+  { id: "welcome-to-callerbuddy", title: "Welcome to CallerBuddy" },
+  { id: "callerbuddy-security", title: "CallerBuddy Security" },
+  { id: "your-first-dance", title: "Your First Dance" },
+  { id: "1-setting-up-your-folder", title: "Setting up your folder", indent: true },
+  { id: "2-building-a-playlist", title: "Building a playlist", indent: true },
+  { id: "3-playing-the-dance", title: "Playing the dance", indent: true },
+  { id: "how-to-guides", title: "How-to Guides" },
+  { id: "import-songs-from-a-zip-file", title: "Import songs from a ZIP", indent: true },
+  { id: "import-songs-from-a-folder", title: "Import from a folder", indent: true },
+  { id: "build-and-manage-playlists", title: "Build and manage playlists", indent: true },
+  { id: "adjust-pitch-and-tempo", title: "Adjust pitch and tempo", indent: true },
+  { id: "set-up-loop-points-for-patter", title: "Set up loop points for patter", indent: true },
+  { id: "use-the-patter-timer", title: "Use the patter timer", indent: true },
+  { id: "use-the-break-timer", title: "Use the break timer", indent: true },
+  { id: "edit-or-create-lyrics", title: "Edit or create lyrics", indent: true },
+  { id: "lyrics-markdown", title: "Lyrics Markdown", indent: true },
+  { id: "categories-rank-and-filtering", title: "Categories, rank, and filtering", indent: true },
+  { id: "page-overviews", title: "Page Overviews" },
+  { id: "playlist-editor", title: "Playlist Editor", indent: true },
+  { id: "now-playing", title: "Now Playing", indent: true },
+  { id: "song-player", title: "Song Player", indent: true },
+  { id: "keyboard-shortcuts", title: "Keyboard Shortcuts" },
   { id: "glossary", title: "Glossary" },
 ];
 
@@ -90,7 +91,7 @@ export class HelpView extends LitElement {
   }
 
   /**
-   * Hash links in help markdown (e.g. [Security](#security)) live inside the
+   * Hash links in help markdown (e.g. [Security](#callerbuddy-security)) live inside the
    * Lit shadow root, so the browser's default #fragment navigation cannot find
    * the targets. Intercept in-content hash clicks and scroll within the shadow.
    */
@@ -251,6 +252,8 @@ export class HelpView extends LitElement {
       font-size: 1.5rem;
       margin: 2rem 0 0.75rem;
       font-weight: 600;
+      padding-bottom: 0.3em;
+      border-bottom: 1px solid var(--cb-border);
     }
 
     .content h1:first-child {
@@ -261,6 +264,8 @@ export class HelpView extends LitElement {
       font-size: 1.15rem;
       margin: 1.75rem 0 0.5rem;
       font-weight: 600;
+      padding-bottom: 0.3em;
+      border-bottom: 1px solid var(--cb-border);
     }
 
     .content h3 {

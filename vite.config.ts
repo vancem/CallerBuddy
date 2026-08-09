@@ -3,14 +3,13 @@ import { createRequire } from "module";
 import { copyFileSync, createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { Marked } from "marked";
-import customHeadingId from "marked-custom-heading-id";
 import { gfmHeadingId } from "marked-gfm-heading-id";
 import type { Connect, Plugin } from "vite";
 import { defineConfig } from "vite";
 
-/** Help markdown only: GFM auto-slugs + explicit `{#id}` (custom wins when present). */
+/** Help markdown: GitHub-style heading IDs from title text (spaces → hyphens). */
 const helpMarked = new Marked();
-helpMarked.use(gfmHeadingId(), customHeadingId());
+helpMarked.use(gfmHeadingId());
 
 const require = createRequire(import.meta.url);
 const { injectVersionPlugin } = require("./scripts/vite-inject-version.cjs");

@@ -446,7 +446,7 @@ export class LyricsEditor extends LitElement {
   private onHelp() {
     this.dispatchEvent(
       new CustomEvent("lyrics-help", {
-        detail: { sectionId: "howto-lyrics-markdown" },
+        detail: { sectionId: "lyrics-markdown" },
         bubbles: true,
         composed: true,
       }),

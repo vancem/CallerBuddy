@@ -300,7 +300,7 @@ export class PlaylistPlay extends LitElement {
             <button
               class="ctx-help-btn"
               title="Help for the whole Now Playing page"
-              @click=${() => this.openHelpSection("page-now-playing")}
+              @click=${() => this.openHelpSection("now-playing")}
             >?</button>
           </div>
           ${playlist.length === 0

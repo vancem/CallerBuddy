@@ -236,7 +236,7 @@ export class WelcomeView extends LitElement {
           <button
             type="button"
             class="text-link"
-            @click=${() => this.openHelp("welcome")}
+            @click=${() => this.openHelp("welcome-to-callerbuddy")}
           >
             View CallerBuddy Help
           </button>.

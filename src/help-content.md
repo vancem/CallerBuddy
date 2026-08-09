@@ -1,9 +1,9 @@
-# Welcome to CallerBuddy {#welcome}
+# Welcome to CallerBuddy
 
 CallerBuddy is a web-based program that Square Dance Callers can use to play
 music during performances. 
 
-## CallerBuddy Security {#security}
+## CallerBuddy Security
 
 CallerBuddy is what is known as a **Progressive Web Application** (PWA), which
 means that it is running as a web page under the control of a web browser and
@@ -102,14 +102,14 @@ a list of songs (a playlist) that you will perform at a dance and have them read
 
 preference are remembers so the song is always ready to sing 
 
-# Your First Dance {#first-dance}
+# Your First Dance
 
 This walkthrough takes you from a fresh install all the way through
 calling a complete square dance. By the end you will have picked a
 folder, added songs, built a playlist, and played through it with
 break timers and everything you need on stage.
 
-## 1. Setting up your folder {#tut-setup}
+## 1. Setting up your folder
 
 CallerBuddy keeps all its data — music files, lyrics, and
 settings — in a single folder you choose. This can be a local
@@ -135,7 +135,7 @@ your collection stays synced across devices.
 label and title from the filename automatically. Lyrics files use
 the same base name with a `.md` extension.
 
-## 2. Building a playlist {#tut-playlist}
+## 2. Building a playlist
 
 The Playlist Editor shows a song table on the right and your
 playlist on the left. There are several ways to add songs:
@@ -156,7 +156,7 @@ You can filter the song table using the text box above it. It
 searches title, label, and categories. There is also a rank
 filter to show only songs above or below a threshold.
 
-## 3. Playing the dance {#tut-playing}
+## 3. Playing the dance
 
 1. Click **▶ Play** in the playlist panel.
   This opens the **Now Playing** screen.
@@ -182,12 +182,12 @@ filter to show only songs above or below a threshold.
 and the Song Player helps you keep track of the time of day, so
 you know when the dance should wrap up.
 
-# How-to Guides {#howto}
+# How-to Guides
 
 Quick recipes for common tasks. Each guide assumes you already
 have CallerBuddy set up with a folder.
 
-## Import songs from a ZIP file {#howto-import}
+## Import songs from a ZIP file
 
 Songs from square-dance music publishers usually come as ZIP
 archives containing MP3 files and HTML or Markdown lyrics.
@@ -210,7 +210,7 @@ archives containing MP3 files and HTML or Markdown lyrics.
 
 
 
-## Import songs from a folder {#howto-import-folder}
+## Import songs from a folder
 
 If your songs were already extracted from a ZIP (or came as loose
 files), use the folder import instead.
@@ -222,7 +222,7 @@ files), use the folder import instead.
 
 
 
-## Build and manage playlists {#howto-playlist}
+## Build and manage playlists
 
 CallerBuddy has one active playlist at a time. Songs are added
 from the Playlist Editor (see the tutorial above for the
@@ -252,7 +252,7 @@ the entire list.
 
 
 
-## Adjust pitch and tempo {#howto-pitch-tempo}
+## Adjust pitch and tempo
 
 While a song is playing, the right panel shows Volume, Pitch,
 and Tempo controls.
@@ -269,7 +269,7 @@ original tempo.
 Changes are saved to your song library automatically. The
 next time you play the song, the same adjustments apply.
 
-## Set up loop points for patter {#howto-loops}
+## Set up loop points for patter
 
 Patter songs (those without lyrics) automatically show loop
 controls instead of lyrics when played. Patter always loops: by
@@ -294,7 +294,7 @@ seamlessly instead, so you can call for as long as you need.
 Loop points are saved per song so you only need to set them
 once. The progress bar also shows the loop region visually.
 
-## Use the patter timer {#howto-patter-timer}
+## Use the patter timer
 
 While playing a patter song, the left panel (below the loop
 controls) also shows a patter timer that counts down while the
@@ -310,7 +310,7 @@ music plays.
 
 Your duration setting is saved and reused next time.
 
-## Use the break timer {#howto-break-timer}
+## Use the break timer
 
 The break timer in the Now Playing view counts down between
 songs. It helps you keep breaks consistent during a dance.
@@ -327,7 +327,7 @@ songs. It helps you keep breaks consistent during a dance.
 
 
 
-## Edit or create lyrics {#howto-lyrics}
+## Edit or create lyrics
 
 While a singing call is playing, click
 **Edit Lyrics** to open the built-in editor. If
@@ -349,7 +349,7 @@ or discard.
 Lyrics are saved as Markdown files alongside the MP3, using the
 same `LABEL - Title.md` naming convention.
 
-## Lyrics Markdown {#howto-lyrics-markdown}
+## Lyrics Markdown
 
 CallerBuddy lyrics use a small Markdown subset:
 
@@ -378,7 +378,7 @@ I'm only one call away\
 When you import a ZIP or folder that contains HTML lyrics,
 CallerBuddy converts them to this Markdown format automatically.
 
-## Categories, rank, and filtering {#howto-categories}
+## Categories, rank, and filtering
 
 Each song can have **categories** (free-form
 tags separated by semicolons, e.g. "Christmas; Patriotic")
@@ -405,13 +405,13 @@ Leave it empty to disable.
 
 
 
-# Page Overviews {#pages}
+# Page Overviews
 
 Each main screen has a **?** button of its own (top
 of the Playlist pane, or top-right of the Song Player) that jumps
 straight here for a full overview of that screen.
 
-## Playlist Editor {#page-playlist-editor}
+## Playlist Editor
 
 The Playlist Editor is where you browse a folder of songs and
 build the playlist you'll perform. The left pane is your
@@ -440,7 +440,7 @@ selected row, Enter play the playlist.
 See "Building a playlist" and "Categories, rank, and filtering"
 above for more detail.
 
-## Now Playing {#page-now-playing}
+## Now Playing
 
 Now Playing shows the playlist queue you'll work through during
 the dance, with a break timer and clock alongside it.
@@ -456,7 +456,7 @@ replay the whole list.
 
 
 
-## Song Player {#page-song-player}
+## Song Player
 
 The Song Player plays one song at a time, with a **?** button in
 the top-right corner of the left pane that opens this overview.
@@ -471,7 +471,7 @@ details on each control.
 
 
 
-# Keyboard Shortcuts {#shortcuts}
+# Keyboard Shortcuts
 
 
 
@@ -535,7 +535,7 @@ details on each control.
 
 
 
-# Glossary {#glossary}
+# Glossary
 
 CallerBuddy folder (root)
 
