@@ -287,7 +287,8 @@ export class WelcomeView extends LitElement {
           a new folder, type the name
           <strong>CallerBuddySongs</strong>, and then click
           <strong>Select Folder</strong> (not &lt;enter&gt;) to select this newly created
-          folder.
+          folder.  (On Android the new folder is a folder icon with a + sign, on a Chromebook
+          you have to use the vertical ellipses '⋮' and select the 'New folder' menu item).
         </p>
         <p class="prompt-body">
           Once you have done this, the browser will ask you if you

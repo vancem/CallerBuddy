@@ -690,39 +690,44 @@ export class PlaylistEditor extends LitElement {
               ><p class="muted">No songs in playlist. Drag songs here, right-click,
                 or use the + button to add songs.</p></div>`
             : html`
-                <ol
-                  class="playlist-list"
-                  @dragenter=${this.reorder.onDragEnter}
-                  @dragover=${this.reorder.onPlaylistContainerDragOver}
-                  @dragleave=${this.reorder.onPlaylistDragLeave}
-                  @drop=${this.reorder.onPlaylistDrop}
-                >
-                  ${playlist.map(
-                    (song, i) => html`
-                      <li
-                        class="playlist-item
-                          ${this.reorder.draggingPlaylistIndex === i ? "dragging" : ""}
-                          ${this.reorder.dragOverIndex === i && this.reorder.dropPosition === "above" ? "drop-indicator-above" : ""}
-                          ${this.reorder.dragOverIndex === i && this.reorder.dropPosition === "below" ? "drop-indicator-below" : ""}"
-                        draggable="true"
-                        @dragstart=${(e: DragEvent) => this.reorder.onPlaylistItemDragStart(e, i)}
-                        @dragend=${this.onEditorDragEnd}
-                        @dragenter=${this.reorder.onDragEnter}
-                        @dragover=${(e: DragEvent) => this.reorder.onPlaylistDragOver(e, i)}
-                      >
-                        <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
-                          title="${isSingingCall(song) ? "Singing call" : "Patter"}"
-                        >${isSingingCall(song) ? "♪" : "♫"}</span>
-                        <span class="pl-title">${song.title}</span>
-                        <button
-                          class="icon-btn"
-                          title="Remove from playlist"
-                          @click=${() => callerBuddy.state.removeFromPlaylist(i)}
-                        >×</button>
-                      </li>
-                    `,
-                  )}
-                </ol>
+                <div class="playlist-body">
+                  <ol
+                    class="playlist-list"
+                    @dragenter=${this.reorder.onDragEnter}
+                    @dragover=${this.reorder.onPlaylistContainerDragOver}
+                    @dragleave=${this.reorder.onPlaylistDragLeave}
+                    @drop=${this.reorder.onPlaylistDrop}
+                  >
+                    ${playlist.map(
+                      (song, i) => html`
+                        <li
+                          class="playlist-item
+                            ${this.reorder.draggingPlaylistIndex === i ? "dragging" : ""}
+                            ${this.reorder.dragOverIndex === i && this.reorder.dropPosition === "above" ? "drop-indicator-above" : ""}
+                            ${this.reorder.dragOverIndex === i && this.reorder.dropPosition === "below" ? "drop-indicator-below" : ""}"
+                          draggable="true"
+                          @dragstart=${(e: DragEvent) => this.reorder.onPlaylistItemDragStart(e, i)}
+                          @dragend=${this.onEditorDragEnd}
+                          @dragenter=${this.reorder.onDragEnter}
+                          @dragover=${(e: DragEvent) => this.reorder.onPlaylistDragOver(e, i)}
+                        >
+                          <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
+                            title="${isSingingCall(song) ? "Singing call" : "Patter"}"
+                          >${isSingingCall(song) ? "♪" : "♫"}</span>
+                          <span class="pl-title">${song.title}</span>
+                          <button
+                            class="icon-btn"
+                            title="Remove from playlist"
+                            @click=${() => callerBuddy.state.removeFromPlaylist(i)}
+                          >×</button>
+                        </li>
+                      `,
+                    )}
+                  </ol>
+                  <div class="playlist-shortcut-hint" aria-hidden="true">
+                    <p class="muted">Type &lt;Enter&gt; to play the playlist</p>
+                  </div>
+                </div>
               `}
           <div class="playlist-actions">
             <button
@@ -1878,12 +1883,37 @@ export class PlaylistEditor extends LitElement {
       color: var(--cb-accent-hover);
     }
 
-    .playlist-list {
+    .playlist-body {
       flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .playlist-list {
+      flex: 0 1 auto;
       overflow-y: auto;
+      min-height: 0;
       margin: 0;
       padding: 0 0 0 4px;
       list-style-position: inside;
+    }
+
+    .playlist-shortcut-hint {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .playlist-shortcut-hint .muted {
+      margin: 0;
+      padding: 8px;
+      text-align: center;
     }
 
     .playlist-item {

@@ -32,7 +32,7 @@ that you can  write what looks and feels like a normal computer application as
 an a web page running in the browser.  The most important property of a PWA is
 that **it has the security model of a web page**.  A user surfing the web does
 not TRUST the web sites he is visiting and so web pages are placed in a
-'sandbox'which restricts the page from doing dangerous things (like touching
+'sandbox' which restricts the page from doing dangerous things (like touching
 arbitrary files).   PWA's inherit this security model.   On the plus side it
 means that running and installing a PWA like CallerBuddy is not 'dangerous' (it
 is highly restricted in what it can do), but on the minus side it is highly

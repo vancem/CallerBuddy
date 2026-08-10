@@ -700,6 +700,10 @@ export class AppShell extends LitElement {
           title="Open help documentation with walkthroughs and keyboard shortcuts">
           Help
         </button>
+        <button class="menu-item" role="menuitem" @click=${this.onHelpInstallingAsApp}
+          title="How to install CallerBuddy as an app outside the browser">
+          Help Installing As App
+        </button>
         <button class="menu-item" role="menuitem" @click=${this.onShowLogs}
           title="Show recent diagnostic log lines">
           Show Logs
@@ -898,6 +902,14 @@ export class AppShell extends LitElement {
     log.info(`[ui] menu: Help`);
     this.showMenu = false;
     callerBuddy.state.openSingletonTab(TabType.Help, "Help");
+  }
+
+  private onHelpInstallingAsApp() {
+    log.info(`[ui] menu: Help Installing As App`);
+    this.showMenu = false;
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
+      sectionId: "running-callerbuddy-outside-the-browser",
+    });
   }
 
   static styles = css`

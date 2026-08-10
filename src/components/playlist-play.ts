@@ -304,61 +304,71 @@ export class PlaylistPlay extends LitElement {
             >?</button>
           </div>
           ${playlist.length === 0
-            ? html`<p class="muted">Playlist is empty.</p>`
+            ? html`<div class="empty-playlist">
+                <p class="muted">
+                  No songs in playlist. Add songs in the Playlist Editor, then
+                  press Play (or &lt;Enter&gt;).
+                </p>
+              </div>`
             : html`
-                <ol
-                  class="playlist-list"
-                  @dragenter=${this.reorder.onDragEnter}
-                  @dragover=${this.reorder.onPlaylistContainerDragOver}
-                  @dragleave=${this.reorder.onPlaylistDragLeave}
-                  @drop=${this.reorder.onPlaylistDrop}
-                >
-                  ${playlist.map((song, i) => {
-                    const played = callerBuddy.state.isPlaylistEntryPlayed(song);
-                    const r = this.reorder;
-                    return html`
-                      <li
-                        class="pl-item ${i === sel ? "selected" : ""}
-                          ${r.draggingPlaylistIndex === i ? "dragging" : ""}
-                          ${r.dragOverIndex === i && r.dropPosition === "above" ? "drop-indicator-above" : ""}
-                          ${r.dragOverIndex === i && r.dropPosition === "below" ? "drop-indicator-below" : ""}"
-                        draggable="true"
-                        @click=${() => (this.selectedIndex = i)}
-                        @dblclick=${() => this.playAt(i)}
-                        @dragstart=${(e: DragEvent) => r.onPlaylistItemDragStart(e, i)}
-                        @dragend=${r.onDragEnd}
-                        @dragenter=${r.onDragEnter}
-                        @dragover=${(e: DragEvent) => r.onPlaylistDragOver(e, i)}
-                      >
-                        <label class="pl-check" @click=${(e: Event) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            .checked=${played}
-                            title=${played ? "Mark as unplayed (M)" : "Mark as played (M)"}
-                            @change=${() =>
-                              callerBuddy.state.setSongPlayed(song, !played)}
-                          />
-                        </label>
-                        <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
-                          title="${isSingingCall(song) ? "Singing call" : "Patter (no lyrics)"}"
-                          >${isSingingCall(song) ? "♪" : "♫"}</span
+                <div class="playlist-body">
+                  <ol
+                    class="playlist-list"
+                    @dragenter=${this.reorder.onDragEnter}
+                    @dragover=${this.reorder.onPlaylistContainerDragOver}
+                    @dragleave=${this.reorder.onPlaylistDragLeave}
+                    @drop=${this.reorder.onPlaylistDrop}
+                  >
+                    ${playlist.map((song, i) => {
+                      const played = callerBuddy.state.isPlaylistEntryPlayed(song);
+                      const r = this.reorder;
+                      return html`
+                        <li
+                          class="pl-item ${i === sel ? "selected" : ""}
+                            ${r.draggingPlaylistIndex === i ? "dragging" : ""}
+                            ${r.dragOverIndex === i && r.dropPosition === "above" ? "drop-indicator-above" : ""}
+                            ${r.dragOverIndex === i && r.dropPosition === "below" ? "drop-indicator-below" : ""}"
+                          draggable="true"
+                          @click=${() => (this.selectedIndex = i)}
+                          @dblclick=${() => this.playAt(i)}
+                          @dragstart=${(e: DragEvent) => r.onPlaylistItemDragStart(e, i)}
+                          @dragend=${r.onDragEnd}
+                          @dragenter=${r.onDragEnter}
+                          @dragover=${(e: DragEvent) => r.onPlaylistDragOver(e, i)}
                         >
-                        <span class="pl-title">${song.title}</span>
-                        <button
-                          type="button"
-                          class="icon-btn"
-                          title="Remove from playlist"
-                          @click=${(e: Event) => {
-                            e.stopPropagation();
-                            this.onRemovePlaylistItem(i);
-                          }}
-                        >
-                          ×
-                        </button>
-                      </li>
-                    `;
-                  })}
-                </ol>
+                          <label class="pl-check" @click=${(e: Event) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              .checked=${played}
+                              title=${played ? "Mark as unplayed (M)" : "Mark as played (M)"}
+                              @change=${() =>
+                                callerBuddy.state.setSongPlayed(song, !played)}
+                            />
+                          </label>
+                          <span class="pl-type ${isSingingCall(song) ? "singing" : "patter"}"
+                            title="${isSingingCall(song) ? "Singing call" : "Patter (no lyrics)"}"
+                            >${isSingingCall(song) ? "♪" : "♫"}</span
+                          >
+                          <span class="pl-title">${song.title}</span>
+                          <button
+                            type="button"
+                            class="icon-btn"
+                            title="Remove from playlist"
+                            @click=${(e: Event) => {
+                              e.stopPropagation();
+                              this.onRemovePlaylistItem(i);
+                            }}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      `;
+                    })}
+                  </ol>
+                  <div class="playlist-shortcut-hint" aria-hidden="true">
+                    <p class="muted">Type &lt;Enter&gt; to play next song</p>
+                  </div>
+                </div>
               `}
 
           <div class="play-actions">
@@ -743,12 +753,52 @@ export class PlaylistPlay extends LitElement {
       color: var(--cb-accent-hover);
     }
 
-    .playlist-list {
+    .empty-playlist {
       flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 60px;
+      margin: 4px 0;
+    }
+
+    .empty-playlist .muted {
+      margin: 0;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .playlist-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .playlist-list {
+      flex: 0 1 auto;
       overflow-y: auto;
+      min-height: 0;
       margin: 0;
       padding: 0;
       list-style: none;
+    }
+
+    .playlist-shortcut-hint {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .playlist-shortcut-hint .muted {
+      margin: 0;
+      padding: 8px;
+      text-align: center;
     }
 
     .pl-item {

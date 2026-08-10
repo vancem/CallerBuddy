@@ -648,6 +648,13 @@ export const songPlayStyles = css`
       gap: 10px;
     }
 
+    .play-extras-hint {
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
     .song-play-extras-toggle {
       display: inline-flex;
       align-items: center;
