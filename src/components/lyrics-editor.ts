@@ -8,7 +8,7 @@
  *  - `lyrics-input`  — detail: { markdown: string }
  *  - `lyrics-save`   — Save clicked or Ctrl+S
  *  - `lyrics-exit`   — Exit clicked or Esc
- *  - `lyrics-help`   — Markdown help clicked
+ *  - `lyrics-help`   — Help clicked; detail: { sectionId: string }
  */
 
 import { LitElement, css, html, nothing, unsafeCSS } from "lit";
@@ -173,7 +173,7 @@ export class LyricsEditor extends LitElement {
                   type="button"
                   class="toolbar-btn help-btn"
                   title="Open Markdown help"
-                  @click=${this.onHelp}
+                  @click=${() => this.onHelp("lyrics-markdown")}
                 >
                   Markdown help
                 </button>
@@ -197,6 +197,14 @@ export class LyricsEditor extends LitElement {
                   @click=${this.onExit}
                 >
                   Exit
+                </button>
+                <button
+                  type="button"
+                  class="ctx-help-btn"
+                  title="Open help: Edit lyrics"
+                  @click=${() => this.onHelp("edit-lyrics")}
+                >
+                  ?
                 </button>
               `
             : nothing}
@@ -443,10 +451,10 @@ export class LyricsEditor extends LitElement {
     );
   }
 
-  private onHelp() {
+  private onHelp(sectionId: string) {
     this.dispatchEvent(
       new CustomEvent("lyrics-help", {
-        detail: { sectionId: "lyrics-markdown" },
+        detail: { sectionId },
         bubbles: true,
         composed: true,
       }),
@@ -514,6 +522,31 @@ export class LyricsEditor extends LitElement {
 
     .help-btn {
       color: var(--cb-accent);
+    }
+
+    .ctx-help-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.125rem;
+      height: 1.125rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-radius: 50%;
+      border: 1px solid var(--cb-accent);
+      background: none;
+      color: var(--cb-accent);
+      cursor: pointer;
+      vertical-align: middle;
+      margin-left: 2px;
+      padding: 0;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .ctx-help-btn:hover {
+      border-color: var(--cb-accent-hover);
+      color: var(--cb-accent-hover);
     }
 
     .save-btn {

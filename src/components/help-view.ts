@@ -41,7 +41,7 @@ const TOC: TocEntry[] = [
   { id: "set-up-loop-points-for-patter", title: "Set up loop points for patter", indent: true },
   { id: "use-the-patter-timer", title: "Use the patter timer", indent: true },
   { id: "use-the-break-timer", title: "Use the break timer", indent: true },
-  { id: "edit-or-create-lyrics", title: "Edit or create lyrics", indent: true },
+  { id: "edit-lyrics", title: "Edit lyrics", indent: true },
   { id: "lyrics-markdown", title: "Lyrics Markdown", indent: true },
   { id: "categories-rank-and-filtering", title: "Categories, rank, and filtering", indent: true },
   { id: "page-overviews", title: "Page Overviews" },

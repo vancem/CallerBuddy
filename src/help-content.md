@@ -1,7 +1,38 @@
 # Welcome to CallerBuddy
 
 CallerBuddy is a web-based program that Square Dance Callers can use to play
-music during performances. 
+music during performances.  Here are some useful features.  
+
+1. **Web or App** CallerBuddy can be used just as a web site in your browser, 
+   but it can also be installed as normal desktop app (so you can launch it 
+   from your taskbar, or placed on the desktop).  
+   See [Installing CallerBuddy](#running-callerbuddy-outside-the-browser).
+2. **Safe To Run**.  You don't need to worry that you are 
+   compromising the safety of your machine when you run CallerBuddy.  See 
+   [CallerBuddy Security](#callerbuddy-security).     
+3  **Cloud storage friendly** meaning you can have your songs 'in the cloud'
+   where they are backed up and accessible from multiple machines yet kept in
+   sync (you logically only have one collection of songs) See 
+   [Cloud Storage](#cloud-storage-for-your-songs).
+4. **Works Offline** - CallerBuddy can run without any network connection, 
+   so it will work in ALL venues.  See [Offline CallerBuddy](#offline-callerbuddy).
+5. **Cross Platform**  It works on Windows, 
+   Macs (with Chrome Browser), Chromebooks, Linux, and Android phones (sadly 
+   IPhone browsers do not support needed functionality, and are unsupported)
+6. **Keyboard Friendly** - CallerBuddy has extensive keyboard shortcuts, that are easy 
+   to learn with hover-over help.  You never need to be fiddling with a 
+   mouse on stage, or looking for a cursor in sunny conditions.  
+7. **Touch Friendly** For Android Phones, CallerBuddy is fully touch capable 
+   (no keyboard needed) and the user interface 'fits' in the phones screen size.  
+   Your phone can definitely be your primary tool when giving performances. 
+
+### CallerBuddy Capabilities  
+
+
+
+
+
+
 
 ## CallerBuddy Security
 
@@ -73,69 +104,31 @@ does **not** touch the CallerBuddySongs folder, so you can freely uninstall
 CallerBuddy (like any other app on Windows go to Add and Remove Programs) without
 any worry about deleting your songs.  
 
-## Where you can use CallerBuddy
+## Cloud Storage for your Songs
 
-1. Can run in your browser or as a desktop launched application.   The app
-is tiny can downloads in seconds.  
-2. It is cloud storage friendly, meaning you can have your songs 'in the cloud'
-where they are backed up, and accessible from multiple machines yet kept in
-sync (you logically only have one collection of songs).
-3. While very network cloud friendly, CallerBuddy can run completely 'offline' 
-so it works fine in venues without any network connectivity.  
-4. Works on a wide variety of platforms.  It works on Windows, 
-Macs (with Chrome Browser), Chromebooks, Linux, and Android phones (sadly 
-IPhone browsers do not support needed functionality, and are unsupported)
-5. CallerBuddy works well on Android phones, using just touch and allowing both
-landscape and portrait orientations.   Your phone can definitely be your 
-primary performance tool.
+## Importing Songs
 
-## What CallerBuddy can do for you
 
-  1
 
-```
-You can immediately play songs, but it encourages you to generate
-a list of songs (a playlist) that you will perform at a dance and have them ready to go to perron in seauence.  
-```
+TODO this is a placeholder for explaining cloud storage.  
 
-1. You can modify the pitch and tempo and volume of a song and these
+## Offline CallerBuddy
 
-preference are remembers so the song is always ready to sing 
+TODO this is a placeholder for explaining offline use.  
 
-# Your First Dance
+# How-to Guides
 
-This walkthrough takes you from a fresh install all the way through
-calling a complete square dance. By the end you will have picked a
-folder, added songs, built a playlist, and played through it with
-break timers and everything you need on stage.
+Quick recipes for common tasks. Each guide assumes you already
+have CallerBuddy set up with a folder.
 
-## 1. Setting up your folder
+## Typical CallerBuddy Flow 
 
-CallerBuddy keeps all its data — music files, lyrics, and
-settings — in a single folder you choose. This can be a local
-folder or one inside a cloud drive like OneDrive or Google Drive, so
-your collection stays synced across devices.
+This How-To describes the typical use of CallerBuddy to Program
+and perform a square dance.  
 
-1. Open CallerBuddy. The **Welcome screen** appears.
-2. New users: click **Instructions to Create CallerBuddySongs**
-  for a step-by-step walkthrough (with screenshots) of creating
-   an empty **CallerBuddySongs** folder using the browser's folder
-   picker, then click **Open CallerBuddySongs** from inside those
-   instructions. Returning users: click **Open CallerBuddySongs**
-   directly and pick your existing folder.
-3. If the folder is empty, CallerBuddy offers optional free demo
-  songs so you can try the app immediately. You can also import
-   your own music later.
-4. CallerBuddy scans the folder and opens the
-  **Playlist Editor**.
+### 1. Setting up your folder
 
-**Tip:** Your files should follow the naming pattern
-`LABEL - Title.mp3` (for example
-`RYL 607 - Come Sail Away.mp3`). CallerBuddy reads the
-label and title from the filename automatically. Lyrics files use
-the same base name with a `.md` extension.
-
-## 2. Building a playlist
+### 2. Building a playlist
 
 The Playlist Editor shows a song table on the right and your
 playlist on the left. There are several ways to add songs:
@@ -156,7 +149,7 @@ You can filter the song table using the text box above it. It
 searches title, label, and categories. There is also a rank
 filter to show only songs above or below a threshold.
 
-## 3. Playing the dance
+### 3. Playing the dance
 
 1. Click **▶ Play** in the playlist panel.
   This opens the **Now Playing** screen.
@@ -182,12 +175,9 @@ filter to show only songs above or below a threshold.
 and the Song Player helps you keep track of the time of day, so
 you know when the dance should wrap up.
 
-# How-to Guides
+## Adding Songs to CallerBuddy
 
-Quick recipes for common tasks. Each guide assumes you already
-have CallerBuddy set up with a folder.
-
-## Import songs from a ZIP file
+### Import songs from a ZIP file
 
 Songs from square-dance music publishers usually come as ZIP
 archives containing MP3 files and HTML or Markdown lyrics.
@@ -208,8 +198,6 @@ archives containing MP3 files and HTML or Markdown lyrics.
   creates the properly named files in your folder and
    refreshes the song library.
 
-
-
 ## Import songs from a folder
 
 If your songs were already extracted from a ZIP (or came as loose
@@ -219,8 +207,6 @@ files), use the folder import instead.
 2. Pick the folder containing the MP3 and HTML files.
 3. The same Import Review screen appears. Review and click
   **Import**.
-
-
 
 ## Build and manage playlists
 
@@ -327,7 +313,7 @@ songs. It helps you keep breaks consistent during a dance.
 
 
 
-## Edit or create lyrics
+## Edit lyrics
 
 While a singing call is playing, click
 **Edit Lyrics** to open the built-in editor. If
@@ -466,7 +452,7 @@ panel has transport, Volume/Pitch/Tempo, and Categories/Rank.
 - **Patter** songs show loop controls and a patter timer on the
 left instead of lyrics.
 - See "Adjust pitch and tempo", "Set up loop points for patter",
-"Use the patter timer", and "Edit or create lyrics" above for
+"Use the patter timer", and "Edit lyrics" above for
 details on each control.
 
 

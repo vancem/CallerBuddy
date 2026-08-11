@@ -704,6 +704,14 @@ export class AppShell extends LitElement {
           title="How to install CallerBuddy as an app outside the browser">
           Help Installing As App
         </button>
+        <button class="menu-item" role="menuitem" @click=${this.onHelpWithCloudStorage}
+          title="How to keep your songs in cloud storage">
+          Help with Cloud Storage
+        </button>
+        <button class="menu-item" role="menuitem" @click=${this.onHelpImportingSongs}
+          title="How to import songs into CallerBuddy">
+          Help Importing Songs
+        </button>
         <button class="menu-item" role="menuitem" @click=${this.onShowLogs}
           title="Show recent diagnostic log lines">
           Show Logs
@@ -909,6 +917,22 @@ export class AppShell extends LitElement {
     this.showMenu = false;
     callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
       sectionId: "running-callerbuddy-outside-the-browser",
+    });
+  }
+
+  private onHelpWithCloudStorage() {
+    log.info(`[ui] menu: Help with Cloud Storage`);
+    this.showMenu = false;
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
+      sectionId: "cloud-storage-for-your-songs",
+    });
+  }
+
+  private onHelpImportingSongs() {
+    log.info(`[ui] menu: Help Importing Songs`);
+    this.showMenu = false;
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
+      sectionId: "importing-songs",
     });
   }
 

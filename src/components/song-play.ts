@@ -940,8 +940,8 @@ export class SongPlay extends LitElement {
     this.lyricsEditorMode = e.detail.mode;
   }
 
-  private onLyricsMarkdownHelp() {
-    this.openHelpSection("lyrics-markdown");
+  private onLyricsMarkdownHelp(e: CustomEvent<{ sectionId?: string }>) {
+    this.openHelpSection(e.detail?.sectionId ?? "lyrics-markdown");
   }
 
   /** Open the Help tab (as a singleton) scrolled to a section; Help's Back button / ArrowLeft returns here. */
