@@ -3,32 +3,119 @@
 CallerBuddy is a web-based program that Square Dance Callers can use to play
 music during performances.  Here are some useful features.  
 
-1. **Web or App** CallerBuddy can be used just as a web site in your browser, 
+1. **Web or App** - CallerBuddy can be used just as a web site in your browser, 
    but it can also be installed as normal desktop app (so you can launch it 
-   from your taskbar, or placed on the desktop).  
+   from your taskbar, or placed on the desktop).
    See [Installing CallerBuddy](#running-callerbuddy-outside-the-browser).
-2. **Safe To Run**.  You don't need to worry that you are 
+2. **Safe To Run** - You don't need to worry that you are 
    compromising the safety of your machine when you run CallerBuddy.  See 
-   [CallerBuddy Security](#callerbuddy-security).     
-3  **Cloud storage friendly** meaning you can have your songs 'in the cloud'
+   [CallerBuddy Security](#callerbuddy-security). 
+3. **Cloud storage friendly** meaning you can have your songs 'in the cloud'
    where they are backed up and accessible from multiple machines yet kept in
    sync (you logically only have one collection of songs) See 
    [Cloud Storage](#cloud-storage-for-your-songs).
 4. **Works Offline** - CallerBuddy can run without any network connection, 
    so it will work in ALL venues.  See [Offline CallerBuddy](#offline-callerbuddy).
-5. **Cross Platform**  It works on Windows, 
+5. **Cross Platform**  It works on Windows,
    Macs (with Chrome Browser), Chromebooks, Linux, and Android phones (sadly 
-   IPhone browsers do not support needed functionality, and are unsupported)
+   IPhone browsers do not support needed functionality, and are unsupported).
 6. **Keyboard Friendly** - CallerBuddy has extensive keyboard shortcuts, that are easy 
    to learn with hover-over help.  You never need to be fiddling with a 
-   mouse on stage, or looking for a cursor in sunny conditions.  
+   mouse on stage, or looking for a cursor in sunny conditions.
 7. **Touch Friendly** For Android Phones, CallerBuddy is fully touch capable 
    (no keyboard needed) and the user interface 'fits' in the phones screen size.  
    Your phone can definitely be your primary tool when giving performances. 
 
-### CallerBuddy Capabilities  
+## Expected Workflow 
+### First Time Setup
+When CallerBuddy is launched for the first time (or after it is reset from the ☰ menu), 
+it will  display a welcome pane that asks the user to create or designate a
+ **CallerBuddySongs** folder that hold songs and the other data CallerBuddy needs.
+However when  you relaunch CallerBuddy it will go strait into the 
+[playlist editor](#playlist-editor). (Due to limitation on Android, you must go through a reconnection process first but you ultimately end in the playList editor).
+
+## Playlist Editor
+
+CallerBuddy has the concept of a playList.  A playList is simply a list songs 
+to be performed (probably sequentially) at a dance or workshop.   This lets 
+you plan your dance so you are not fumbling for music during a performance.
 
 
+The Playlist Editor is where you browse a folder of songs and
+build the playlist you'll perform. The left pane is your
+**playList**; the right pane is the **song table** for the
+current folder.
+
+- Add songs by dragging a row into the playlist, double-clicking
+a row, right-clicking for a menu, or clicking the row's
+**+** button.
+- Reorder the playlist by dragging items; remove one with its
+**×** button.
+- The song table can be filtered by text (title, label,
+categories) and by rank, and sorted by clicking any column
+header. Click a **Categories** or **Rank** cell to edit it
+inline.
+- Subfolders appear as rows — click one to open it in its own
+tab (it shares the same playlist).
+- **Play** opens Now Playing; **Clear**/**Restore** manage the
+whole playlist; non-root folder tabs also have **Close**.
+- Shortcuts: Ctrl+F focus the filter,
+Ctrl+R focus the rank filter,
++/= add the selected row,
+P play it now, ↑/↓ change the
+selected row, Enter play the playlist.
+
+See "Building a playlist" and "Categories, rank, and filtering"
+above for more detail.
+
+
+
+
+
+The Playlist Editor shows a song table on the right and your
+playlist on the left. There are several ways to add songs:
+
+- **Drag and drop** — drag a song row from
+the table into the playlist panel.
+- **Double-click** a song row to add it to the
+end of the playlist.
+- **Right-click** a song for a context menu with
+options to add to the start or end, or to play it
+immediately.
+- Click the **+** button on a song row.
+
+Once songs are in the playlist, drag them up or down to reorder.
+Use the **×** button to remove a song.
+
+You can filter the song table using the text box above it. It
+searches title, label, and categories. There is also a rank
+filter to show only songs above or below a threshold.
+
+### 3. Playing the dance
+
+1. Click **▶ Play** in the playlist panel.
+  This opens the **Now Playing** screen.
+2. The first unplayed song is automatically selected. Press
+  **Enter**, **Space**, or click
+   **▶ Play** to start it.
+3. **Singing calls** (songs with lyrics) play
+  straight through. The lyrics are displayed on the left.
+   The progress bar at the bottom is divided into 7 segments
+   matching a standard singing-call structure.
+4. **Patter** (songs without lyrics) uses looping.
+  The left area shows loop controls and a patter timer instead
+   of lyrics. The music loops automatically between the loop
+   start and end points.
+5. When the song ends (or you close the player), you return to
+  Now Playing. If the **break timer** is enabled,
+   it starts counting down. A gentle chime sounds when time is
+   up.
+6. The next unplayed song is auto-selected. Repeat until the
+  dance is over.
+
+**Tip:** The clock in the upper-right of Now Playing
+and the Song Player helps you keep track of the time of day, so
+you know when the dance should wrap up.
 
 
 
@@ -78,7 +165,7 @@ When you open this web page, notice that on desktop platforms there is a icon on
 the right side of the textbox for the web page name (URL). Here it is in the
 Microsoft Edge browser: 
 
-![alt text](images/CallerBuddyEdge.png)
+![CallerBuddy Install ScreenShot](images/CallerBuddyEdge.png)
 
 On the Chrome browser the icon looks different (a screen with a down arrow)
 but it is in the same spot and works the same.   If you click this install
@@ -106,74 +193,168 @@ any worry about deleting your songs.
 
 ## Cloud Storage for your Songs
 
-## Importing Songs
+There is a pretty good chance that you are already using CallerBuddy 
+with cloud storage.   That is because when you first set up your
+your **CallerBuddySongs** folder, you probably did it in your Documents
+folder, and on most operating systems this folder will be set up
+for Cloud Storage (since most of the files you create are in this
+folder, they end up in the cloud, and CallerBuddy is just one specific
+case of this)
 
+Since CallerBuddy puts EVERYTHING it needs into the **CallerBuddySongs**
+folder this means that everything CallerBuddy needs is already in 
+the cloud, which means you can get at it from other computers.  For 
+example:
+  1. Use [CallerBuddy ](https://vancem.github.io/CallerBuddy/) to set up a **CallerBuddySongs** on one laptop (in the Documents folder)
+  2. Log in to another laptop and use [CallerBuddy ](https://vancem.github.io/CallerBuddy/)
+  to access the SAMPLE **CallerBuddySongs** folder from another laptop.  
+Indeed in CallerBuddy's initial welcome page, it has a button for 
+creating a **CallerBuddySongs** from scratch and another button for 
+connecting to a existing **CallerBuddySongs** folder for just this purpose.  
 
+Thus you can get at all your songs from any computer that can get at
+your cloud storage.  This includes the songs and lyrics of course but
+it also includes all the options you set (volume, pitch, tempo), as well
+as songs rank and usage statistics.  It will also remember your preferences
+(like how long your break timer is), and what your current playlist is.  
 
-TODO this is a placeholder for explaining cloud storage.  
+### Run only one CallerBuddy at a time
+
+This is all great, but is is important to realize that CallerBuddy is
+really not expecting two versions of the program to be running simultaneously.
+CallerBuddy won't let files be corrupted, but if two programs are running
+and modifying the same things (like the settings, or playlist) it is 
+possible that one copy will overwrite what the other copy changed 
+in surprising ways (typically it will look like you lost edits).  The 
+simple advice is to avoid letting more than one copy run at once.  If 
+you leave one copy running at home and then start another at a performance, 
+that is OK, but when you get back home you should probably restart it.  
+
+### Cloud Storage and the Android Phone (Google Drive)
+
+CallerBuddy work quite well on Android phones (unfortunately IPhone only
+half-heartedly supports PWA apps and CallerBuddy does not work).  However,
+Android's support for PWA apps does not include support for Microsoft's 
+One Drive cloud files (which is what is used by default on Windows machines).
+On the other hand, Microsoft Windows (and Mac) DOES have support for Google Drive.  
+Thus if you wish to have a single place in the cloud that all of your
+devices (Windows, Android phone, Chromebooks, Macs), can access, you should
+use Google Drive.  If you will only be using CallerBuddy on Windows, then
+you can simply leave your **CallerBuddySongs** folder in the Documents folder
+(effectively using Microsoft One Drive to store your songs in the cloud).  
+If you use cloud storage, however please see the [Offline CallerBuddy](#offline-callerbuddy) section to make sure that CallerBuddyWorks when you don't have network connectivity.
+
+#### Using Google Drive from All Platforms
+
+The main reason you would want to install google drive is so you can access
+the same files on your Android phone and your laptop computer.   This means
+you already have Google account, and it is already set up on your phone.  This
+simplifies the steps need to the following. 
+
+ *  On the desktop, go to [Google Drive Install](https://support.google.com/a/users/answer/13022292?hl=en) and install the Google Drive. 
+ *  Launch Google Drive, and sign into your account.  
+
+ Once you do this, whenever you are choosing files you will see an additional
+ top level 'Google Drive' option in the left pane.    For example here is 
+ what the folder chooser looks like in CallerBuddy, if GoogleDrive is installed 
+ on the machine. 
+
+![Windows Google Drive Screenshot](images/GoogleDriveExample.png)
+
+Thus when running creating a **CallerBuddySongs** folder you can simply create
+the folder underneath the Google Drive (Under the Google Drive is always a 'My Drive'
+folder, put it in that folder (or its subfolders)).
+
+Note that don't have to start from scratch.  If you already have **CallerBuddySongs**
+folder set up somewhere else (e.g. Documents), you can simply use the file explorer 
+to move this folder from wherever it was to somewhere under GoogleDrive -> My Drive.
+CallerBuddy really does not know or care exactly where the **CallerBuddySongs** folder
+lives, it just needs access to it.  
+
+Once you have your **CallerBuddySongs** on your Google Drive you can start up 
+CallerBuddy, and set the **CallerBuddySongs** folder on the phone to the location on
+the Google Drive (Use the Reset CallerBuddy on the ☰ menu if needed)
+
+Note that the folder chooser dialog hides the Google Drive.   When choosing a folder
+you must activate the ☰ menu in the upper left corner, and then you can choose
+the Google Drive and then locater (or create) your **CallerBuddySongs** folder. 
+
+![Android Google Drive Screenshot](images/GoogleDriveAndroid.png)
+
+From here you now have a folder that is equally accessible from Android Phones, Chromebooks,
+Windows or a Mac.   But you still need to do the do the setup in [Offline CallerBuddy](#offline-callerbuddy) to make sure it work without the network.  
 
 ## Offline CallerBuddy
 
-TODO this is a placeholder for explaining offline use.  
+By default, CallerBuddy is designed so that all its non-setup functionality works
+offline.   This is true whether CallerBuddy is being run in the browser or as a
+app outside the browser.    However CallerBuddy DOES need to get at files in the
+**CallerBuddySongs** folder and if that folder lives in the Cloud, then by default
+you will need to have network access to get at these files.   One way of solving
+this is to simply put your **CallerBuddySongs** folder in a non-Cloud folder.   
+However if you do this, your songs will only be accessible from that particular
+machine and they will not be backed up, so you could lose data if your hardware
+fails.   This NOT recommended. 
+
+Instead, both Google Drive and Microsoft One Drive and the notion that the 
+file is 'available offline'.  If this is set on a particular file or folder 
+then the cloud Drive software keeps a local copy on the local machine so that
+you can access the file without a network connection.   This is not the default
+however, so we need to set it.   Basically bring up your file explorer application
+and select the **CallerBudddy**.  On windows they hide the offline capabilities.
+You have to right click -> Show More Options -> Offline Access -> Available Offline. 
+
+![Windows Offline Screenshot](images/WindowOffline.png)
+
+On ChromeBook, their file explorer app displays the offline capability as a switch at 
+the top of the display that can be turned on and off for the selected folder/file
+at the top of the display.
+
+![Chromebook Offline Screenshot](images/ChromeBookOffline.png)
+
+On Android Phone, you access the Offline capabilities through the Google Drive application
+available for free on the Android Play Store.  This app acts very much like a 
+File explorer.  **Inexplicably** and **Unfortunately** it does not allow you to 
+set a folder offline (like we did on both windows, and chromebook and mac) but 
+you CAN set individual files as offline.   Thus to achieve this effect, you must 
+for every file click on the ⋮ on the right side, and then select 'Make available
+offline'.  The example below shows this for the CallerBuddySettings.json file. 
+
+![Android Offline Screenshot](images/AndroidOffline.png)
+
+You know you have succeeded on any particular file because there is a dark circle 
+with a check inside it that indicates that is available offline.   Note you don't
+need to do the files for every song (as long as you don't need them offline), but 
+you DO need the CallerBuddy*.json files show above.  These are where CallerBuddy
+stores the Settings and Song information that CallerBuddy needs to do just about
+anything, so of they are not available offline, CallerBuddy will fail/hang.   
+
+### Offline Workflows
+
+Offline files work quite well.  You have ONE copy that is logically in the cloud
+but is available from any machine.  You always get the up to date copy (logically
+there is only one), and you get backup for free (because local copies exist on
+all your machines (as well as the cloud)).   
+
+Offline files do have a problem if two different machines are offline and each
+modify the same files while offline.   There is no perfect solution here.  
+The software will bring up user interface and ask you to chose a winner
+(some edits will be destroyed).   This is unlikely, but you can make it 
+**impossible** by insuring that you don't leave CallerBuddy running on 
+different computers.   That way it is very easy to make sure that only one
+copy of CallerBuddy is every running at any one time, and if this is true
+the files in **CallerBuddySongs** will never run into the situation that 
+creates a conflict.   This is the recommended workflow.  
+
+## Importing Songs
+
+TODO this is a placeholder for explaining cloud storage.  
 
 # How-to Guides
 
 Quick recipes for common tasks. Each guide assumes you already
 have CallerBuddy set up with a folder.
 
-## Typical CallerBuddy Flow 
-
-This How-To describes the typical use of CallerBuddy to Program
-and perform a square dance.  
-
-### 1. Setting up your folder
-
-### 2. Building a playlist
-
-The Playlist Editor shows a song table on the right and your
-playlist on the left. There are several ways to add songs:
-
-- **Drag and drop** — drag a song row from
-the table into the playlist panel.
-- **Double-click** a song row to add it to the
-end of the playlist.
-- **Right-click** a song for a context menu with
-options to add to the start or end, or to play it
-immediately.
-- Click the **+** button on a song row.
-
-Once songs are in the playlist, drag them up or down to reorder.
-Use the **×** button to remove a song.
-
-You can filter the song table using the text box above it. It
-searches title, label, and categories. There is also a rank
-filter to show only songs above or below a threshold.
-
-### 3. Playing the dance
-
-1. Click **▶ Play** in the playlist panel.
-  This opens the **Now Playing** screen.
-2. The first unplayed song is automatically selected. Press
-  **Enter**, **Space**, or click
-   **▶ Play** to start it.
-3. **Singing calls** (songs with lyrics) play
-  straight through. The lyrics are displayed on the left.
-   The progress bar at the bottom is divided into 7 segments
-   matching a standard singing-call structure.
-4. **Patter** (songs without lyrics) uses looping.
-  The left area shows loop controls and a patter timer instead
-   of lyrics. The music loops automatically between the loop
-   start and end points.
-5. When the song ends (or you close the player), you return to
-  Now Playing. If the **break timer** is enabled,
-   it starts counting down. A gentle chime sounds when time is
-   up.
-6. The next unplayed song is auto-selected. Repeat until the
-  dance is over.
-
-**Tip:** The clock in the upper-right of Now Playing
-and the Song Player helps you keep track of the time of day, so
-you know when the dance should wrap up.
 
 ## Adding Songs to CallerBuddy
 
@@ -389,42 +570,6 @@ title, label, and categories.
 **≥** or **<** a threshold.
 Leave it empty to disable.
 
-
-
-# Page Overviews
-
-Each main screen has a **?** button of its own (top
-of the Playlist pane, or top-right of the Song Player) that jumps
-straight here for a full overview of that screen.
-
-## Playlist Editor
-
-The Playlist Editor is where you browse a folder of songs and
-build the playlist you'll perform. The left pane is your
-**Playlist**; the right pane is the **song table** for the
-current folder.
-
-- Add songs by dragging a row into the playlist, double-clicking
-a row, right-clicking for a menu, or clicking the row's
-**+** button.
-- Reorder the playlist by dragging items; remove one with its
-**×** button.
-- The song table can be filtered by text (title, label,
-categories) and by rank, and sorted by clicking any column
-header. Click a **Categories** or **Rank** cell to edit it
-inline.
-- Subfolders appear as rows — click one to open it in its own
-tab (it shares the same playlist).
-- **Play** opens Now Playing; **Clear**/**Restore** manage the
-whole playlist; non-root folder tabs also have **Close**.
-- Shortcuts: Ctrl+F focus the filter,
-Ctrl+R focus the rank filter,
-+/= add the selected row,
-P play it now, ↑/↓ change the
-selected row, Enter play the playlist.
-
-See "Building a playlist" and "Categories, rank, and filtering"
-above for more detail.
 
 ## Now Playing
 
