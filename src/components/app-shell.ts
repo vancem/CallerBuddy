@@ -727,9 +727,13 @@ export class AppShell extends LitElement {
           title="How to keep your songs in cloud storage">
           Help with Cloud Storage
         </button>
+        <button class="menu-item" role="menuitem" @click=${this.onHelpRunningOffline}
+          title="How to run CallerBuddy without a network connection">
+          Help Running Offline
+        </button>
         <button class="menu-item" role="menuitem" @click=${this.onHelpImportingSongs}
           title="How to import songs into CallerBuddy">
-          Help Importing Songs
+          Help Adding Songs
         </button>
         <button class="menu-item" role="menuitem" @click=${this.onShowLogs}
           title="Show recent diagnostic log lines">
@@ -944,6 +948,14 @@ export class AppShell extends LitElement {
     this.showMenu = false;
     callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
       sectionId: "cloud-storage-for-your-songs",
+    });
+  }
+
+  private onHelpRunningOffline() {
+    log.info(`[ui] menu: Help Running Offline`);
+    this.showMenu = false;
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
+      sectionId: "offline-callerbuddy",
     });
   }
 

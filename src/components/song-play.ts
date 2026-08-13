@@ -1435,10 +1435,10 @@ export class SongPlay extends LitElement {
   private playPatterAlarm() {
     if (!this.patterTimerEnabled) return;
     callerBuddy.audio.playBeep();
-    // Replay every 15 seconds (matches break timer)
+    // Replay every 30 seconds while still overtime / timer running.
     this.patterAlarmInterval = window.setInterval(() => {
       callerBuddy.audio.playBeep();
-    }, 15_000);
+    }, 30_000);
   }
 
   /** Resume countdown when music resumes. */

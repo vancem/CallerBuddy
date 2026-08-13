@@ -25,6 +25,10 @@ music during performances.  Here are some useful features.
 7. **Touch (Phone) Friendly** - For Android Phones, CallerBuddy is fully touch capable 
    (no keyboard needed) and the user interface 'fits' in the phones screen size.
    Your phone can definitely be your primary tool when giving performances.
+8. **Adding Song is EASY** - Sadly, there is no standard way of distributing square
+   dance songs.  As a result adding new longs to your library typically is more
+   painful that you would like.  CallerBuddy simplifies all of this.
+   See [Adding songs to CallerBuddy](#adding-songs-to-callerbuddy)
 
 ## Expected Workflow 
 ### First Time Setup
@@ -134,7 +138,7 @@ is a **'Reset'** button for this purpose.
 The other piece of functionality on the 'Now Playing' page is the break 
 timer.   It is a simple count-down timer that runs after a song has been
 played, and will chime when the countdown reaches zero (and then every
-20 seconds after that).   You can set the amount of time, and you can 
+30 seconds after that).   You can set the amount of time, and you can 
 turn the timer off if you don't need it.   
 
 Finally CallerBuddy will tell you the time that last song ended, so that
@@ -154,10 +158,11 @@ music to the start.
 The Song Player is broken into two panes.  The left pane depends on 
 whether the song is a singing call (has lyrics) or a patter (doesn't).
 The right pane has the main controls for playing a song.  At the
-top is standard audio controls (play, fast forward small, fast forward 
+top of the right pane is standard audio controls (play, fast forward 
+small, fast forward 
 large, skip to end, rewind, rewind large, skip to beginning).   All of 
 these buttons have keyboard shortcuts associated with them (hover to 
-discover).  Below that are controls for adjusting volume, pitch and temp. 
+discover).  Below them are controls for adjusting volume, pitch and temp. 
 
 ### Adjust pitch and tempo
 
@@ -170,11 +175,13 @@ probably never touch them again)
   songs have roughly the same volume regardless of the level used during recording.  
 * **Pitch** (half-steps): (p/P keys) You should adjust each song so that
   it is in a pitch range that is easy for you to sing.   If you have
-  to reach for high or low notes, you should adjust the pitch.  
+  to reach for high or low notes, you should adjust the pitch.  Each
+  unit of pitch is 1/12 of an octave (the distance between to of any 
+  keys (black or white) on a piano).
 * **Tempo** (BPM delta): (t/T keys) The number of beats per minute (BPM)
   is displayed on this line.   Generally 126 BPM is a good value for
   square dancing, but a younger crowd may want it faster (e.g. 128 or 129), and 
-  an older or inexperienced crowd will want it slower (e.g. 123 or 124)
+  an older or inexperienced crowd will want it slower (e.g. 124 or 123)
 
 CallerBuddy keeps track of when songs are played and updates data 
 shown in the playList editor with this data.   However if you are
@@ -195,9 +202,9 @@ you expect to move focus back and forth between CallerBuddy and Zoom.
 For cases like this there is a checkbox to turn off Auto-Pause.  
 
 As the bottom of the right pane of the song player is a a button that
-for singing calls invokes the [lyric editor](#lyric-editor).  For
+for singing calls invokes the [lyric editor](#edit-lyrics).  For
 patter is will create a lyric file.  If the song is truly patter you
-don't need lyrics (it will become a singing call if you add lyrics).
+don't need lyrics (it will become a singing call if you add lyrics)
 However you might have singing call but you don't have lyrics.  In this
 case you can import it as a patter (since there are no lyrics) and use
 'Create Lyrics' to make lyrics after the fact. 
@@ -220,7 +227,7 @@ generally you will want to use more precise controls described below.
 ### The left pane in the Song Player
 
 When a singing call is being played, the left pane displays the lyrics
-for the song, it also becomes the [lyric editor](#lyric-editor) when
+for the song, it also becomes the [lyric editor](#edit-lyrics) when
 the 'Edit Lyrics' button is pressed.   The lyrics can be scrolled 
 using the wheel mouse, the track-pad (two finger slide) or the up/down
 arrow keys.  
@@ -229,46 +236,95 @@ arrow keys.
 
 Patter songs (those without lyrics) automatically show loop
 controls instead of lyrics when played. Patter always loops: by
-default the whole file repeats (slightly before the very end for
-a clean jump). Looping lets the music repeat a shorter section
-seamlessly instead, so you can call for as long as you need.
+default the loop is the whole file, but typically this is not
+ideal because many songs have a intro or trailer that is very 
+different than the rest of the song.   Thus CallerBuddy lets 
+you set a end point, which when passed will wrap to a start
+point.   By choosing these points well, you can create a 
+seamless loop.   You can use the [progress bar](#the-song-progress-bar) 
+to grab the red and green lines to do this, but the fine controls
+in the left pane work better.   
 
-1. Play a patter song. The left panel shows
-  **Loop Start** and **Loop End** controls.
-2. Listen for a good loop point. Click **Set**
-  next to Loop Start (or press **Enter** while
-   the Loop Start box is focused) to capture the current
-   playback position.
-3. Do the same for Loop End.
-4. Use the **nudge buttons** to fine-tune:
-  - ← / → nudge by 10 ms
-  - Ctrl+← / Ctrl+→ nudge by 100 ms
-5. When Loop End is greater than zero, looping is active.
-  The music jumps back to Loop Start when it reaches
-   Loop End.
+A good technique is as follows.   Play the music until you have
+identified where is starts the main tune (it has passed the intro).
+Look at the 'position' value on the right pane so you know 
+approximately where this position is.  Then restart the song 
+(typing . will do this, and the space bar will stop it) and 
+hover your mouse over the 'Set' button for the loop start.
+Let the music play and click the 'Set' button at just the right
+time.   This sets the loop start. 
 
-Loop points are saved per song so you only need to set them
-once. The progress bar also shows the loop region visually.
+Next go to near the end of the song (just click somewhere near
+the end in the progress bar) and listen for a point in the 
+music that feels like a good end point.   Rewind a bit and
+again be read to hit the 'Set' button (this time for Loop End)
+to set this.
+
+Now typically this gets you close, but not perfect.   What you do 
+is click near the end and let it play and listen to the loop
+transition.  You will be able to tell if it is too early or late
+and use the arrow keys next to the 'Set' buttons to nudge the
+loop end and loop start until they are perfect (start with the
+big nudges and then use the small nudges)  
+
+Once you have done this a couple times, you can usually set up
+a loop in just a minute or two.   Once set, CallerBuddy will
+remember across restarts of the app.  
 
 #### The patter timer
 
-While playing a patter song, the left panel (below the loop
-controls) also shows a patter timer that counts down while the
-music plays.
+Since all patter loops, patter will go on forever, so it is easy to
+loose track of how long patter has gone on.  The 'Elapsed' value
+on the right pane will tell you this, but it is useful to have a 
+reminder.   That is what the Patter timer is for.
 
-1. Set the **Duration (min)** field to how long you
-  want to call for.
-2. Make sure the **Enabled** checkbox is on (or press
-  Ctrl+T) if you want a chime.
-3. When the countdown reaches zero, a chime sounds and repeats
-  while overtime; the counter keeps going into negative (shown
-   in red) either way, so you can see how far over time you are.
+Generally 4 minutes is a 'short' patter length, 6-8 minutes is a 'normal'
+and generally you don't want to go over 10 minutes for any reason. 
+CallerBuddy's default is 6 minutes (the short side of normal). 
 
-Your duration setting is saved and reused next time.
+When the timer goes off it just makes a short chime.  It will
+repeat this every 30 seconds (you should be able to resolve in
+that amount of time).  You can hit Ctrl-T to disable the timer
+if the chime is annoying.  
 
+## Edit lyrics
 
-## Lyric Editor
-TODO not done.  
+Typically the lyrics that come with a song are a reasonable starting point
+but you often want to change them to fit your style, or to change the
+figure used.   CallerBuddy lets you make these changes.   You just
+have to press the 'Edit Lyrics' button in the song player.   This changes
+the left side pane from a viewer to an editor.  The top of this editor
+has a toolbar with 'Save' (Ctrl+S) and 'Exit' (Esc) buttons.  The editor
+is very simple and you can select and delete text, insert test as you 
+would expect.  There are also buttons in the toolbar for boldfacing 
+text, turning it into a section header (large red text) or as Informational
+text (smaller blue text).  Generally this is enough.  Just make your
+edits, save and exit.  
+
+If for whatever reason this simple editor is not enough, it is possible
+to edit the lyrics in their 'raw' format.   In CallerBuddy, the Lyrics 
+are stored as text files called 
+[Markdown](https://commonmark.org/help/) (*.md files).
+These files are JUST TEXT (no highlighting at all) but you use symbols
+like *, #, _ and \ to indicate that you want various kinds of highlighting.
+If you click the 'Edit Markdown' you flip the editor to this mode and 
+click 'Edit Formatted' to get back.   You probably won't need this 
+capability, but if the formatting editor ever does something weird, you can
+fix it by editing the raw Markdown (which is format the lyrics are actually 
+stored in).  
+
+### Lyrics Markdown
+
+Here is the subset of Markdown that CallerBuddy supports.  
+
+| Write this                 | What you get              |
+| -------------------------- | ------------------------- |
+| `# Title`                  | Song title (large)        |
+| `## Figure`                | Section heading (red)     |
+| `_authorship_` or `*note*` | Info text (blue, smaller) |
+| `**call name**`            | Bold                      |
+| `\` at end of a line       | Force a line break        |
+| blank line                 | New paragraph             |
 
 
 ## CallerBuddy Security
@@ -496,86 +552,156 @@ copy of CallerBuddy is every running at any one time, and if this is true
 the files in **CallerBuddySongs** will never run into the situation that 
 creates a conflict.   This is the recommended workflow.  
 
-
+------------------------------------------
 # How-to Guides
-
 
 ## Adding Songs to CallerBuddy
 
-### Import songs from a ZIP file
+Most Square dance callers buy the music online by using a site like
+[Music for Callers](https://musicforcallers.com/) to find the web site
+of music producer (like Blue Star or Royal or Riverboat ...) where 
+you can browse and buy one or more songs.   Unfortunately where there
+are **rough** standards what you get when you purchase a song, there is
+still alot of variability.   Typically every producer 
 
-Songs from square-dance music publishers usually come as ZIP
-archives containing MP3 files and HTML or Markdown lyrics.
+1. Provides a *.MP3 file that is the actually sounds of the song. 
+2. Songs typical have what is called a Label which is usually a small
+   number of letters (typically < 5) and a number (typically < 3). 
+   This identifies the producer as well as a unique number for the 
+   particular song.   
+2. If it is a singing call provides **Something** that represents the lyrics.
+3. Packages it up in a *.ZIP file that you download after your purchase.  
 
-1. Click the **☰ menu** (upper right)
-  and choose **Import Song from ZIP…**
-2. Pick the ZIP file from your computer.
-3. CallerBuddy opens an **Import Review** tab
-  showing its best guess for:
-  - The **record label** and **song title**
-  - Which **MP3 file** to use (if the ZIP
-  contains multiple variants)
-  - A **cleaned-up version of the lyrics**
-4. Review and adjust anything that looks off. You can pick a
-  different MP3, edit the label or title, and modify the
-   lyrics in the built-in editor.
-5. Click **Import** to finalize. CallerBuddy
-  creates the properly named files in your folder and
-   refreshes the song library.
+Unfortunately, that is where the commonality ends.  
 
-## Import songs from a folder
+* Sometimes there are sub folders in the ZIP files that organize
+  the lyrics and music, and there is a lot of variability.  
+* The file name for the *.MP3 files are often LABEL - TITLE, but 
+  some produces reverse that order or don't use a -
+* Lyrics are sometimes in HTML, some times PDFs sometimes DOCX
+  files sometimes several of the above.
+* The formatting for the lyrics (what is in the HTML or PDF, or
+  DOCX) varies dramatically, and often contains large optional
+  things like images or logos.  
+* Sometimes the produces provides several variations of the 
+  music (with harmony with leads ...) and the naming conventions
+  for these vary.
+* Sometimes the lyrics are in the same folder as the music, 
+  sometimes named the same, sometimes not.  
 
-If your songs were already extracted from a ZIP (or came as loose
-files), use the folder import instead.
+Basically it is a mess.  At the very least it means your lyrics
+format will vary from song to song, and it makes editing the song 
+needlessly difficult (most give up).  Caller schools often have 
+a session just on dealing
+with these types of problems because new callers run into these
+issues early and often.  
 
-1. Click **☰ menu** → **Import Song from Folder…**
-2. Pick the folder containing the MP3 and HTML files.
-3. The same Import Review screen appears. Review and click
-  **Import**.
+CallerBuddy solves this by creating a wall between itself and
+the music.  On one side of the wall, everything is clean and
+clear 
 
-### Subfolders
+  1. Music is stored in *.MP3 files
+  2. The name of this file is LABEL - TITLE.MP3.  A song
+     does not need to have a label, in which case a song
+     looks like TITLE.MP3. 
+  3. If the song is a singing call the lyrics are stored
+     a [Markdown](https://commonmark.org/help/) in a *.MD file.
+  4. The lyric file has the same file name as the music
+     with the .MP3 changed to .MD
 
-If your CallerBuddy folder has subfolders, they appear as
-folder rows at the top of the song table. Click a folder to
-open it in a new tab. Both tabs share the same playlist, so
-you can add songs from different folders.
+That is it, and that is what is put into the **CallerBuddySongs** 
+folder.  It is all very simple and clear.
+[Markdown](https://commonmark.org/help/) was chosen because it is just text
+(and text editor can view and modify it), and it is very simple, so
+it is relatively easy to convert things to markdown because you can 
+scrape the text from the source and add any [formatting](#lyrics-markdown)
+with a tool or text editor.  This allows CallerBuddy to keep the 
+formatting of every song consistent.   
 
-## Edit lyrics
+So in theory anything that puts a *.MP3 file and a *.MD file into
+the **CallerBuddySongs** folder will keep CallerBuddy happy.  
+CallerBuddy will naturally find it, and incorporate into the songs
+presented to the user.  If you delete a song, CallerBuddy will notice
+that and remove the song from the view.   It does not take much
+to keep CallerBuddy Happy.  
 
-While a singing call is playing, click
-**Edit Lyrics** to open the built-in editor. If
-the song has no lyrics file yet, the button reads
-**Create Lyrics** and generates a template.
+### Importing songs
 
-- The editor opens in **Formatted** mode: edit lyrics as they
-look during playback (bold, headings, info text).
-- Use the toolbar (**B**, **Heading**, **Info**, **P**) or
-Ctrl+B / H / I / P.
-- Click **Edit Markdown** to edit the source directly; click
-**Edit Formatted** to return. **Markdown help** is available
-in Markdown mode.
-- Click **Save** to write changes to disk.
-- Click **Exit** to return to the read-only lyrics view.
-If you have unsaved changes, you will be prompted to save
-or discard.
+But CallerBuddy can do more.  If you give it a ZIP file, it can look 
+inside it and try to figure out in much the way a human would which
+file is the music file you want, which file has the lyrics, and convert
+the lyrics for Markdown for you (whatever its format is).   In other
+words, it can do most of the work.   The key point is that it can't be
+sure it got this right (it does not know if you wanted the version
+of the song with lead, or harmony, etc).  So it shows you everything
+from the source ZIP (and the ability to inspect the files), along with
+is suggestion on which MP3 file to use, what the title and label of the
+song is, and the lyrics it scraped and converted to Markdown.   You
+get to look at it (as well as the originals), decide that it is good, and
+it will put the resulting two files into the CallerBuddySongs folder. 
+Note that if you later find that you did not like your choice, you are free
+to simply run it again, and make different choices, it will overwrite 
+the first attempt, and so you can fix things even much later.  
 
-Lyrics are saved as Markdown files alongside the MP3, using the
-same `LABEL - Title.md` naming convention.
+So the process of Importing basically three steps
 
-## Lyrics Markdown
+1. Give CallerBUddy the name of a ZIP file or a Folder containing the 
+   distribution that you got from the song's producer.  CallerBuddy
+   will analyze it, do lyric conversion and show it its suggestion.
+2. Look over what CallerBuddy is suggesting.   If there is more than
+   one variation of the song, you can listen to the other variations.
+   You can look at the lyrics that CallerBuddy converted, and you can
+   look at the original files to see if you are satisfied. If not
+   you can fix thing (change which MP3 file is chosen, what the title
+   and label will be, modify the lyrics however you want (possibly 
+   cutting and pasting things in from the original)).  In sort make
+   sure you are happy (but 90+% of the time this takes a few seconds)
+3. Hit the import button which will copy the files into CallerBuddy's
+   folder.  
 
-CallerBuddy lyrics use a small Markdown subset:
+#### Walking through an Example
 
+This is what it looks like in practice.  In the example below I 
+opened the App ☰ menu and selected the 'Import from Folder' option.
+If I had a ZIP file I would have simply chosen 'Import from Zip'.
+I then navigated to the files I can purchased, and clicked OK.
+CallerBuddy then returned the following screen:
 
-| Write this                 | What you get              |
-| -------------------------- | ------------------------- |
-| `# Title`                  | Song title (large)        |
-| `## Figure`                | Section heading (red)     |
-| `_authorship_` or `*note*` | Info text (blue, smaller) |
-| `**call name**`            | Bold                      |
-| `\` at end of a line       | Force a line break        |
-| blank line                 | New paragraph             |
+![Importing From a Folder](images/ImportingFolder.png)
 
+Notice that it lists all the files in this folder (or ZIP) and they
+all hyperlinks (which mean I can click on them to open them).  Thus 
+could open the HTML file and look at it.  I notice there are two
+mp3 files, one with a 275A and another with just 275, and notice
+that CallerBuddy has selected the 275 Version .  I can listen
+to the 275A version (which is the song with Wade Driver singing) to 
+decide if which one I want.  If I had wanted the other I would simply
+click on the radio button for that file to select it instead.  
+
+I like the choice CallerBuddy made so I look to see what it deduced for
+the Label and title (and thus what the names of the two output files 
+are).   These also look good.  
+
+So I move on to looking at the [lyric editor](#edit-lyrics).  I can 
+modify anything in this view as well as look at the Markdown if I 
+want.  I can open the *.HTML file using the hyperlink and compare 
+them if I wanted.  I could cut and paste things from the 
+original if I needed, but in
+this case (as is typical) CallerBuddy did a great job, so I am happy
+with it and so all I have to is press the 'Import' button.
+
+And that is it.  This new song is now in my folder of songs, and 
+ready for me to use.  It took longer to navigate to the folder to
+import that it did to become happy with the result and finish
+the importation process.  Adding songs has never been easier.  
+
+If at a later point I realized I really did want to use a different
+MP3 file, or I want to start over with the lyrics, I simply import
+that song again, and make different choices.  CallerBuddy will warn
+me that I am overwriting my previous work, but I can force that
+overwrite, and use my new importation.  
+
+# Appendix 
 
 ## How the Played Average is Calculated
 TODO Fill in.  

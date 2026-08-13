@@ -418,7 +418,7 @@ export class PlaylistPlay extends LitElement {
             <div class="break-controls">
               <div class="break-toggle-row">
                 <label class="break-toggle"
-                  title="When enabled, plays a chime at zero and while overtime (Ctrl+T)">
+                  title="When enabled, plays a chime at zero and every 30 sec thereafter (Ctrl+T)">
                   <input
                     type="checkbox"
                     .checked=${this.breakTimerEnabled}
@@ -634,10 +634,10 @@ export class PlaylistPlay extends LitElement {
   private playBreakAlarm() {
     if (!this.breakTimerEnabled) return;
     callerBuddy.audio.playBeep();
-    // Replay every 15 seconds; stop after break-length wall time so it cannot run forever.
+    // Replay every 30 seconds; stop after break-length wall time so it cannot run forever.
     this.breakAlarmInterval = window.setInterval(() => {
       callerBuddy.audio.playBeep();
-    }, 15_000);
+    }, 30_000);
     if (this.breakAlarmStopTimeout !== null) {
       clearTimeout(this.breakAlarmStopTimeout);
     }
