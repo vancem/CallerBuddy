@@ -948,10 +948,10 @@ export class AppShell extends LitElement {
   }
 
   private onHelpImportingSongs() {
-    log.info(`[ui] menu: Help Importing Songs`);
+    log.info(`[ui] menu: Help Adding Songs`);
     this.showMenu = false;
     callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
-      sectionId: "importing-songs",
+      sectionId: "adding-songs-to-callerbuddy",
     });
   }
 

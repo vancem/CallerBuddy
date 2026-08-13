@@ -52,7 +52,6 @@ const TOC: TocEntry[] = [
   { id: "running-callerbuddy-outside-the-browser", title: "Installing / outside the browser" },
   { id: "cloud-storage-for-your-songs", title: "Cloud Storage for your Songs" },
   { id: "offline-callerbuddy", title: "Offline CallerBuddy" },
-  { id: "importing-songs", title: "Importing Songs" },
   { id: "how-to-guides", title: "How-to Guides" },
   { id: "adding-songs-to-callerbuddy", title: "Adding Songs to CallerBuddy", indent: true },
   { id: "import-songs-from-a-zip-file", title: "Import songs from a ZIP", indent: true },

@@ -8,12 +8,12 @@ music during performances.  Here are some useful features.
    from your taskbar, or placed on the desktop).
    See [Installing CallerBuddy](#running-callerbuddy-outside-the-browser).
 2. **Safe To Run** - You don't need to worry that you are 
-   compromising the safety of your machine when you run CallerBuddy.  See 
+   compromising the safety of your machine when you run CallerBuddy because 
+   it is only allowed to see files you explictly enable.  See 
    [CallerBuddy Security](#callerbuddy-security). 
-3. **Cloud storage friendly** - meaning you can have your songs 'in the cloud'
-   where they are backed up and accessible from multiple machines yet kept in
-   sync (you logically only have one collection of songs) See 
-   [Cloud Storage](#cloud-storage-for-your-songs).
+3. **Cloud storage friendly** - You can have your songs 'in the cloud'
+   where they are backed up and yet run CallerBuddy from different machines on
+   the same set of songs.  See [Cloud Storage](#cloud-storage-for-your-songs).
 4. **Works Offline** - CallerBuddy can run without any network connection, 
    so it will work in ALL venues.  See [Offline CallerBuddy](#offline-callerbuddy).
 5. **Cross Platform** - CallerBuddy works on Windows,
@@ -38,8 +38,10 @@ a reconnection process first but you ultimately end in the playList editor).
 ## The App Menu
 
 In the upper right corner of CallerBuddy is a ☰ icon that activates a menu of 
-operations on CallerBuddy as a whole.   Resetting CallerBuddy, Importing Songs, 
-and Help are in this menu, among other things.  
+operations on CallerBuddy as a whole.   Resetting CallerBuddy, 
+[Adding Songs](#adding-songs-to-callerbuddy), 
+and Help are in this menu, among other things.  Generally speaking, you will use this
+menu rarely.  
 
 ## Playlist Editor
 
@@ -47,12 +49,12 @@ CallerBuddy has the concept of a **playList**.  A playList is simply a list song
 to be performed (probably sequentially) at a dance or workshop.   This lets 
 you plan your dance so you are not fumbling for music during a performance.
 To keep the flow simple and consistent, CallerBuddy requires a playList to play
-even one song, but to all a single song to be played quickly it as a 'Play now'
-capability (the ▶ icon, keyboard P), fuses both adding the song to the playlist and 
+even one song, but to allow a song to be played quickly it as a 'Play now'
+capability (the ▶ icon, keyboard P), which fuses both adding the song to the playlist and 
 playing the song, so CallerBuddy has the 'feel' of being able to play a single song.
 
 The editor consists of left pane that represents the set of songs in the current 
-playlist, and the right is a table of songs in the CallBuddySongs folder.
+playlist, and a right pane, which is a table of songs from the **CallBuddySongs** folder.
 The song table has the following columns
 
 * **Title** - the title (name) of the song.  This is derived from the song's file name. 
@@ -65,8 +67,8 @@ The song table has the following columns
   in the last month.   See [How Played is Calculated](#how-the-played-average-is-calculated).  
 * **Categories** - This is a set of user-defined words (click to update) 
    that allow you to group songs
-   by a category (for example xmas, or patriotic or holiday).  The text filter functionally
-   looks at these
+   by a category (for example xmas, or patriotic or holiday).  Since CallerBuddy's text
+   filter sees words in the categories column, it can be used to filter by category.  
 * **Order** - A number that represents the order this song was added to CallerBuddySongs.
    Sorting by this lets you find your 'new songs'.  
 * **Label** - The producer of a song has a short designation (a few letters and a number)
@@ -76,16 +78,17 @@ The song table has the following columns
 * **Type** - Indicates if the song is a Patter (no lyrics) or singing call (with Lyrics) 
 
 To help choose a song, you sort by any of the columns above (by clicking on the column 
-name), or typing values into the filter textbox or the Rank filter.
+name), or typing values into the filter textbox or the rank filter at the top of the 
+song table.  
 
 * If you type a word in the filter textbox only songs with that text somewhere in the 
-  row will be displayed.
-* If you type !WORD in the filter textbox only songs that do NOT have this word will
+  row will be displayed (includes title, category, label and type columns)
+* If you type !WORD in the filter textbox only songs that do NOT have WORD will
   be displayed. 
 * You can set the >= <=  and the value to filter by rank value (thus look at only
   your popular or less popular songs)
 
-You can add songs to the playlist clicking on the + (Or typing +), or by dragging a row
+You can add songs to the playlist by clicking on the + (Or typing +), or by dragging a row
 to the playlist area.   When you drag, you can place the song in the order you want
 it by finishing the drag at the desired spot.    You can also rearrange songs already
 on the playlist by dragging them to the desired spot.   Dragging on Android works, you 
@@ -105,11 +108,11 @@ When you are happy with your playlist, click the 'Play' button (or type &lt;Ente
 A completed playList moves on to the 'Now Playing' page.  This page represents 
 your progress at a single performance.   Each song has a checkbox beside it 
 that indicates if it has been played or not, and by default the first unchecked
-song is selected.    Typing the **space bar**, or  &lt;Enter&gt; or clicking
+song is selected. Typing the **space bar**, or  &lt;Enter&gt; or clicking
 the 'Play' button will play the selected song.   Thus in a typical dance 
 you simply need to keep hitting the **space bar** to play the next song.
 
-However you are free to modify your playlist during the performance.  
+However you are free to modify your playlist during the performance. 
 You don't have to go in the order you originally specified, simply use
 mouse or **up/down arrow keys** to select a different song to play next.  **Double
 clicking** on a song will pay that song independently of whether it is next
@@ -222,7 +225,7 @@ the 'Edit Lyrics' button is pressed.   The lyrics can be scrolled
 using the wheel mouse, the track-pad (two finger slide) or the up/down
 arrow keys.  
 
-### Setting loop points for patter
+#### Setting loop points for patter
 
 Patter songs (those without lyrics) automatically show loop
 controls instead of lyrics when played. Patter always loops: by
@@ -247,7 +250,7 @@ seamlessly instead, so you can call for as long as you need.
 Loop points are saved per song so you only need to set them
 once. The progress bar also shows the loop region visually.
 
-## The patter timer
+#### The patter timer
 
 While playing a patter song, the left panel (below the loop
 controls) also shows a patter timer that counts down while the
@@ -493,14 +496,8 @@ copy of CallerBuddy is every running at any one time, and if this is true
 the files in **CallerBuddySongs** will never run into the situation that 
 creates a conflict.   This is the recommended workflow.  
 
-## Importing Songs
-
-TODO this is a placeholder for explaining cloud storage.  
 
 # How-to Guides
-
-Quick recipes for common tasks. Each guide assumes you already
-have CallerBuddy set up with a folder.
 
 
 ## Adding Songs to CallerBuddy
@@ -536,22 +533,12 @@ files), use the folder import instead.
 3. The same Import Review screen appears. Review and click
   **Import**.
 
-## Build and manage playlists
-
-CallerBuddy has one active playlist at a time. Songs are added
-from the Playlist Editor (see the tutorial above for the
-basics).
-
-
 ### Subfolders
 
 If your CallerBuddy folder has subfolders, they appear as
 folder rows at the top of the song table. Click a folder to
 open it in a new tab. Both tabs share the same playlist, so
 you can add songs from different folders.
-
-
-
 
 ## Edit lyrics
 
@@ -634,47 +621,3 @@ TODO Fill in.
 | Ctrl+← / Ctrl+→ | Nudge ±100 ms                               |
 | Enter           | Set loop point to current playback position |
 
-
-
-
-# Glossary
-
-CallerBuddy folder (root)
-
-The single folder on your computer (or cloud drive) where CallerBuddy stores and reads all music, lyrics, and app data.
-
-Label
-
-A short identifier from the music publisher, usually an abbreviation and catalog number (e.g. "RYL 607" for Royal Records #607). Part of the filename convention.
-
-Patter
-
-A type of square-dance segment using background music (typically with no lyrics). The caller improvises calls over the music, which usually loops. In CallerBuddy, any song without an associated lyrics file is treated as patter.
-
-Singing call
-
-A square-dance segment where the caller sings lyrics set to the music. The song plays straight through (no loop). In CallerBuddy, any song with a lyrics file is a singing call.
-
-Playlist
-
-An ordered list of songs you plan to play during a dance session. Built in the Playlist Editor and played from the Now Playing view.
-
-Loop Start / Loop End
-
-Timestamps (in seconds) marking where the music should loop. When Loop End is reached, playback jumps back to Loop Start. Used primarily for patter songs.
-
-Break timer
-
-A countdown timer in the Now Playing view that runs between songs, helping you keep breaks consistent during a dance.
-
-BPM (Beats Per Minute)
-
-The tempo of a song. CallerBuddy can auto-detect the original BPM and lets you adjust it with a delta (positive to speed up, negative to slow down).
-
-Rank
-
-A personal preference score from 0 to 100 for each song. 100 means excellent; 50 is average; 0 means avoid. Use rank filtering to focus on your preferred songs.
-
-Categories
-
-Free-form tags for a song, separated by semicolons (e.g. "Christmas; Patriotic; Plus"). Use categories to organize and filter your collection.
