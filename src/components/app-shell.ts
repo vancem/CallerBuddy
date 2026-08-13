@@ -40,7 +40,7 @@ import "./playlist-editor.js";
 import "./playlist-play.js";
 import "./song-play.js";
 import "./song-onboard.js";
-import "./help-view.js";
+import { HelpView } from "./help-view.js";
 
 /** Records that the user answered the one-time startup fullscreen prompt. */
 const FS_STARTUP_PROMPT_KEY = "callerbuddy.fsStartupPrompt";
@@ -150,13 +150,26 @@ export class AppShell extends LitElement {
       /* ignore */
     }
 
-    // Song play: same as Esc/End (close player). Otherwise use tab back stack.
-    const active = callerBuddy.state.getActiveTab();
-    if (active?.type !== TabType.SongPlay && !callerBuddy.state.peekBackTarget()) {
+    // Song play: same as Esc/End (close player). Help: in-help history then tab stack.
+    // Otherwise use tab back stack.
+    if (!this.canHandleGoBack()) {
       log.info(`[ui] back-button ignored (no in-app back target)`);
       return;
     }
     void this.handleGoBack();
+  }
+
+  /** Whether handleGoBack() would do something useful right now. */
+  private canHandleGoBack(): boolean {
+    const active = callerBuddy.state.getActiveTab();
+    if (active?.type === TabType.SongPlay) return true;
+    if (active?.type === TabType.Help && this.getHelpView()?.hasHelpHistory()) return true;
+    return !!callerBuddy.state.peekBackTarget();
+  }
+
+  private getHelpView(): HelpView | null {
+    const el = this.renderRoot?.querySelector("help-view");
+    return el instanceof HelpView ? el : null;
   }
 
   /** Refresh menu label ("Full Screen" vs "Exit FullScreen"). OS may exit FS anytime. */
@@ -354,6 +367,12 @@ export class AppShell extends LitElement {
     const active = callerBuddy.state.getActiveTab();
     if (active?.type === TabType.SongPlay) {
       await callerBuddy.closeSongPlay();
+      return;
+    }
+    // Help: unwind in-help hyperlink history before leaving the Help tab.
+    if (active?.type === TabType.Help) {
+      const help = this.getHelpView();
+      if (help?.goBack()) return;
       return;
     }
     callerBuddy.state.goBack();
