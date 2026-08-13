@@ -22,6 +22,98 @@ export const DEFAULT_LYRICS_FONT_SCALE_PHONE = 0.85;
 export const LYRICS_FONT_SCALE_MIN = 0.5;
 export const LYRICS_FONT_SCALE_MAX = 2.5;
 
+/** Sortable columns in the Playlist Editor song table. */
+export type PlaylistEditorSortField =
+  | "title"
+  | "label"
+  | "categories"
+  | "rank"
+  | "orderAdded"
+  | "lastUsedDays"
+  | "playedDisplay"
+  | "type";
+
+export type PlaylistEditorSortDir = "asc" | "desc";
+
+export interface PlaylistEditorSortKey {
+  field: PlaylistEditorSortField;
+  dir: PlaylistEditorSortDir;
+}
+
+/**
+ * Playlist Editor song-browser filters and multi-key sort.
+ * Persisted so text/rank filters and column order survive restart.
+ */
+export interface PlaylistEditorViewSettings {
+  filterText: string;
+  rankFilterInput: string;
+  /** When true, rank filter uses ≥ threshold; when false, uses <. */
+  rankCompareGte: boolean;
+  sortKeys: PlaylistEditorSortKey[];
+}
+
+const PLAYLIST_EDITOR_SORT_FIELDS: ReadonlySet<string> = new Set([
+  "title",
+  "label",
+  "categories",
+  "rank",
+  "orderAdded",
+  "lastUsedDays",
+  "playedDisplay",
+  "type",
+]);
+
+/** Default Playlist Editor sort: Rank (desc), then Title (asc). */
+export const DEFAULT_PLAYLIST_EDITOR_SORT_KEYS: readonly PlaylistEditorSortKey[] = [
+  { field: "rank", dir: "desc" },
+  { field: "title", dir: "asc" },
+];
+
+/** Returns a fresh default Playlist Editor view (filters cleared, default sort). */
+export function defaultPlaylistEditorView(): PlaylistEditorViewSettings {
+  return {
+    filterText: "",
+    rankFilterInput: "",
+    rankCompareGte: true,
+    sortKeys: DEFAULT_PLAYLIST_EDITOR_SORT_KEYS.map((k) => ({ ...k })),
+  };
+}
+
+function normalizePlaylistEditorSortKeys(raw: unknown): PlaylistEditorSortKey[] {
+  const defaults = defaultPlaylistEditorView().sortKeys;
+  if (!Array.isArray(raw) || raw.length === 0) return defaults;
+  const out: PlaylistEditorSortKey[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const obj = item as Record<string, unknown>;
+    const field = obj["field"];
+    const dir = obj["dir"];
+    if (typeof field !== "string" || !PLAYLIST_EDITOR_SORT_FIELDS.has(field)) continue;
+    if (dir !== "asc" && dir !== "desc") continue;
+    out.push({ field: field as PlaylistEditorSortField, dir });
+  }
+  return out.length > 0 ? out : defaults;
+}
+
+/** Validate and normalize a Playlist Editor view blob from settings JSON. */
+export function normalizePlaylistEditorView(raw: unknown): PlaylistEditorViewSettings {
+  const defaults = defaultPlaylistEditorView();
+  if (typeof raw !== "object" || raw === null) return defaults;
+  const obj = raw as Record<string, unknown>;
+  return {
+    filterText: typeof obj["filterText"] === "string" ? obj["filterText"] : defaults.filterText,
+    rankFilterInput:
+      typeof obj["rankFilterInput"] === "string"
+        ? obj["rankFilterInput"]
+        : defaults.rankFilterInput,
+    rankCompareGte:
+      typeof obj["rankCompareGte"] === "boolean"
+        ? obj["rankCompareGte"]
+        : defaults.rankCompareGte,
+    sortKeys: normalizePlaylistEditorSortKeys(obj["sortKeys"]),
+  };
+}
+
 export interface Settings {
   /** Break timer default duration in minutes (decimal allowed). Default 5. */
   breakTimerMinutes: number;
@@ -53,6 +145,11 @@ export interface Settings {
    * 0 means never. Used instead of file lastModified (unreliable on cloud drives).
    */
   lastBackupTime: number;
+  /**
+   * Playlist Editor text/rank filters and song-table sort keys.
+   * Survives restart via CallerBuddySettings.json.
+   */
+  playlistEditorView: PlaylistEditorViewSettings;
 }
 
 /** Returns a Settings object populated with default values. */
@@ -67,6 +164,7 @@ export function defaultSettings(): Settings {
     lyricsFontScaleDesktop: DEFAULT_LYRICS_FONT_SCALE_DESKTOP,
     lyricsFontScalePhone: DEFAULT_LYRICS_FONT_SCALE_PHONE,
     lastBackupTime: 0,
+    playlistEditorView: defaultPlaylistEditorView(),
   };
 }
 
@@ -128,5 +226,6 @@ export function normalizeSettings(raw: unknown): Settings {
       LYRICS_FONT_SCALE_MAX,
     ),
     lastBackupTime: pickNum("lastBackupTime", defaults.lastBackupTime, 0),
+    playlistEditorView: normalizePlaylistEditorView(obj["playlistEditorView"]),
   };
 }

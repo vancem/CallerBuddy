@@ -30,6 +30,11 @@ import { PanelResizeController } from "../controllers/panel-resize-controller.js
 import {
   DEFAULT_PLAYLIST_PANEL_HEIGHT,
   DEFAULT_PLAYLIST_PANEL_WIDTH,
+  defaultPlaylistEditorView,
+  type PlaylistEditorSortDir,
+  type PlaylistEditorSortField,
+  type PlaylistEditorSortKey,
+  type PlaylistEditorViewSettings,
 } from "../models/settings.js";
 import { StateEvents, TabType } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
@@ -44,17 +49,9 @@ import {
   isHostPortraitLayout,
 } from "../utils/host-portrait-layout.js";
 
-type SortField =
-  | "title"
-  | "label"
-  | "categories"
-  | "rank"
-  | "orderAdded"
-  | "lastUsedDays"
-  | "playedDisplay"
-  | "type";
-type SortDir = "asc" | "desc";
-type SortKey = { field: SortField; dir: SortDir };
+type SortField = PlaylistEditorSortField;
+type SortDir = PlaylistEditorSortDir;
+type SortKey = PlaylistEditorSortKey;
 
 /** Inline spreadsheet-style edit for Categories / Rank table cells. */
 type EditingCell = { key: string; field: "categories" | "rank"; draft: string };
@@ -91,10 +88,10 @@ export class PlaylistEditor extends LitElement {
    * Multi-key stable sort order. Most-recently toggled field is primary (index 0).
    * Default when entering the editor: Rank (desc), then Title (asc).
    */
-  @state() private sortKeys: SortKey[] = [
-    { field: "rank", dir: "desc" },
-    { field: "title", dir: "asc" },
-  ];
+  @state() private sortKeys: SortKey[] = defaultPlaylistEditorView().sortKeys;
+
+  /** Debounce timer for persisting browser filters/sort while typing. */
+  private persistViewTimer: ReturnType<typeof setTimeout> | null = null;
   @state() private contextTarget: ContextTarget | null = null;
   @state() private contextMenuPos = { x: 0, y: 0 };
   /** Song pending permanent delete confirmation (null when dialog closed). */
@@ -183,6 +180,7 @@ export class PlaylistEditor extends LitElement {
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     this.resizerY.size =
       callerBuddy.state.settings.playlistPanelHeight ?? DEFAULT_PLAYLIST_PANEL_HEIGHT;
+    this.applyBrowserViewFromSettings();
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
     callerBuddy.state.addEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
     callerBuddy.state.addEventListener(StateEvents.DISK_REFRESHED, this.onDiskRefreshed);
@@ -195,6 +193,11 @@ export class PlaylistEditor extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    if (this.persistViewTimer !== null) {
+      clearTimeout(this.persistViewTimer);
+      this.persistViewTimer = null;
+      void this.persistBrowserView();
+    }
     document.removeEventListener("keydown", this._boundKeydown);
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.onPlaylistChanged);
     callerBuddy.state.removeEventListener(StateEvents.SONG_UPDATED, this.onSongUpdated);
@@ -208,6 +211,16 @@ export class PlaylistEditor extends LitElement {
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     this.resizerY.size =
       callerBuddy.state.settings.playlistPanelHeight ?? DEFAULT_PLAYLIST_PANEL_HEIGHT;
+    // Adopt persisted filters/sort when another editor (or disk refresh) changed them,
+    // but not while this instance still has unsaved keystrokes pending.
+    const incoming = callerBuddy.state.settings.playlistEditorView;
+    if (
+      incoming &&
+      this.persistViewTimer === null &&
+      JSON.stringify(incoming) !== JSON.stringify(this.snapshotBrowserView())
+    ) {
+      this.applyBrowserViewFromSettings();
+    }
     this.requestUpdate();
   };
 
@@ -651,9 +664,6 @@ export class PlaylistEditor extends LitElement {
   private async navigateTo(stackIndex: number): Promise<void> {
     if (stackIndex < 0 || stackIndex >= this.handleStack.length) return;
     this.handleStack = this.handleStack.slice(0, stackIndex + 1);
-    this.filterText = "";
-    this.rankFilterInput = "";
-    this.rankCompareGte = true;
     await this.loadCurrentFolder();
   }
 
@@ -793,6 +803,16 @@ export class PlaylistEditor extends LitElement {
           <div class="browser-content-scroll">
             <div class="browser-toolbar">
               <div class="browser-toolbar-track">
+                <button
+                  type="button"
+                  class="view-reset-btn"
+                  title="Reset filters and sort order to defaults"
+                  aria-label="Reset filters and sort order to defaults"
+                  ?disabled=${this.isBrowserViewAtDefault()}
+                  @click=${this.onResetBrowserView}
+                >
+                  ↺
+                </button>
                 <div class="filter-wrap">
                   ${this.filterText
                     ? html`<button
@@ -1704,6 +1724,7 @@ export class PlaylistEditor extends LitElement {
       // Toggle direction of the primary key.
       const cur = this.sortKeys[0];
       this.sortKeys = [{ field, dir: cur.dir === "asc" ? "desc" : "asc" }, ...this.sortKeys.slice(1)];
+      this.persistBrowserViewImmediate();
       return;
     }
 
@@ -1711,11 +1732,13 @@ export class PlaylistEditor extends LitElement {
       // Promote existing key to primary (preserve its direction).
       const promoted = this.sortKeys[idx];
       this.sortKeys = [promoted, ...this.sortKeys.slice(0, idx), ...this.sortKeys.slice(idx + 1)];
+      this.persistBrowserViewImmediate();
       return;
     }
 
     // Add new primary key.
     this.sortKeys = [{ field, dir: defaultDir }, ...this.sortKeys];
+    this.persistBrowserViewImmediate();
   }
 
   private sortIndicator(field: SortField): string {
@@ -1736,6 +1759,7 @@ export class PlaylistEditor extends LitElement {
         e.preventDefault();
         e.stopPropagation();
         this.filterText = "";
+        this.persistBrowserViewImmediate();
         queueMicrotask(() => this.focusSongTable());
       }
     }
@@ -1743,20 +1767,82 @@ export class PlaylistEditor extends LitElement {
 
   private onFilterInput(e: Event) {
     this.filterText = (e.target as HTMLInputElement).value;
+    this.schedulePersistBrowserView();
   }
 
   private onClearFilter(e: MouseEvent) {
     e.stopPropagation();
     this.filterText = "";
+    this.persistBrowserViewImmediate();
   }
 
   private onRankCompareToggle(e: MouseEvent) {
     e.stopPropagation();
     this.rankCompareGte = !this.rankCompareGte;
+    this.persistBrowserViewImmediate();
   }
 
   private onRankFilterInput(e: Event) {
     this.rankFilterInput = (e.target as HTMLInputElement).value;
+    this.schedulePersistBrowserView();
+  }
+
+  private snapshotBrowserView(): PlaylistEditorViewSettings {
+    return {
+      filterText: this.filterText,
+      rankFilterInput: this.rankFilterInput,
+      rankCompareGte: this.rankCompareGte,
+      sortKeys: this.sortKeys.map((k) => ({ ...k })),
+    };
+  }
+
+  private applyBrowserViewFromSettings() {
+    const view =
+      callerBuddy.state.settings.playlistEditorView ?? defaultPlaylistEditorView();
+    this.filterText = view.filterText;
+    this.rankFilterInput = view.rankFilterInput;
+    this.rankCompareGte = view.rankCompareGte;
+    this.sortKeys = view.sortKeys.map((k) => ({ ...k }));
+  }
+
+  private isBrowserViewAtDefault(): boolean {
+    return (
+      JSON.stringify(this.snapshotBrowserView()) ===
+      JSON.stringify(defaultPlaylistEditorView())
+    );
+  }
+
+  private schedulePersistBrowserView() {
+    if (this.persistViewTimer !== null) clearTimeout(this.persistViewTimer);
+    this.persistViewTimer = setTimeout(() => {
+      this.persistViewTimer = null;
+      void this.persistBrowserView();
+    }, 300);
+  }
+
+  private persistBrowserViewImmediate() {
+    if (this.persistViewTimer !== null) {
+      clearTimeout(this.persistViewTimer);
+      this.persistViewTimer = null;
+    }
+    void this.persistBrowserView();
+  }
+
+  private async persistBrowserView() {
+    const view = this.snapshotBrowserView();
+    const current = callerBuddy.state.settings.playlistEditorView;
+    if (current && JSON.stringify(current) === JSON.stringify(view)) return;
+    await callerBuddy.persistSettingsPatch({ playlistEditorView: view });
+  }
+
+  private onResetBrowserView(e: MouseEvent) {
+    e.stopPropagation();
+    const defaults = defaultPlaylistEditorView();
+    this.filterText = defaults.filterText;
+    this.rankFilterInput = defaults.rankFilterInput;
+    this.rankCompareGte = defaults.rankCompareGte;
+    this.sortKeys = defaults.sortKeys;
+    this.persistBrowserViewImmediate();
   }
 
   // -- Playlist operations --------------------------------------------------
@@ -2096,6 +2182,33 @@ export class PlaylistEditor extends LitElement {
     .filter-clear:hover {
       color: var(--cb-fg);
       background: var(--cb-btn-bg-hover);
+    }
+
+    .view-reset-btn {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      padding: 0;
+      border: 1px solid var(--cb-btn-border);
+      border-radius: 6px;
+      background: var(--cb-btn-bg);
+      color: var(--cb-fg-secondary);
+      font-size: 1.05rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .view-reset-btn:hover:not(:disabled) {
+      color: var(--cb-fg);
+      background: var(--cb-btn-bg-hover);
+    }
+
+    .view-reset-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
     }
 
     .filter-input {

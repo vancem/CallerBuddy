@@ -21,7 +21,7 @@ music during performances.  Here are some useful features.
    IPhone browsers do not support needed functionality, and are unsupported).
 6. **Keyboard Friendly** - CallerBuddy has extensive keyboard shortcuts, that are easy 
    to learn with hover-over help.  You never need to be fiddling with a 
-   mouse on stage, or looking for a cursor in sunny conditions.
+   mouse on stage, or looking for a cursor in sunny conditions. See [Keyboard Shortcuts](#keyboard-shortcuts).  
 7. **Touch (Phone) Friendly** - For Android Phones, CallerBuddy is fully touch capable 
    (no keyboard needed) and the user interface 'fits' in the phones screen size.
    Your phone can definitely be your primary tool when giving performances.
@@ -45,7 +45,31 @@ even one song, but to all a single song to be played quickly it as a 'Play now'
 capability (the ▶ icon, keyboard P), fuses both adding the song to the playlist and 
 playing the song, so CallerBuddy has the 'feel' of being able to play a single song.
 
-At the top of the playList editor is a set of filters, the most 
+The editor consists of left pane that represents the set of songs in the current 
+playlist, and the right is a table of songs in the CallBuddySongs folder.
+The song table has the following columns
+
+* **Title** - the title (name) of the song.  This is derived from the song's file name. 
+* **Rank** - A number from 0 to 100 representing how much you like the song.  This is
+  totally user defined (click on it to update), and defaults to 50.   Typically
+  you sort by this to find your most popular songs.  
+* **Last** Played - The number of days since CallerBuddy played this song.   Useful
+  so you don't keep using the same songs and use every song from time to time.  
+* **Played** Average - This is a running average of how many times the song was played
+  in the last month.   See [How Played is Calculated](#how-the-played-average-is-calculated).  
+* **Categories** - This is a set of user-defined words (click to update) 
+   that allow you to group songs
+   by a category (for example xmas, or patriotic or holiday).  The text filter functionally
+   looks at these
+* **Order** - A number that represents the order this song was added to CallerBuddySongs.
+   Sorting by this lets you find your 'new songs'.  
+* **Label** - The producer of a song has a short designation (a few letters and a number)
+   that uniquely define the producer as well as the individual song.  Some songs do not
+   have this, but when they do it sorting by it will allow you to find all the songs 
+   by a particular producer (which often have a similar sound or style)
+* **Type** - Indicates if the song is a Patter (no lyrics) or singing call (with Lyrics) 
+
+At the top of the playList editor is a set of filters, the most prominent is 
 
 The Playlist Editor is where you browse a folder of songs and
 build the playlist you'll perform. The left pane is your
@@ -607,14 +631,11 @@ left instead of lyrics.
 details on each control.
 
 
+## How the Played Average is Calculated
+TODO Fill in.  
 
-# Keyboard Shortcuts
-
-
-
-## Global (all views)
-
-
+## Keyboard Shortcuts
+### Global (all views)
 | Key              | Action                   |
 | ---------------- | ------------------------ |
 | Ctrl+]           | Next tab                 |
@@ -623,12 +644,7 @@ details on each control.
 | Ctrl+> or Ctrl+. | Go forward (tab history) |
 | Ctrl+W           | Close current tab        |
 
-
-
-
-## Now Playing
-
-
+### Now Playing
 | Key           | Action                            |
 | ------------- | --------------------------------- |
 | Enter / Space | Play selected song                |
@@ -636,12 +652,7 @@ details on each control.
 | S             | Start/stop break timer            |
 | Esc           | Close Now Playing tab             |
 
-
-
-
-## Song Player
-
-
+### Song Player
 | Key       | Action                                                                  |
 | --------- | ----------------------------------------------------------------------- |
 | Space     | Play / Pause                                                            |
@@ -657,12 +668,7 @@ details on each control.
 | Alt++     | Lyrics text larger (~10%; plus / = key, not Ctrl — avoids browser zoom) |
 | Alt+−     | Lyrics text smaller                                                     |
 
-
-
-
-## Loop Controls (patter songs, when focused)
-
-
+### Loop Controls (patter songs, when focused)
 | Key             | Action                                      |
 | --------------- | ------------------------------------------- |
 | ← / →           | Nudge ±10 ms                                |

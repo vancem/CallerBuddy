@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { AppState, StateEvents, TabType } from "./app-state.js";
+import { defaultSettings } from "../models/settings.js";
 import type { Song } from "../models/song.js";
 
 function makeSong(musicFile: string): Song {
@@ -66,15 +67,10 @@ describe("AppState", () => {
     it("updates settings and fires SETTINGS_CHANGED", () => {
       const handler = spyOn(state, StateEvents.SETTINGS_CHANGED);
       state.setSettings({
+        ...defaultSettings(),
         breakTimerMinutes: 10,
         patterTimerMinutes: 7,
         playlistPanelWidth: 300,
-        playlistPanelHeight: 240,
-        playlistPaths: [],
-        playlistPlayedPaths: [],
-        lyricsFontScaleDesktop: 1,
-        lyricsFontScalePhone: 0.85,
-        lastBackupTime: 0,
       });
       expect(state.settings.breakTimerMinutes).toBe(10);
       expect(handler).toHaveBeenCalledOnce();
