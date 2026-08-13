@@ -35,7 +35,7 @@ However when  you relaunch CallerBuddy it will go strait into the
 [playlist editor](#playlist-editor). (Due to limitation on Android, you must go through 
 a reconnection process first but you ultimately end in the playList editor).
 
-## The ☰ Menu
+## The App Menu
 
 In the upper right corner of CallerBuddy is a ☰ icon that activates a menu of 
 operations on CallerBuddy as a whole.   Resetting CallerBuddy, Importing Songs, 
@@ -142,27 +142,130 @@ you to the song player for the next unplayed song on the playList.
 
 ## Song Player
 
+By default, when the Song player is activated, it immediately starts 
+playing (because this is almost always what you want).  However if you
+did not want it to play you can immediately hit the **space bar** or the 
+&lt;Enter&gt; key to pause the music, and type '.' to reset the
+music to the start.  
+
 The Song Player is broken into two panes.  The left pane depends on 
 whether the song is a singing call (has lyrics) or a patter (doesn't).
-The right pane is 
+The right pane has the main controls for playing a song.  At the
+top is standard audio controls (play, fast forward small, fast forward 
+large, skip to end, rewind, rewind large, skip to beginning).   All of 
+these buttons have keyboard shortcuts associated with them (hover to 
+discover).  Below that are controls for adjusting volume, pitch and temp. 
+
+### Adjust pitch and tempo
+
+The following adjustments are remembered as part of the song so that
+they are always optimal for you when you play them.  You should not
+have to use these controls most of the time (you set the up once and
+probably never touch them again)
+
+* **Volume** (0–100): (v/V keys) This allows you to make sure that all
+  songs have roughly the same volume regardless of the level used during recording.  
+* **Pitch** (half-steps): (p/P keys) You should adjust each song so that
+  it is in a pitch range that is easy for you to sing.   If you have
+  to reach for high or low notes, you should adjust the pitch.  
+* **Tempo** (BPM delta): (t/T keys) The number of beats per minute (BPM)
+  is displayed on this line.   Generally 126 BPM is a good value for
+  square dancing, but a younger crowd may want it faster (e.g. 128 or 129), and 
+  an older or inexperienced crowd will want it slower (e.g. 123 or 124)
+
+CallerBuddy keeps track of when songs are played and updates data 
+shown in the playList editor with this data.   However if you are
+practicing, you probably don't want this data updated.  That is what
+the 'practice' checkbox is for.  WHen you check CallerBuddy assumes
+any playing is no 'official' and does not update the play statistics.  
+
+If you run CallerBuddy in a browser, it is pretty easy for the window
+for CallerBuddy to get 'lost' if you navigate away from it.  If music
+is playing while this is happening, it can be very annoying.  By 
+default CallerBuddy enables an 'Auto-Pause' feature where CallerBuddy
+will stop playing if its window loses focus.  This does not solve the
+problem of finding the window again, but it does stop the music, and
+allow you to simply open a new version (which remembers where you were
+so that you can continue one reasonably quickly).  However if you 
+are calling over a Zoom connection, Auto-Pause is dangerous because
+you expect to move focus back and forth between CallerBuddy and Zoom.
+For cases like this there is a checkbox to turn off Auto-Pause.  
+
+As the bottom of the right pane of the song player is a a button that
+for singing calls invokes the [lyric editor](#lyric-editor).  For
+patter is will create a lyric file.  If the song is truly patter you
+don't need lyrics (it will become a singing call if you add lyrics).
+However you might have singing call but you don't have lyrics.  In this
+case you can import it as a patter (since there are no lyrics) and use
+'Create Lyrics' to make lyrics after the fact. 
+
+### The Song Progress Bar 
+
+Along the bottom of the Song player is a progress bar that shows where
+in the song the sound is currently playing.   If you click there 
+you can move the current position to a new position.  The bar is 
+divided into 7 equal segments that roughly map into the 7 parts of
+a singing call.  When playing a singing call these regions are labeled.
+This is quite useful so you can remind yourself which section is
+next (it is easy to forget if you get distracted).
+
+When playing patter, CallerBuddy has the concept of looping, and the
+end point (in red) and the restart point (in green) are shown on the 
+progress bar.  You can drag these to change where looping happens, but
+generally you will want to use more precise controls described below.  
+
+### The left pane in the Song Player
+
+When a singing call is being played, the left pane displays the lyrics
+for the song, it also becomes the [lyric editor](#lyric-editor) when
+the 'Edit Lyrics' button is pressed.   The lyrics can be scrolled 
+using the wheel mouse, the track-pad (two finger slide) or the up/down
+arrow keys.  
+
+### Setting loop points for patter
+
+Patter songs (those without lyrics) automatically show loop
+controls instead of lyrics when played. Patter always loops: by
+default the whole file repeats (slightly before the very end for
+a clean jump). Looping lets the music repeat a shorter section
+seamlessly instead, so you can call for as long as you need.
+
+1. Play a patter song. The left panel shows
+  **Loop Start** and **Loop End** controls.
+2. Listen for a good loop point. Click **Set**
+  next to Loop Start (or press **Enter** while
+   the Loop Start box is focused) to capture the current
+   playback position.
+3. Do the same for Loop End.
+4. Use the **nudge buttons** to fine-tune:
+  - ← / → nudge by 10 ms
+  - Ctrl+← / Ctrl+→ nudge by 100 ms
+5. When Loop End is greater than zero, looping is active.
+  The music jumps back to Loop Start when it reaches
+   Loop End.
+
+Loop points are saved per song so you only need to set them
+once. The progress bar also shows the loop region visually.
+
+## The patter timer
+
+While playing a patter song, the left panel (below the loop
+controls) also shows a patter timer that counts down while the
+music plays.
+
+1. Set the **Duration (min)** field to how long you
+  want to call for.
+2. Make sure the **Enabled** checkbox is on (or press
+  Ctrl+T) if you want a chime.
+3. When the countdown reaches zero, a chime sounds and repeats
+  while overtime; the counter keeps going into negative (shown
+   in red) either way, so you can see how far over time you are.
+
+Your duration setting is saved and reused next time.
 
 
-The Song Player plays one song at a time, with a **?** button in
-the top-right corner of the left pane that opens this overview.
-
-- **Singing calls** show scrolling lyrics on the left; the right
-panel has transport and Volume/Pitch/Tempo.
-- **Patter** songs show loop controls and a patter timer on the
-left instead of lyrics.
-- See "Adjust pitch and tempo", "Set up loop points for patter",
-"Use the patter timer", and "Edit lyrics" above for
-details on each control.
-
-
-
-
-
-
+## Lyric Editor
+TODO not done.  
 
 
 ## CallerBuddy Security
@@ -439,13 +542,6 @@ CallerBuddy has one active playlist at a time. Songs are added
 from the Playlist Editor (see the tutorial above for the
 basics).
 
-### Quick-play a single song
-
-If you just want to play one song without building a full
-playlist, click the **▶** button on its row
-in the Playlist Editor, or right-click and choose
-**Play now**. This adds the song to the playlist
-and immediately opens the player.
 
 ### Subfolders
 
@@ -454,87 +550,6 @@ folder rows at the top of the song table. Click a folder to
 open it in a new tab. Both tabs share the same playlist, so
 you can add songs from different folders.
 
-### Clear and reset
-
-- **Clear** removes all songs from the playlist.
-- In the Now Playing view, **⟲ Reset**
-(Ctrl+R) unchecks all played marks so you can replay
-the entire list.
-
-
-
-## Adjust pitch and tempo
-
-While a song is playing, the right panel shows Volume, Pitch,
-and Tempo controls.
-
-- **Volume** (0–100): use the
-v/V keys or the arrow buttons to
-adjust in steps of 5.
-- **Pitch** (half-steps): use p/P.
-Positive values raise the pitch, negative lower it.
-- **Tempo** (BPM delta): use t/T.
-The effective BPM is shown if CallerBuddy knows the
-original tempo.
-
-Changes are saved to your song library automatically. The
-next time you play the song, the same adjustments apply.
-
-## Set up loop points for patter
-
-Patter songs (those without lyrics) automatically show loop
-controls instead of lyrics when played. Patter always loops: by
-default the whole file repeats (slightly before the very end for
-a clean jump). Looping lets the music repeat a shorter section
-seamlessly instead, so you can call for as long as you need.
-
-1. Play a patter song. The left panel shows
-  **Loop Start** and **Loop End** controls.
-2. Listen for a good loop point. Click **Set**
-  next to Loop Start (or press **Enter** while
-   the Loop Start box is focused) to capture the current
-   playback position.
-3. Do the same for Loop End.
-4. Use the **nudge buttons** to fine-tune:
-  - ← / → nudge by 10 ms
-  - Ctrl+← / Ctrl+→ nudge by 100 ms
-5. When Loop End is greater than zero, looping is active.
-  The music jumps back to Loop Start when it reaches
-   Loop End.
-
-Loop points are saved per song so you only need to set them
-once. The progress bar also shows the loop region visually.
-
-## Use the patter timer
-
-While playing a patter song, the left panel (below the loop
-controls) also shows a patter timer that counts down while the
-music plays.
-
-1. Set the **Duration (min)** field to how long you
-  want to call for.
-2. Make sure the **Enabled** checkbox is on (or press
-  Ctrl+T) if you want a chime.
-3. When the countdown reaches zero, a chime sounds and repeats
-  while overtime; the counter keeps going into negative (shown
-   in red) either way, so you can see how far over time you are.
-
-Your duration setting is saved and reused next time.
-
-## Use the break timer
-
-The break timer in the Now Playing view counts down between
-songs. It helps you keep breaks consistent during a dance.
-
-1. Set the break duration (in minutes) in the
-  **Minutes** field. The default is 5 minutes;
-   your setting is remembered.
-2. Make sure the **Enabled** checkbox is on.
-3. When a song finishes, the timer starts automatically.
-4. A gentle chime sounds at zero, then repeats every 15
-  seconds until you play the next song.
-5. Press S or click **Start/Stop**
-  to manually control the timer.
 
 
 
@@ -588,7 +603,7 @@ TODO Fill in.
 | Ctrl+> or Ctrl+. | Go forward (tab history) |
 | Ctrl+W           | Close current tab        |
 
-### Now Playing
+### Now Playing shortcuts
 | Key           | Action                            |
 | ------------- | --------------------------------- |
 | Enter / Space | Play selected song                |
@@ -596,7 +611,7 @@ TODO Fill in.
 | S             | Start/stop break timer            |
 | Esc           | Close Now Playing tab             |
 
-### Song Player
+### Song Player shortcuts
 | Key       | Action                                                                  |
 | --------- | ----------------------------------------------------------------------- |
 | Space     | Play / Pause                                                            |

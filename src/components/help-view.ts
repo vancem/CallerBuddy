@@ -1,11 +1,8 @@
 /**
  * In-app help documentation, rendered as a singleton tab.
  *
- * Provides a table of contents sidebar and scrollable content organized into:
- *  - A tutorial walkthrough ("Your First Dance")
- *  - Task-oriented how-to guides
- *  - A keyboard shortcuts reference
- *  - A glossary of square-dance terms used in the app
+ * Provides a table of contents sidebar and scrollable content from
+ * src/help-content.md (workflow overview, how-to guides, shortcuts, glossary).
  *
  * In-help hash / TOC hyperlinks push a local back stack of prior scroll
  * positions. Back / ArrowLeft / system back unwind that stack first, then
@@ -38,26 +35,32 @@ interface HelpHistoryEntry {
 /** IDs match GitHub/GFM heading slugs from help-content.md (marked-gfm-heading-id). */
 const TOC: TocEntry[] = [
   { id: "welcome-to-callerbuddy", title: "Welcome to CallerBuddy" },
+  { id: "expected-workflow", title: "Expected Workflow" },
+  { id: "first-time-setup", title: "First Time Setup", indent: true },
+  { id: "the-app-menu", title: "The App Menu" },
+  { id: "playlist-editor", title: "Playlist Editor" },
+  { id: "now-playing", title: "Now Playing" },
+  { id: "the-break-timer", title: "The Break Timer", indent: true },
+  { id: "song-player", title: "Song Player" },
+  { id: "adjust-pitch-and-tempo", title: "Adjust pitch and tempo", indent: true },
+  { id: "the-song-progress-bar", title: "The Song Progress Bar", indent: true },
+  { id: "the-left-pane-in-the-song-player", title: "The left pane", indent: true },
+  { id: "setting-loop-points-for-patter", title: "Setting loop points for patter", indent: true },
+  { id: "the-patter-timer", title: "The patter timer" },
+  { id: "lyric-editor", title: "Lyric Editor" },
   { id: "callerbuddy-security", title: "CallerBuddy Security" },
-  { id: "your-first-dance", title: "Your First Dance" },
-  { id: "1-setting-up-your-folder", title: "Setting up your folder", indent: true },
-  { id: "2-building-a-playlist", title: "Building a playlist", indent: true },
-  { id: "3-playing-the-dance", title: "Playing the dance", indent: true },
+  { id: "running-callerbuddy-outside-the-browser", title: "Installing / outside the browser" },
+  { id: "cloud-storage-for-your-songs", title: "Cloud Storage for your Songs" },
+  { id: "offline-callerbuddy", title: "Offline CallerBuddy" },
+  { id: "importing-songs", title: "Importing Songs" },
   { id: "how-to-guides", title: "How-to Guides" },
+  { id: "adding-songs-to-callerbuddy", title: "Adding Songs to CallerBuddy", indent: true },
   { id: "import-songs-from-a-zip-file", title: "Import songs from a ZIP", indent: true },
   { id: "import-songs-from-a-folder", title: "Import from a folder", indent: true },
   { id: "build-and-manage-playlists", title: "Build and manage playlists", indent: true },
-  { id: "adjust-pitch-and-tempo", title: "Adjust pitch and tempo", indent: true },
-  { id: "set-up-loop-points-for-patter", title: "Set up loop points for patter", indent: true },
-  { id: "use-the-patter-timer", title: "Use the patter timer", indent: true },
-  { id: "use-the-break-timer", title: "Use the break timer", indent: true },
   { id: "edit-lyrics", title: "Edit lyrics", indent: true },
   { id: "lyrics-markdown", title: "Lyrics Markdown", indent: true },
-  { id: "categories-rank-and-filtering", title: "Categories, rank, and filtering", indent: true },
-  { id: "page-overviews", title: "Page Overviews" },
-  { id: "playlist-editor", title: "Playlist Editor", indent: true },
-  { id: "now-playing", title: "Now Playing", indent: true },
-  { id: "song-player", title: "Song Player", indent: true },
+  { id: "how-the-played-average-is-calculated", title: "How the Played Average is Calculated", indent: true },
   { id: "keyboard-shortcuts", title: "Keyboard Shortcuts" },
   { id: "glossary", title: "Glossary" },
 ];
