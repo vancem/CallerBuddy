@@ -10,36 +10,42 @@ music during performances.  Here are some useful features.
 2. **Safe To Run** - You don't need to worry that you are 
    compromising the safety of your machine when you run CallerBuddy.  See 
    [CallerBuddy Security](#callerbuddy-security). 
-3. **Cloud storage friendly** meaning you can have your songs 'in the cloud'
+3. **Cloud storage friendly** - meaning you can have your songs 'in the cloud'
    where they are backed up and accessible from multiple machines yet kept in
    sync (you logically only have one collection of songs) See 
    [Cloud Storage](#cloud-storage-for-your-songs).
 4. **Works Offline** - CallerBuddy can run without any network connection, 
    so it will work in ALL venues.  See [Offline CallerBuddy](#offline-callerbuddy).
-5. **Cross Platform**  It works on Windows,
+5. **Cross Platform** - CallerBuddy works on Windows,
    Macs (with Chrome Browser), Chromebooks, Linux, and Android phones (sadly 
    IPhone browsers do not support needed functionality, and are unsupported).
 6. **Keyboard Friendly** - CallerBuddy has extensive keyboard shortcuts, that are easy 
    to learn with hover-over help.  You never need to be fiddling with a 
    mouse on stage, or looking for a cursor in sunny conditions.
-7. **Touch Friendly** For Android Phones, CallerBuddy is fully touch capable 
-   (no keyboard needed) and the user interface 'fits' in the phones screen size.  
-   Your phone can definitely be your primary tool when giving performances. 
+7. **Touch (Phone) Friendly** - For Android Phones, CallerBuddy is fully touch capable 
+   (no keyboard needed) and the user interface 'fits' in the phones screen size.
+   Your phone can definitely be your primary tool when giving performances.
 
 ## Expected Workflow 
 ### First Time Setup
 When CallerBuddy is launched for the first time (or after it is reset from the ☰ menu), 
 it will  display a welcome pane that asks the user to create or designate a
- **CallerBuddySongs** folder that hold songs and the other data CallerBuddy needs.
+ **CallerBuddySongs** folder that will hold songs and the other data CallerBuddy needs.
 However when  you relaunch CallerBuddy it will go strait into the 
-[playlist editor](#playlist-editor). (Due to limitation on Android, you must go through a reconnection process first but you ultimately end in the playList editor).
+[playlist editor](#playlist-editor). (Due to limitation on Android, you must go through 
+a reconnection process first but you ultimately end in the playList editor).
 
 ## Playlist Editor
 
-CallerBuddy has the concept of a playList.  A playList is simply a list songs 
+CallerBuddy has the concept of a **playList**.  A playList is simply a list songs 
 to be performed (probably sequentially) at a dance or workshop.   This lets 
 you plan your dance so you are not fumbling for music during a performance.
+To keep the flow simple and consistent, CallerBuddy requires a playList to play
+even one song, but to all a single song to be played quickly it as a 'Play now'
+capability (the ▶ icon, keyboard P), fuses both adding the song to the playlist and 
+playing the song, so CallerBuddy has the 'feel' of being able to play a single song.
 
+At the top of the playList editor is a set of filters, the most 
 
 The Playlist Editor is where you browse a folder of songs and
 build the playlist you'll perform. The left pane is your

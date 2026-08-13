@@ -38,6 +38,7 @@ import { loadAndMergeSongs, loadSongsJson } from "../services/song-library.js";
 import { listDirectory, type DirEntry } from "../services/file-system-service.js";
 import { log } from "../services/logger.js";
 import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js";
+import { songMatchesTextFilter } from "../utils/song-text-filter.js";
 import {
   HostLayoutResizeController,
   isHostPortraitLayout,
@@ -807,8 +808,8 @@ export class PlaylistEditor extends LitElement {
                   <input
                     type="text"
                     class="filter-input"
-                    placeholder="Filter songs by title, label, or categories…"
-                    title="Filter songs by title, label, or categories (Ctrl+F)"
+                    placeholder="Filter… (words ANDed; !word excludes)"
+                    title="Filter by title, label, or categories. Space-separated words must all match; prefix a word with ! to exclude. Case insensitive. (Ctrl+F)"
                     .value=${this.filterText}
                     @input=${this.onFilterInput}
                     @keydown=${this.onFilterKeydown}
@@ -1629,13 +1630,7 @@ export class PlaylistEditor extends LitElement {
     let songs = [...this.localSongs];
 
     if (this.filterText) {
-      const lower = this.filterText.toLowerCase();
-      songs = songs.filter(
-        (s) =>
-          s.title.toLowerCase().includes(lower) ||
-          s.label.toLowerCase().includes(lower) ||
-          s.categories.toLowerCase().includes(lower),
-      );
+      songs = songs.filter((s) => songMatchesTextFilter(s, this.filterText));
     }
 
     const rankRaw = this.rankFilterInput.trim();
