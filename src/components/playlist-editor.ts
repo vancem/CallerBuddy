@@ -272,6 +272,19 @@ export class PlaylistEditor extends LitElement {
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
 
+  /**
+   * Document-level keydown sees retargeted `event.target` (the host) for shadow
+   * inputs. Use composedPath so filter/rank/cell edits suppress table shortcuts.
+   */
+  private isEventFromTypingControl(e: Event): boolean {
+    return e.composedPath().some(
+      (n) =>
+        n instanceof HTMLInputElement ||
+        n instanceof HTMLTextAreaElement ||
+        n instanceof HTMLSelectElement,
+    );
+  }
+
   private onKeydown(e: KeyboardEvent) {
     if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
 
@@ -294,10 +307,7 @@ export class PlaylistEditor extends LitElement {
       return;
     }
 
-    const inTypingControl =
-      e.target instanceof HTMLInputElement ||
-      e.target instanceof HTMLTextAreaElement ||
-      e.target instanceof HTMLSelectElement;
+    const inTypingControl = this.isEventFromTypingControl(e);
     if (e.key === "Escape" && this.editorClosable && this.tabId) {
       if (!inTypingControl) {
         if (this.contextTarget) {
@@ -803,37 +813,39 @@ export class PlaylistEditor extends LitElement {
           <div class="browser-content-scroll">
             <div class="browser-toolbar">
               <div class="browser-toolbar-track">
-                <button
-                  type="button"
-                  class="view-reset-btn"
-                  title="Reset filters and sort order to defaults"
-                  aria-label="Reset filters and sort order to defaults"
-                  ?disabled=${this.isBrowserViewAtDefault()}
-                  @click=${this.onResetBrowserView}
-                >
-                  ↺
-                </button>
-                <div class="filter-wrap">
-                  ${this.filterText
-                    ? html`<button
-                        type="button"
-                        class="filter-clear"
-                        title="Clear filter"
-                        aria-label="Clear filter"
-                        @click=${this.onClearFilter}
-                      >
-                        ×
-                      </button>`
-                    : nothing}
-                  <input
-                    type="text"
-                    class="filter-input"
-                    placeholder="Filter… (words ANDed; !word excludes)"
-                    title="Filter by title, label, or categories. Space-separated words must all match; prefix a word with ! to exclude. Case insensitive. (Ctrl+F)"
-                    .value=${this.filterText}
-                    @input=${this.onFilterInput}
-                    @keydown=${this.onFilterKeydown}
-                  />
+                <div class="filter-cluster">
+                  <button
+                    type="button"
+                    class="view-reset-btn"
+                    title="Reset filters and sort order to defaults"
+                    aria-label="Reset filters and sort order to defaults"
+                    ?disabled=${this.isBrowserViewAtDefault()}
+                    @click=${this.onResetBrowserView}
+                  >
+                    ↺
+                  </button>
+                  <div class="filter-wrap">
+                    ${this.filterText
+                      ? html`<button
+                          type="button"
+                          class="filter-clear"
+                          title="Clear filter"
+                          aria-label="Clear filter"
+                          @click=${this.onClearFilter}
+                        >
+                          ×
+                        </button>`
+                      : nothing}
+                    <input
+                      type="text"
+                      class="filter-input"
+                      placeholder="Filter… (words ANDed; !word excludes)"
+                      title="Filter by title, label, categories, or type (Singing/Patter). Space-separated words must all match; prefix a word with ! to exclude. Case insensitive. (Ctrl+F)"
+                      .value=${this.filterText}
+                      @input=${this.onFilterInput}
+                      @keydown=${this.onFilterKeydown}
+                    />
+                  </div>
                 </div>
                 <div
                   class="rank-filter"
@@ -1650,7 +1662,17 @@ export class PlaylistEditor extends LitElement {
     let songs = [...this.localSongs];
 
     if (this.filterText) {
-      songs = songs.filter((s) => songMatchesTextFilter(s, this.filterText));
+      songs = songs.filter((s) =>
+        songMatchesTextFilter(
+          {
+            title: s.title,
+            label: s.label,
+            categories: s.categories,
+            type: isSingingCall(s) ? "Singing" : "Patter",
+          },
+          this.filterText,
+        ),
+      );
     }
 
     const rankRaw = this.rankFilterInput.trim();
@@ -2154,6 +2176,14 @@ export class PlaylistEditor extends LitElement {
       min-width: 0;
     }
 
+    .filter-cluster {
+      flex: 1 1 0;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      min-width: 0;
+    }
+
     .filter-wrap {
       flex: 1 1 0;
       display: flex;
@@ -2189,14 +2219,15 @@ export class PlaylistEditor extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 1.75rem;
-      height: 1.75rem;
+      width: 1.5rem;
+      height: 1.5rem;
+      margin: 0;
       padding: 0;
       border: 1px solid var(--cb-btn-border);
-      border-radius: 6px;
+      border-radius: 4px;
       background: var(--cb-btn-bg);
       color: var(--cb-fg-secondary);
-      font-size: 1.05rem;
+      font-size: 0.85rem;
       line-height: 1;
       cursor: pointer;
     }

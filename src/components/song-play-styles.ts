@@ -394,46 +394,6 @@ export const songPlayStyles = css`
       margin-left: 4px;
     }
 
-    .meta-block {
-      margin-top: 4px;
-      padding-top: 10px;
-      border-top: 1px solid var(--cb-border);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .meta-row {
-      display: grid;
-      grid-template-columns: 7.5rem 1fr;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .meta-label {
-      font-size: 0.85rem;
-      color: var(--cb-fg-secondary);
-    }
-
-    .meta-input {
-      padding: 4px 8px;
-      border: 1px solid var(--cb-border);
-      border-radius: 4px;
-      background: var(--cb-input-bg);
-      color: var(--cb-fg);
-      font-size: 0.85rem;
-    }
-
-    .meta-input-categories {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .meta-input-rank {
-      width: 4.5rem;
-      font-variant-numeric: tabular-nums;
-    }
-
     /* -- Time info --------------------------------------------------------- */
 
     .time-info {

@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { songMatchesTextFilter } from "./song-text-filter.js";
 
-const song = (title: string, label = "", categories = "") => ({
+const song = (
+  title: string,
+  label = "",
+  categories = "",
+  type = "",
+) => ({
   title,
   label,
   categories,
+  type,
 });
 
 describe("songMatchesTextFilter", () => {
@@ -22,6 +28,27 @@ describe("songMatchesTextFilter", () => {
     expect(songMatchesTextFilter(song("Hello"), "goodbye")).toBe(false);
   });
 
+  it("matches Type column text (Singing / Patter)", () => {
+    expect(songMatchesTextFilter(song("x", "", "", "Patter"), "patter")).toBe(
+      true,
+    );
+    expect(songMatchesTextFilter(song("x", "", "", "Singing"), "singing")).toBe(
+      true,
+    );
+    expect(songMatchesTextFilter(song("x", "", "", "Singing"), "patter")).toBe(
+      false,
+    );
+    expect(
+      songMatchesTextFilter(song("Hello", "", "", "Patter"), "Hello patter"),
+    ).toBe(true);
+    expect(
+      songMatchesTextFilter(song("Hello", "", "", "Singing"), "!patter"),
+    ).toBe(true);
+    expect(
+      songMatchesTextFilter(song("Hello", "", "", "Patter"), "!patter"),
+    ).toBe(false);
+  });
+
   it("requires every space-separated term (AND)", () => {
     const s = song("Hello There Friend");
     expect(songMatchesTextFilter(s, "Hello There")).toBe(true);
@@ -30,9 +57,10 @@ describe("songMatchesTextFilter", () => {
   });
 
   it("allows terms to match different fields", () => {
-    const s = song("Hello", "RYL", "Christmas");
+    const s = song("Hello", "RYL", "Christmas", "Patter");
     expect(songMatchesTextFilter(s, "Hello Christmas")).toBe(true);
     expect(songMatchesTextFilter(s, "ryl christmas")).toBe(true);
+    expect(songMatchesTextFilter(s, "ryl patter")).toBe(true);
   });
 
   it("treats !term as exclusion", () => {

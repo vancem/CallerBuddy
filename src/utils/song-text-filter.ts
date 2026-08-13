@@ -3,13 +3,15 @@
  *
  * Space-separated terms are ANDed (case-insensitive). A leading `!` negates
  * a term. Bare `!` tokens are ignored. Each term is matched against the
- * combined title, label, and categories of a song entry.
+ * combined title, label, categories, and type of a song entry.
  */
 
 export interface SongTextFilterFields {
   title: string;
   label: string;
   categories: string;
+  /** Display type from the Type column, e.g. "Singing" or "Patter". */
+  type: string;
 }
 
 /** True if the song entry matches every space-separated filter term. */
@@ -21,7 +23,7 @@ export function songMatchesTextFilter(
   if (tokens.length === 0) return true;
 
   const haystack =
-    `${song.title} ${song.label} ${song.categories}`.toLowerCase();
+    `${song.title} ${song.label} ${song.categories} ${song.type}`.toLowerCase();
 
   for (const token of tokens) {
     if (token.startsWith("!")) {

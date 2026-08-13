@@ -35,6 +35,12 @@ However when  you relaunch CallerBuddy it will go strait into the
 [playlist editor](#playlist-editor). (Due to limitation on Android, you must go through 
 a reconnection process first but you ultimately end in the playList editor).
 
+## The ☰ Menu
+
+In the upper right corner of CallerBuddy is a ☰ icon that activates a menu of 
+operations on CallerBuddy as a whole.   Resetting CallerBuddy, Importing Songs, 
+and Help are in this menu, among other things.  
+
 ## Playlist Editor
 
 CallerBuddy has the concept of a **playList**.  A playList is simply a list songs 
@@ -69,83 +75,91 @@ The song table has the following columns
    by a particular producer (which often have a similar sound or style)
 * **Type** - Indicates if the song is a Patter (no lyrics) or singing call (with Lyrics) 
 
-At the top of the playList editor is a set of filters, the most prominent is 
+To help choose a song, you sort by any of the columns above (by clicking on the column 
+name), or typing values into the filter textbox or the Rank filter.
 
-The Playlist Editor is where you browse a folder of songs and
-build the playlist you'll perform. The left pane is your
-**playList**; the right pane is the **song table** for the
-current folder.
+* If you type a word in the filter textbox only songs with that text somewhere in the 
+  row will be displayed.
+* If you type !WORD in the filter textbox only songs that do NOT have this word will
+  be displayed. 
+* You can set the >= <=  and the value to filter by rank value (thus look at only
+  your popular or less popular songs)
 
-- Add songs by dragging a row into the playlist, double-clicking
-a row, right-clicking for a menu, or clicking the row's
-**+** button.
-- Reorder the playlist by dragging items; remove one with its
-**×** button.
-- The song table can be filtered by text (title, label,
-categories) and by rank, and sorted by clicking any column
-header. Click a **Categories** or **Rank** cell to edit it
-inline.
-- Subfolders appear as rows — click one to open it in its own
-tab (it shares the same playlist).
-- **Play** opens Now Playing; **Clear**/**Restore** manage the
-whole playlist; non-root folder tabs also have **Close**.
-- Shortcuts: Ctrl+F focus the filter,
-Ctrl+R focus the rank filter,
-+/= add the selected row,
-P play it now, ↑/↓ change the
-selected row, Enter play the playlist.
+You can add songs to the playlist clicking on the + (Or typing +), or by dragging a row
+to the playlist area.   When you drag, you can place the song in the order you want
+it by finishing the drag at the desired spot.    You can also rearrange songs already
+on the playlist by dragging them to the desired spot.   Dragging on Android works, you 
+simply touch and hold to start a drag.  
 
-See "Building a playlist" and "Categories, rank, and filtering"
-above for more detail.
+If you right click on a row of a song, all the operations you can perform on the song
+are present in a context menu.   To support touch, there is a ⋮ icon at the far right
+of each row that also gets you to this context menu.
+
+You can remove items in the playList by clicking the X beside the entry, you can 
+remove all entries in the list with the'Clear' button at the bottom
+
+When you are happy with your playlist, click the 'Play' button (or type &lt;Enter&gt;)
+
+## Now Playing
+
+A completed playList moves on to the 'Now Playing' page.  This page represents 
+your progress at a single performance.   Each song has a checkbox beside it 
+that indicates if it has been played or not, and by default the first unchecked
+song is selected.    Typing the **space bar**, or  &lt;Enter&gt; or clicking
+the 'Play' button will play the selected song.   Thus in a typical dance 
+you simply need to keep hitting the **space bar** to play the next song.
+
+However you are free to modify your playlist during the performance.  
+You don't have to go in the order you originally specified, simply use
+mouse or **up/down arrow keys** to select a different song to play next.  **Double
+clicking** on a song will pay that song independently of whether it is next
+or has been played before.   If you change your mind and don't want to 
+use on of the songs on your playlist, you can check its checkbox (indicating
+it has been played) or **hit the X** icon to delete it entirely.  
+You can also ****drag songs** to reorder them.
+Finally you can go back to the playlist editor (using 
+the **'Close'** button or the **Esc** key) add more songs to the playlist and then
+come back to the playlist editor.   In short you can manipulate the 
+playlist pretty much in any way on the fly.  
+
+Often you might practice your performance, and so you will want
+to reset the checkboxes back to 'unplayed' after your practice.  There
+is a **'Reset'** button for this purpose.  
+
+### The Break Timer
+
+The other piece of functionality on the 'Now Playing' page is the break 
+timer.   It is a simple count-down timer that runs after a song has been
+played, and will chime when the countdown reaches zero (and then every
+20 seconds after that).   You can set the amount of time, and you can 
+turn the timer off if you don't need it.   
+
+Finally CallerBuddy will tell you the time that last song ended, so that
+even if you don't use the timer, you can know how long the break has been.  
+
+Most times however, you just want to hit the **space bar**, which takes 
+you to the song player for the next unplayed song on the playList. 
+
+## Song Player
+
+The Song Player is broken into two panes.  The left pane depends on 
+whether the song is a singing call (has lyrics) or a patter (doesn't).
+The right pane is 
+
+
+The Song Player plays one song at a time, with a **?** button in
+the top-right corner of the left pane that opens this overview.
+
+- **Singing calls** show scrolling lyrics on the left; the right
+panel has transport and Volume/Pitch/Tempo.
+- **Patter** songs show loop controls and a patter timer on the
+left instead of lyrics.
+- See "Adjust pitch and tempo", "Set up loop points for patter",
+"Use the patter timer", and "Edit lyrics" above for
+details on each control.
 
 
 
-
-
-The Playlist Editor shows a song table on the right and your
-playlist on the left. There are several ways to add songs:
-
-- **Drag and drop** — drag a song row from
-the table into the playlist panel.
-- **Double-click** a song row to add it to the
-end of the playlist.
-- **Right-click** a song for a context menu with
-options to add to the start or end, or to play it
-immediately.
-- Click the **+** button on a song row.
-
-Once songs are in the playlist, drag them up or down to reorder.
-Use the **×** button to remove a song.
-
-You can filter the song table using the text box above it. It
-searches title, label, and categories. There is also a rank
-filter to show only songs above or below a threshold.
-
-### 3. Playing the dance
-
-1. Click **▶ Play** in the playlist panel.
-  This opens the **Now Playing** screen.
-2. The first unplayed song is automatically selected. Press
-  **Enter**, **Space**, or click
-   **▶ Play** to start it.
-3. **Singing calls** (songs with lyrics) play
-  straight through. The lyrics are displayed on the left.
-   The progress bar at the bottom is divided into 7 segments
-   matching a standard singing-call structure.
-4. **Patter** (songs without lyrics) uses looping.
-  The left area shows loop controls and a patter timer instead
-   of lyrics. The music loops automatically between the loop
-   start and end points.
-5. When the song ends (or you close the player), you return to
-  Now Playing. If the **break timer** is enabled,
-   it starts counting down. A gentle chime sounds when time is
-   up.
-6. The next unplayed song is auto-selected. Repeat until the
-  dance is over.
-
-**Tip:** The clock in the upper-right of Now Playing
-and the Song Player helps you keep track of the time of day, so
-you know when the dance should wrap up.
 
 
 
@@ -559,76 +573,6 @@ CallerBuddy lyrics use a small Markdown subset:
 | `**call name**`            | Bold                      |
 | `\` at end of a line       | Force a line break        |
 | blank line                 | New paragraph             |
-
-
-Example:
-
-```markdown
-# One Call Away
-_(NB 412)_
-
-## Opener
-**Sides** face **grand square**\
-I'm only one call away\
-```
-
-When you import a ZIP or folder that contains HTML lyrics,
-CallerBuddy converts them to this Markdown format automatically.
-
-## Categories, rank, and filtering
-
-Each song can have **categories** (free-form
-tags separated by semicolons, e.g. "Christmas; Patriotic")
-and a **rank** (0–100, where 100 is
-excellent and 0 means avoid).
-
-### Editing
-
-- In the Playlist Editor, click a cell in the
-**Categories** or **Rank** column
-to edit it inline.
-- In the Song Player, the right panel has Categories and
-Rank fields you can edit while a song is playing.
-
-
-
-### Filtering
-
-- The text filter above the song table searches across
-title, label, and categories.
-- The rank filter lets you show songs with rank
-**≥** or **<** a threshold.
-Leave it empty to disable.
-
-
-## Now Playing
-
-Now Playing shows the playlist queue you'll work through during
-the dance, with a break timer and clock alongside it.
-
-- Click a song to select it (or use ↑/↓),
-then **Play** (or double-click) to open the Song Player.
-- Each song has a played checkbox; toggle it with
-M. **⟲ Reset** clears all of them so you can
-replay the whole list.
-- Delete removes the selected song from the playlist.
-- The **break timer** counts down between songs — see
-"Use the break timer" above for details.
-
-
-
-## Song Player
-
-The Song Player plays one song at a time, with a **?** button in
-the top-right corner of the left pane that opens this overview.
-
-- **Singing calls** show scrolling lyrics on the left; the right
-panel has transport, Volume/Pitch/Tempo, and Categories/Rank.
-- **Patter** songs show loop controls and a patter timer on the
-left instead of lyrics.
-- See "Adjust pitch and tempo", "Set up loop points for patter",
-"Use the patter timer", and "Edit lyrics" above for
-details on each control.
 
 
 ## How the Played Average is Calculated

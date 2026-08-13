@@ -1139,38 +1139,6 @@ export class SongPlay extends LitElement {
           <button class="adj-btn" title="Increase tempo (T)" @click=${() => this.adjustTempo(1)}>►</button>
           <span class="adj-hint">${this.getEffectiveBPM() > 0 ? `${this.getEffectiveBPM()} BPM` : ""}</span>
         </div>
-        <div class="meta-block">
-          <div class="meta-row">
-            <label
-              class="meta-label"
-              title="Words or phrases that describe categories this song belongs to, separated by semicolons (for example: Christmas; Patriotic; Plus)."
-            >Categories:</label>
-            <input
-              type="text"
-              class="meta-input meta-input-categories"
-              title="Words or phrases that describe categories this song belongs to, separated by semicolons (for example: Christmas; Patriotic; Plus)."
-              spellcheck="false"
-              .value=${song.categories}
-              @change=${this.onSongCategoryChange}
-            />
-          </div>
-          <div class="meta-row">
-            <label
-              class="meta-label"
-              title="Preference from 0 to 100: 100 is excellent, 50 is average, and 0 means avoid using this song."
-            >Rank</label>
-            <input
-              type="number"
-              class="meta-input meta-input-rank"
-              min="0"
-              max="100"
-              step="1"
-              title="Preference from 0 to 100: 100 is excellent, 50 is average, and 0 means avoid using this song."
-              .value=${String(song.rank)}
-              @change=${this.onSongRankChange}
-            />
-          </div>
-        </div>
       </div>
     `;
   }
@@ -1271,30 +1239,6 @@ export class SongPlay extends LitElement {
     callerBuddy.audio.setTempo(this.song.deltaTempo, this.song.originalTempo);
     this.requestUpdate();
     callerBuddy.updateSong(this.song);
-  }
-
-  private onSongCategoryChange(e: Event) {
-    if (!this.song) return;
-    this.song.categories = (e.target as HTMLInputElement).value;
-    void callerBuddy.updateSong(this.song);
-    this.requestUpdate();
-  }
-
-  private onSongRankChange(e: Event) {
-    if (!this.song) return;
-    const raw = (e.target as HTMLInputElement).value.trim();
-    if (raw === "") {
-      this.requestUpdate();
-      return;
-    }
-    const n = Number(raw);
-    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > 100) {
-      this.requestUpdate();
-      return;
-    }
-    this.song.rank = n;
-    void callerBuddy.updateSong(this.song);
-    this.requestUpdate();
   }
 
   // -- Loop controls --------------------------------------------------------
