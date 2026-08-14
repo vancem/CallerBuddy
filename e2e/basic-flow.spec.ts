@@ -245,7 +245,7 @@ test.describe("CallerBuddy basic flow", () => {
     await expect(
       page
         .locator("welcome-view")
-        .getByRole("button", { name: "Instructions to Create CallerBuddySongs" }),
+        .getByRole("button", { name: "Instructions to Create CallerBuddySongs Folder" }),
     ).toBeVisible();
     await expect(
       page
@@ -275,7 +275,7 @@ test.describe("CallerBuddy basic flow", () => {
 
     const instructionsBtn = page
       .locator("welcome-view")
-      .getByRole("button", { name: "Instructions to Create CallerBuddySongs" });
+      .getByRole("button", { name: "Instructions to Create CallerBuddySongs Folder" });
     await expect(instructionsBtn).toHaveClass(/secondary/);
 
     const openBtn = page
@@ -291,7 +291,7 @@ test.describe("CallerBuddy basic flow", () => {
 
     await page
       .locator("welcome-view")
-      .getByRole("button", { name: "Instructions to Create CallerBuddySongs" })
+      .getByRole("button", { name: "Instructions to Create CallerBuddySongs Folder" })
       .click();
 
     const modal = page.locator("welcome-view").locator(".instructions-modal");
@@ -335,7 +335,7 @@ test.describe("CallerBuddy basic flow", () => {
 
     await page
       .locator("welcome-view")
-      .getByRole("button", { name: "Instructions to Create CallerBuddySongs" })
+      .getByRole("button", { name: "Instructions to Create CallerBuddySongs Folder" })
       .click();
 
     const modal = page.locator("welcome-view").locator(".instructions-modal");

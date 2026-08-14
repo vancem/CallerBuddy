@@ -48,7 +48,7 @@ export class WelcomeView extends LitElement {
   @state() private folderName = "";
   @state() private pickerError = "";
   @state() private loading = false;
-  /** "Instructions to Create CallerBuddySongs" popup (New Users). */
+  /** "Instructions to Create CallerBuddySongs Folder" popup (New Users). */
   @state() private showInstructions = false;
 
   connectedCallback() {
@@ -208,7 +208,7 @@ export class WelcomeView extends LitElement {
             class="secondary inline-btn"
             @click=${this.openInstructions}
           >
-            Instructions to Create CallerBuddySongs
+            Instructions to Create CallerBuddySongs Folder
           </button>
           to get started.
         </p>
@@ -371,7 +371,7 @@ export class WelcomeView extends LitElement {
   }
 
   private openInstructions() {
-    log.info(`[ui] welcome: Instructions to Create CallerBuddySongs`);
+    log.info(`[ui] welcome: Instructions to Create CallerBuddySongs Folder`);
     this.pickerError = "";
     this.showInstructions = true;
   }

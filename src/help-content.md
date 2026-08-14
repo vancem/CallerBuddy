@@ -147,6 +147,8 @@ even if you don't use the timer, you can know how long the break has been.
 Most times however, you just want to hit the **space bar**, which takes 
 you to the song player for the next unplayed song on the playList. 
 
+
+
 ## Song Player
 
 By default, when the Song player is activated, it immediately starts 
@@ -155,6 +157,33 @@ did not want it to play you can immediately hit the **space bar** or the
 &lt;Enter&gt; key to pause the music, and type '.' to reset the
 music to the start.  
 
+### Controlling Where the Sound Goes
+It can be frustrating when you start a audio player and you get 
+no sound because it is sending it to some device and you have no
+idea where.  The good news is that CallerBuddy inherits the behavior
+of the Browser in dealing with sound output.  This means that if you
+add a new sound device, like the Browser it will switch to it.   If
+for whatever reason sound is still not working you can switch the 
+default sound output at the operating system level and CallerBuddy
+will switch to it.   On windows this is controlled by a sound icon
+which by default is on the right side if the taskbar at the far 
+right bottom corner of the screen.  
+
+![Windows Sound Select ScreenShot](images/WindowSoundSelect.png)
+
+Clicking on this speaker icon opens a popup, on which there is a line for sound.
+Check to make sure that sound is not muted (no X byt the speaker icon)
+and click on the devices icon on the right side of that line.  
+That brings up a menu of output devices, that you can choose from 
+to set the output device.  
+
+Another useful tip is to remember that most laptops have function (Fn)
+buttons across the top of the keyboard.  Typically there are icons for
+muting as well as changing the volume.  Pressing these buttons (or 
+pressing the 'Fn' button as you press them), will allow you to unmute
+and change the volume.  This can be handy to avoid needing the mouse.  
+
+### Song Player Layout
 The Song Player is broken into two panes.  The left pane depends on 
 whether the song is a singing call (has lyrics) or a patter (doesn't).
 The right pane has the main controls for playing a song.  At the

@@ -265,18 +265,17 @@ export class HelpView extends LitElement {
       margin: 0 0 14px;
       padding: 6px 10px;
       font-size: 0.85rem;
+      font-weight: 500;
       text-align: left;
-      background: none;
-      color: var(--cb-accent);
-      border: 1px solid var(--cb-accent);
-      border-radius: 4px;
+      background: var(--cb-accent);
+      color: var(--cb-fg-on-accent);
+      border: 1px solid transparent;
+      border-radius: 6px;
       cursor: pointer;
     }
 
     .back-btn:hover {
-      background: var(--cb-accent-subtle);
-      color: var(--cb-accent-hover);
-      border-color: var(--cb-accent-hover);
+      background: var(--cb-accent-hover);
     }
 
     .toc ul {
