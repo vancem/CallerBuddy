@@ -69,6 +69,12 @@ export class HelpView extends LitElement {
   /** Optional section id to scroll to when the Help tab opens (e.g. from Markdown help). */
   @property({ type: String }) sectionId = "";
 
+  /**
+   * Bumped on each external Help open so we re-scroll even when {@link sectionId}
+   * is unchanged (e.g. ☰ Help while already on Welcome).
+   */
+  @property({ type: Number }) sectionNavToken = 0;
+
   /** True when the Help tab is the active shell tab; gates the ArrowLeft-to-go-back shortcut. */
   @property({ type: Boolean }) active = false;
 
@@ -93,7 +99,10 @@ export class HelpView extends LitElement {
   }
 
   override updated(changed: Map<string, unknown>) {
-    if (changed.has("sectionId") && this.sectionId) {
+    if (
+      this.sectionId &&
+      (changed.has("sectionId") || changed.has("sectionNavToken"))
+    ) {
       // Instant jump: avoid top→smooth flash when Help is (re)opened with a target.
       // External open (menu / ? help) does not push in-help history.
       requestAnimationFrame(() => this.scrollToSection(this.sectionId, "auto"));

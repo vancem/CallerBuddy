@@ -1,9 +1,9 @@
 # Welcome to CallerBuddy
 
 CallerBuddy is a web-based program that Square Dance Callers can use to play
-music during performances.  Here are some useful features.  
+music during performances.  Here are some of its key features.  
 
-1. **Web or App** - CallerBuddy can be used just as a web site in your browser, 
+1. **Browser or App** - CallerBuddy can be used just as a web site in your browser, 
    but it can also be installed as normal desktop app (so you can launch it 
    from your taskbar, or placed on the desktop).
    See [Installing CallerBuddy](#running-callerbuddy-outside-the-browser).
@@ -12,13 +12,13 @@ music during performances.  Here are some useful features.
    it is only allowed to see files you explictly enable.  See 
    [CallerBuddy Security](#callerbuddy-security). 
 3. **Cloud storage friendly** - You can have your songs 'in the cloud'
-   where they are backed up and yet run CallerBuddy from different machines on
-   the same set of songs.  See [Cloud Storage](#cloud-storage-for-your-songs).
+   where they are backed up and run CallerBuddy from different machines on that
+   one copy of your songs.  See [Cloud Storage](#cloud-storage-for-your-songs).
 4. **Works Offline** - CallerBuddy can run without any network connection, 
-   so it will work in ALL venues.  See [Offline CallerBuddy](#offline-callerbuddy).
+   so it will work wherever you need to perform.  See [Offline CallerBuddy](#offline-callerbuddy).
 5. **Cross Platform** - CallerBuddy works on Windows,
    Macs (with Chrome Browser), Chromebooks, Linux, and Android phones (sadly 
-   IPhone browsers do not support needed functionality, and are unsupported).
+   IPhone does not support all the needed functionality, and is unsupported).
 6. **Keyboard Friendly** - CallerBuddy has extensive keyboard shortcuts, that are easy 
    to learn with hover-over help.  You never need to be fiddling with a 
    mouse on stage, or looking for a cursor in sunny conditions. See [Keyboard Shortcuts](#keyboard-shortcuts).  
@@ -27,7 +27,7 @@ music during performances.  Here are some useful features.
    Your phone can definitely be your primary tool when giving performances.
 8. **Adding Song is EASY** - Sadly, there is no standard way of distributing square
    dance songs.  As a result adding new longs to your library typically is more
-   painful that you would like.  CallerBuddy simplifies all of this.
+   painful that you would like.  CallerBuddy makes this truly easy.
    See [Adding songs to CallerBuddy](#adding-songs-to-callerbuddy)
 
 ## Expected Workflow 
@@ -703,8 +703,99 @@ overwrite, and use my new importation.
 
 # Appendix 
 
+## How CallerBuddy Stores the Data it Needs
+
+CallerBuddy was carefully designed to keep its data needs **clean** and very 
+simple.  CallerBuddy only needs access to a single folder which can be 
+called whatever you like but here we called it **CallerBuddySongs** (and we
+recommend that name because it is very descriptive).  As mentioned 
+in the [Import Section](#importing-songs) the music associated with the 
+song is a *.MP3 file and if the song has lyrics (it is a singing call) 
+it also has a [Markdown](https://commonmark.org/help/) with the MP3 suffix
+replaced with *.MD.  This is most of heart of the data CallerBuddy needs.
+
+However CallerBuddy also has to store three more pieces of information
+ 1. ***Browser Context** - CallerBuddy saves the handle 
+    for the **CallerBuddySongs** folder
+    in a database that the browser maintains.  This is how CallerBuddy
+    can avoid prompting the user each time it restarts.  Once the 
+    browser has checked that the user authorized access to this folder
+    CallerBuddy can keep using it (even across restarts) so prompt the 
+    user is unnecessary.   On Android the rules are different. There
+    CallerBuddy still saves the handle, but Android forces CallerBuddy
+    to refresh it which is why CallerBuddy shows a 'Reconnect' page 
+    on startup on Android.   Resetting CallerBuddy flushes this information
+    which is why after a reset CallerBuddy starts up showing the first 
+    time welcome page.  
+ 2. **Song Data** - CallerBuddy needs to keep all the information 
+    about a particular 
+    song somewhere.   This includes the Volume, Pitch and Tempo setting,
+    but also when the song was last played, what was its weighted 
+    average, its loop settings, it's rank and categories.  This is all
+    stored in a file called **CallerBuddySongs.json**.  Like all
+    [JSON](https://simple.wikipedia.org/wiki/JSON) files, this file
+    is a **text** file that can be viewed and edited with a normal
+    text editor.   Logically it is a list songs where each song is
+    a list of key-value pairs holding information about that song. 
+    This data is **not** touched when CallerBuddy resets.   Because
+    this data is precious, every few days, CallerBuddy makes a copy 
+    of it called **CallerBuddySongs.json.bak**  CallerBuddy does nothing
+    with this file except create it.  The idea is that if something went
+    wrong and CallerBuddy corrupted this json file, you could copy the 
+    backup file onto **CallerBuddySongs.json, and only use a few days
+    of modifications to your songs (rather the all the settings you laboriously
+    generated over weeks or months)
+ 3. **App Data** - CallerBuddy also need a place to store things 
+    that are not per-song but global to the whole CallerBuddy app.
+    This includes things like user preferences (e.g. length of
+    timers), the current playlist, and which songs in the playlist
+    have been played so far.   This data is stored in another
+    [JSON](https://simple.wikipedia.org/wiki/JSON) file called 
+    **CallerBuddySettings.json** Note that this file **is deleted** when 
+    CallerBuddy is reset, because generally this data is the kind of thing
+    that the user is expecting to reset.  
+
+  That is it.  Note that if the **CallerBuddySongs.json** is not present
+  CallerBuddy will create a new one from scratch using the songs that
+  are present in the folder.   Obviously it will use defaults for things
+  it can't reconstruct (like rank, categories, tempo, pitch, loop points etc),
+  but it will be perfectly functional (song preference would have to be 
+  reconstructed, which is why we have a **CallerBuddySongs.json.bak**) to
+  avoid that loss.  
+
+## SubFolders in CallerBuddy
+CallerBuddy does work with subfolders in **CallerBuddySongs**.  This
+allows you to put patter in its own folder, or to have specialty songs
+(like xmas or holiday) in their own folder. 
+
+Explain the tradeoffs and how to set it up.   TODO
+
 ## How the Played Average is Calculated
-TODO Fill in.  
+Each time a song is played we need to update the 'Played' average to take
+the new data into account.  
+
+The first step in this is to determine what counts 
+as being played.   When the Song player exits and 
+
+  1. Practice mode is not turned on.
+  2. The elapsed time the song played (pauses don't count) is at least
+     90% of the length of the song, then the song is considered played.  
+     This can mean that short patters might not count as being played.  
+
+Every time a song is played, the Last Played time for that song is updated.  
+It then checks if it has already done this for this calendar day, and if 
+so it does NOT update the weighted average (thus the weighted average is
+only updated at most once a day)    The weighted average is what is know 
+as a exponential sliding window with an increment of 1 and a  half life 
+of 28 days (1 month).  
+
+THe key thing to remember, however is that when this value is > 1 you 
+are probably using it too frequently (fast than once a month), and if
+it is < 1, then on average you are using it less than once a month.  
+The average is a pretty good measure of how 'popular' the song is
+(if A is bigger than B, then A on average has been used more (in the 
+recent past) than B).   This is usually enough to decide if you are
+overusing or underusing a particular song.  
 
 ## Keyboard Shortcuts
 ### Global (all views)

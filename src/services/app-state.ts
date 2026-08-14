@@ -369,6 +369,18 @@ export class AppState extends EventTarget {
 
   /** Open a singleton tab (only one of its type). Returns the existing or new id. */
   openSingletonTab(type: TabType, title: string, closable = true, data?: unknown): string {
+    // Bump sectionNavToken so Help re-scrolls even when sectionId is unchanged.
+    if (
+      type === TabType.Help &&
+      data !== null &&
+      typeof data === "object" &&
+      "sectionId" in (data as Record<string, unknown>)
+    ) {
+      data = {
+        ...(data as Record<string, unknown>),
+        sectionNavToken: Date.now(),
+      };
+    }
     const existing = this.tabs.find((t) => t.type === type);
     if (existing) {
       if (this.activeTabId && this.activeTabId !== existing.id) {

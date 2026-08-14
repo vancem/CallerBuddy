@@ -501,6 +501,9 @@ export class AppShell extends LitElement {
                   .sectionId=${(tabs.find((t) => t.type === TabType.Help)?.data as
                     | { sectionId?: string }
                     | undefined)?.sectionId ?? ""}
+                  .sectionNavToken=${(tabs.find((t) => t.type === TabType.Help)?.data as
+                    | { sectionNavToken?: number }
+                    | undefined)?.sectionNavToken ?? 0}
                   .active=${activeTab?.type === TabType.Help}
                 ></help-view>
               </div>`
@@ -932,7 +935,9 @@ export class AppShell extends LitElement {
   private onHelp() {
     log.info(`[ui] menu: Help`);
     this.showMenu = false;
-    callerBuddy.state.openSingletonTab(TabType.Help, "Help");
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
+      sectionId: "welcome-to-callerbuddy",
+    });
   }
 
   private onHelpInstallingAsApp() {
