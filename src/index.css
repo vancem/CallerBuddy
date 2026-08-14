@@ -33,6 +33,7 @@
   /* ── Surfaces (Chrome-like light) ─────────────────────────────────── */
   --cb-bg:          #ffffff;
   --cb-panel-bg:    #f1f3f4;
+  --cb-now-playing-panel-bg: #d1fdfa;
   --cb-tab-bar-bg:  #dee1e6;
   --cb-menu-bg:     #ffffff;
   --cb-input-bg:    #ffffff;

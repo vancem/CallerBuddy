@@ -7,7 +7,8 @@
  *
  * Layout:
  *  ┌─────────────┬──────────────────────────────────────┐
- *  │  Playlist   │  Root > subfolder1 > subfolder2      │
+ *  │  Editing    │  Root > subfolder1 > subfolder2      │
+ *  │  Playlist   │                                      │
  *  │             │  [Filter: ________________]          │
  *  │  1. Song A  │  ┌──────┬───────┬─────┬──────┐       │
  *  │  2. Song B  │  │📁 sub│       │     │      │       │
@@ -695,7 +696,7 @@ export class PlaylistEditor extends LitElement {
         <!-- Left: Playlist -->
         <aside class="playlist-panel" style="${playlistPanelStyle}">
           <div class="panel-heading">
-            <h2>Playlist</h2>
+            <h2>Editing Playlist</h2>
             <button
               class="ctx-help-btn"
               title="Help for the whole Playlist Editor page"

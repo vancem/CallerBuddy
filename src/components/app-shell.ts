@@ -742,6 +742,7 @@ export class AppShell extends LitElement {
           title="Keyboard shortcuts reference">
           Help Keyboard Shortcuts
         </button>
+        <hr />
         <button class="menu-item" role="menuitem" @click=${this.onShowLogs}
           title="Show recent diagnostic log lines">
           Show Logs

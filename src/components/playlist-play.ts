@@ -296,7 +296,7 @@ export class PlaylistPlay extends LitElement {
       <div class="play-view ${isInactive ? "inactive" : ""}">
         <aside class="playlist-panel" style="${playlistPanelStyle}">
           <div class="panel-heading">
-            <h2>Playlist</h2>
+            <h2>Performing Playlist</h2>
             <button
               class="ctx-help-btn"
               title="Help for the whole Now Playing page"
@@ -386,6 +386,14 @@ export class PlaylistPlay extends LitElement {
             >
               ⟲ Reset
             </button>
+            <button
+              type="button"
+              class="close-tab-btn"
+              title="Close Now Playing (Esc)"
+              @click=${this.onCloseNowPlayingTab}
+            >
+              Close
+            </button>
           </div>
         </aside>
         <div
@@ -455,14 +463,6 @@ export class PlaylistPlay extends LitElement {
                     : formatCountdown(Math.round(this.breakMinutes * 60))}
                 </span>
               </div>
-              <button
-                type="button"
-                class="close-tab-btn primary"
-                title="Close Now Playing (Esc)"
-                @click=${this.onCloseNowPlayingTab}
-              >
-                Close
-              </button>
             </div>
           </div>
 
@@ -685,8 +685,7 @@ export class PlaylistPlay extends LitElement {
       pointer-events: none;
     }
 
-    .play-view.inactive .playlist-panel,
-    .play-view.inactive .close-tab-btn {
+    .play-view.inactive .playlist-panel {
       pointer-events: auto;
     }
 
@@ -699,7 +698,7 @@ export class PlaylistPlay extends LitElement {
       display: flex;
       flex-direction: column;
       padding: 12px;
-      background: var(--cb-panel-bg);
+      background: var(--cb-now-playing-panel-bg);
     }
 
     .resizer {
@@ -1056,11 +1055,6 @@ export class PlaylistPlay extends LitElement {
 
     .break-section .time-value.alarm {
       color: var(--cb-error);
-    }
-
-    .close-tab-btn {
-      align-self: flex-start;
-      margin-top: 4px;
     }
 
     .playing-info {
