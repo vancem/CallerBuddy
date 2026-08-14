@@ -9,7 +9,7 @@ music during performances.  Here are some of its key features.
    See [Installing CallerBuddy](#running-callerbuddy-outside-the-browser).
 2. **Safe To Run** - You don't need to worry that you are 
    compromising the safety of your machine when you run CallerBuddy because 
-   it is only allowed to see files you explictly enable.  See 
+   it is only allowed to see files you explicitly enable.  See 
    [CallerBuddy Security](#callerbuddy-security). 
 3. **Cloud storage friendly** - You can have your songs 'in the cloud'
    where they are backed up and run CallerBuddy from different machines on that
@@ -507,7 +507,7 @@ file is 'available offline'.  If this is set on a particular file or folder
 then the cloud Drive software keeps a local copy on the local machine so that
 you can access the file without a network connection.   This is not the default
 however, so we need to set it.   Basically bring up your file explorer application
-and select the **CallerBudddy**.  On windows they hide the offline capabilities.
+and select the **CallerBuddy**.  On windows they hide the offline capabilities.
 You have to right click -> Show More Options -> Offline Access -> Available Offline. 
 
 ![Windows Offline Screenshot](images/WindowOffline.png)
@@ -562,7 +562,7 @@ Most Square dance callers buy the music online by using a site like
 of music producer (like Blue Star or Royal or Riverboat ...) where 
 you can browse and buy one or more songs.   Unfortunately where there
 are **rough** standards what you get when you purchase a song, there is
-still alot of variability.   Typically every producer 
+still a lot of variability.   Typically every producer 
 
 1. Provides a *.MP3 file that is the actually sounds of the song. 
 2. Songs typical have what is called a Label which is usually a small

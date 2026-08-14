@@ -2,7 +2,7 @@
  * In-app help documentation, rendered as a singleton tab.
  *
  * Provides a table of contents sidebar and scrollable content from
- * src/help-content.md (workflow overview, how-to guides, shortcuts, glossary).
+ * src/help-content.md (workflow overview, how-to guides, appendix, shortcuts).
  *
  * In-help hash / TOC hyperlinks push a local back stack of prior scroll
  * positions. Back / ArrowLeft / system back unwind that stack first, then
@@ -46,22 +46,21 @@ const TOC: TocEntry[] = [
   { id: "the-song-progress-bar", title: "The Song Progress Bar", indent: true },
   { id: "the-left-pane-in-the-song-player", title: "The left pane", indent: true },
   { id: "setting-loop-points-for-patter", title: "Setting loop points for patter", indent: true },
-  { id: "the-patter-timer", title: "The patter timer" },
-  { id: "lyric-editor", title: "Lyric Editor" },
+  { id: "the-patter-timer", title: "The patter timer", indent: true },
+  { id: "edit-lyrics", title: "Edit lyrics" },
+  { id: "lyrics-markdown", title: "Lyrics Markdown", indent: true },
   { id: "callerbuddy-security", title: "CallerBuddy Security" },
   { id: "running-callerbuddy-outside-the-browser", title: "Installing / outside the browser" },
   { id: "cloud-storage-for-your-songs", title: "Cloud Storage for your Songs" },
   { id: "offline-callerbuddy", title: "Offline CallerBuddy" },
   { id: "how-to-guides", title: "How-to Guides" },
   { id: "adding-songs-to-callerbuddy", title: "Adding Songs to CallerBuddy", indent: true },
-  { id: "import-songs-from-a-zip-file", title: "Import songs from a ZIP", indent: true },
-  { id: "import-songs-from-a-folder", title: "Import from a folder", indent: true },
-  { id: "build-and-manage-playlists", title: "Build and manage playlists", indent: true },
-  { id: "edit-lyrics", title: "Edit lyrics", indent: true },
-  { id: "lyrics-markdown", title: "Lyrics Markdown", indent: true },
+  { id: "importing-songs", title: "Importing songs", indent: true },
+  { id: "appendix", title: "Appendix" },
+  { id: "how-callerbuddy-stores-the-data-it-needs", title: "How CallerBuddy Stores Data", indent: true },
+  { id: "subfolders-in-callerbuddy", title: "SubFolders in CallerBuddy", indent: true },
   { id: "how-the-played-average-is-calculated", title: "How the Played Average is Calculated", indent: true },
-  { id: "keyboard-shortcuts", title: "Keyboard Shortcuts" },
-  { id: "glossary", title: "Glossary" },
+  { id: "keyboard-shortcuts", title: "Keyboard Shortcuts", indent: true },
 ];
 
 @customElement("help-view")

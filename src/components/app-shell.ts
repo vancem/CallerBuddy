@@ -738,6 +738,10 @@ export class AppShell extends LitElement {
           title="How to import songs into CallerBuddy">
           Help Adding Songs
         </button>
+        <button class="menu-item" role="menuitem" @click=${this.onHelpKeyboardShortcuts}
+          title="Keyboard shortcuts reference">
+          Help Keyboard Shortcuts
+        </button>
         <button class="menu-item" role="menuitem" @click=${this.onShowLogs}
           title="Show recent diagnostic log lines">
           Show Logs
@@ -969,6 +973,14 @@ export class AppShell extends LitElement {
     this.showMenu = false;
     callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
       sectionId: "adding-songs-to-callerbuddy",
+    });
+  }
+
+  private onHelpKeyboardShortcuts() {
+    log.info(`[ui] menu: Help Keyboard Shortcuts`);
+    this.showMenu = false;
+    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, {
+      sectionId: "keyboard-shortcuts",
     });
   }
 

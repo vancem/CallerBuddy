@@ -640,7 +640,7 @@ export class SongOnboard extends LitElement {
         <div class="panel-heading">
           Import Song from ${sourceLabel}
           <button class="ctx-help-btn" title="Open help: Import songs"
-            @click=${() => this.openHelpSection("import-songs-from-a-zip-file")}>?</button>
+            @click=${() => this.openHelpSection("importing-songs")}>?</button>
         </div>
         <p class="explain">
           We analyzed <strong>${this.sourceName}</strong> and made our
