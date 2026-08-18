@@ -750,6 +750,55 @@ that song again, and make different choices.  CallerBuddy will warn
 me that I am overwriting my previous work, but I can force that
 overwrite, and use my new importation.  
 
+## SubFolders in CallerBuddy
+
+Storing all your songs in the single **CallerBuddySongs** folder is frankly
+a very good option, and indeed is the best option if you only have a few
+dozen songs in your library.    The filtering feature does let you search
+quickly for a particular title, or by type (Patter or Singing), and if you
+add Category attributes to your songs (e.g. xmas, or patriotic), you can 
+quickly find interesting groups to choose from.    
+
+CallerBuddy does support sub-folders under **CallerBuddySongs** but putting
+songs into sub-folders comes with disadvantages.   When you search, you only
+search the current folder, and so when you put songs in multiple folders 
+hou can lose track of where it is without an easy way of finding it again except
+by manually searching.    Thus categories might make more sense.  
+
+But there are times with using sub-folders is superior (basically when there
+is NO ambiguity where the song should live, so it is impossible to lose it).  
+Examples include
+
+  * If you make a patter folder, you segregate your patter from your singing
+    calls (Because when you are looking for one, songs of the other type
+    are just 'getting in the way').  This has the added advantage that you can
+    use the same song both as a singing call (where you put lyrics), and as
+    patter (where you do not).
+
+  * You might make an 2ndTier folder where you put songs that you probably wont
+    use (thus they are clutter most of the time), but you have not made the final
+    decision to simply delete it.  
+
+  * Is you are a Caller-Cuer, you may wish to segregate all your Cuer songs into
+    their own folder (again because when you are looking for one type of song
+    songs of the other type are just noise)
+
+To support folders CallerBuddy 
+
+ * The ☰ menu has a 'Create Folder' item for making a new folder.
+ * Once a folders exist, it is displayed with a folder icon so you can open it.
+ * Open folders have their own tab.  Thus you can click on the tab to go bach 
+   and forth easily (the back and forward buttons (Ctrl+< Ctrl+>) also work). 
+ * When you import a song, it imports into the currently active folder.  
+ * CallerBuddy supports a right click (or ⋮) menu to rename a song
+   and as part of this renaming you can move it to a new folder.  
+
+In short, folders work like you probably expect they do.  You can move songs
+around outside of CallerBuddy using the OS file explorer and CallerBuddy will
+notice that things were deleted and new thing created, but it will not 
+recognize that something as moved, which means you lose the extra information
+about the song not stored in the music and lyrics files.  
+
 # Appendix 
 
 ## How CallerBuddy Stores the Data it Needs
@@ -812,33 +861,6 @@ However CallerBuddy also has to store three more pieces of information
   but it will be perfectly functional (song preference would have to be 
   reconstructed, which is why we have a **CallerBuddySongs.json.bak**) to
   avoid that loss.  
-
-## SubFolders in CallerBuddy
-CallerBuddy does work with subfolders in **CallerBuddySongs**.  This
-allows you to put patter in its own folder, or to have specialty songs
-(like xmas or holiday) in their own folder.   For most users, it is
-actually better to use the Categories column in the playList editor
-along with the playList editor's filtering feature create categories 
-of songs and find them quickly and efficiently.   The test to see if
-folders are helpful to you is to ask whether having those songs in
-the list is **actively harmful** (it clutters your search for more
-'ordinary' songs).   If you have specialty songs that you only use
-in very particular cases, (or you are a caller-cuer and want to separate your
-calling music from your cueing music), a sub-folder makes sense.  separating
-your patter and singing calls can be a good idea (and very helpful if a 
-song can be used BOTH as a patter and a singing call.  By making a sub-folder
-for patter, and insuring that the song has no lyrics in the patter folder 
-you an get CallerBuddy to create a loop for music that you also use as a 
-singing call).
-
-Currently callerbuddy does not have any user interface for creating sub-folders
-in **CallerBuddySongs** but it DOES have support for them if the exist.  
-Eventually sub-folders will be a full fledged feature, but for now you need 
-to use the file explorer application for your operating system to make the folder and
-to move the songs you want into that new folder (copy both the *.MP3 and *.MD files).
-If the folders exist in **CallerBuddySongs** CallerBuddy will show you the
-folders in the playList editor and you can click into them (it will create another
-tab window, so you can go back and forth among folders easily).  
 
 ## How the Played Average is Calculated
 Each time a song is played we need to update the 'Played' average to take
