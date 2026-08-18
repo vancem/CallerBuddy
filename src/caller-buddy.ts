@@ -19,9 +19,12 @@ import {
   readBinaryFile,
   writeTextFile,
   deleteFile,
-  renameFile,
   fileExists,
   listDirectory,
+  isSameDirectory,
+  moveFile,
+  listDirectoriesRecursive,
+  type FolderRef,
 } from "./services/file-system-service.js";
 import { loadSongsJson, saveSongsJson, loadAndMergeSongs, scanDirectory, isSongsJsonBackupDue, maybeRefreshSongsJsonBackup } from "./services/song-library.js";
 import {
@@ -793,7 +796,10 @@ export class CallerBuddy {
   }
 
   /**
-   * Rename a song's audio (and lyrics, if present) files and update CallerBuddySongs.json.
+   * Rename a song's audio (and lyrics, if present) files and update
+   * CallerBuddySongs.json. When {@link destDir} is another folder, the files
+   * are moved and both catalogs are updated.
+   *
    * Preserves all other metadata (rank, play history, loop points, etc.).
    *
    * @returns `{ ok: true }` on success, or `{ ok: false, conflictName }` when
@@ -803,15 +809,24 @@ export class CallerBuddy {
     song: Song,
     newLabel: string,
     newTitle: string,
+    destDir?: FileSystemDirectoryHandle | null,
   ): Promise<{ ok: true } | { ok: false; conflictName: string }> {
-    const handle = song.dirHandle ?? this.state.rootHandle;
-    if (!handle) {
+    const sourceDir = song.dirHandle ?? this.state.rootHandle;
+    if (!sourceDir) {
       throw new Error("No folder is available to rename this song in.");
     }
+    const destHandle = destDir ?? sourceDir;
+    const moving = !(await isSameDirectory(sourceDir, destHandle));
 
-    const granted = await ensurePermission(handle);
-    if (!granted) {
+    const grantedSource = await ensurePermission(sourceDir);
+    if (!grantedSource) {
       throw new Error("Write permission is required to rename a song.");
+    }
+    if (moving) {
+      const grantedDest = await ensurePermission(destHandle);
+      if (!grantedDest) {
+        throw new Error("Write permission is required to move a song.");
+      }
     }
 
     const label = sanitizeFilenamePart(newLabel);
@@ -827,30 +842,31 @@ export class CallerBuddy {
     );
     const oldMusicFile = song.musicFile;
     const sameMusicName =
-      oldMusicFile.toLowerCase() === newMusicFile.toLowerCase();
+      !moving && oldMusicFile.toLowerCase() === newMusicFile.toLowerCase();
 
-    if (!sameMusicName && (await fileExists(handle, newMusicFile))) {
+    if (!sameMusicName && (await fileExists(destHandle, newMusicFile))) {
       return { ok: false, conflictName: newMusicFile };
     }
 
     const oldLyricsFile =
       song.lyricsFile.trim() ||
-      ((await fileExists(handle, lyricsFilenameFor(oldMusicFile)))
+      ((await fileExists(sourceDir, lyricsFilenameFor(oldMusicFile)))
         ? lyricsFilenameFor(oldMusicFile)
         : "");
     const newLyricsFile = oldLyricsFile
       ? lyricsFilenameFor(newMusicFile)
       : "";
     const sameLyricsName =
-      !oldLyricsFile ||
-      !newLyricsFile ||
-      oldLyricsFile.toLowerCase() === newLyricsFile.toLowerCase();
+      !moving &&
+      (!oldLyricsFile ||
+        !newLyricsFile ||
+        oldLyricsFile.toLowerCase() === newLyricsFile.toLowerCase());
 
     if (
       oldLyricsFile &&
       newLyricsFile &&
       !sameLyricsName &&
-      (await fileExists(handle, newLyricsFile))
+      (await fileExists(destHandle, newLyricsFile))
     ) {
       return { ok: false, conflictName: newLyricsFile };
     }
@@ -858,20 +874,24 @@ export class CallerBuddy {
     await this.ensurePlaylistRelPathForSong(song);
     const oldSongSnapshot: Song = { ...song };
 
-    // Rename files when the basename changes (including case-only changes).
-    if (oldMusicFile !== newMusicFile) {
-      await renameFile(handle, oldMusicFile, newMusicFile);
-      log.info(`renameSong: audio "${oldMusicFile}" → "${newMusicFile}"`);
+    if (moving || oldMusicFile !== newMusicFile) {
+      await moveFile(sourceDir, destHandle, oldMusicFile, newMusicFile);
+      log.info(
+        `renameSong: audio "${oldMusicFile}" → "${destHandle.name}/${newMusicFile}"`,
+      );
     }
 
-    if (oldLyricsFile && newLyricsFile && oldLyricsFile !== newLyricsFile) {
+    if (oldLyricsFile && newLyricsFile && (moving || oldLyricsFile !== newLyricsFile)) {
       try {
-        if (await fileExists(handle, oldLyricsFile)) {
-          await renameFile(handle, oldLyricsFile, newLyricsFile);
-          log.info(`renameSong: lyrics "${oldLyricsFile}" → "${newLyricsFile}"`);
+        if (await fileExists(sourceDir, oldLyricsFile)) {
+          await moveFile(sourceDir, destHandle, oldLyricsFile, newLyricsFile);
+          log.info(
+            `renameSong: lyrics "${oldLyricsFile}" → "${destHandle.name}/${newLyricsFile}"`,
+          );
         }
       } catch (err) {
-        log.warn(`renameSong: could not rename lyrics "${oldLyricsFile}":`, err);
+        log.warn(`renameSong: could not move lyrics "${oldLyricsFile}":`, err);
+        if (moving) throw err;
       }
     }
 
@@ -881,28 +901,54 @@ export class CallerBuddy {
       title: title || label || song.title,
       musicFile: newMusicFile,
       lyricsFile: newLyricsFile || "",
+      dirHandle: destHandle,
     };
-    // Clear path so ensurePlaylistRelPath rebuilds from the new filename.
     delete updated.playlistRelPath;
 
-    const key = oldMusicFile.toLowerCase();
+    const oldKey = oldMusicFile.toLowerCase();
     try {
-      const folderSongs = await loadSongsJson(handle);
-      const folderIdx = folderSongs.findIndex(
-        (s) => s.musicFile.toLowerCase() === key,
-      );
-      if (folderIdx >= 0) {
-        folderSongs[folderIdx] = {
-          ...folderSongs[folderIdx],
-          label: updated.label,
-          title: updated.title,
-          musicFile: updated.musicFile,
-        };
+      if (moving) {
+        const destSongs = await loadSongsJson(destHandle);
+        const destIdx = destSongs.findIndex(
+          (s) => s.musicFile.toLowerCase() === updated.musicFile.toLowerCase(),
+        );
+        if (destIdx >= 0) {
+          destSongs[destIdx] = { ...destSongs[destIdx], ...updated };
+        } else {
+          destSongs.push(updated);
+        }
+        await saveSongsJson(destHandle, destSongs);
+        log.info(
+          `renameSong: added "${updated.musicFile}" to "${destHandle.name}" catalog`,
+        );
+
+        const sourceSongs = await loadSongsJson(sourceDir);
+        await saveSongsJson(
+          sourceDir,
+          sourceSongs.filter((s) => s.musicFile.toLowerCase() !== oldKey),
+        );
+        log.info(
+          `renameSong: removed "${oldMusicFile}" from "${sourceDir.name}" catalog`,
+        );
       } else {
-        folderSongs.push(updated);
+        const folderSongs = await loadSongsJson(sourceDir);
+        const folderIdx = folderSongs.findIndex(
+          (s) => s.musicFile.toLowerCase() === oldKey,
+        );
+        if (folderIdx >= 0) {
+          folderSongs[folderIdx] = {
+            ...folderSongs[folderIdx],
+            label: updated.label,
+            title: updated.title,
+            musicFile: updated.musicFile,
+            lyricsFile: updated.lyricsFile,
+          };
+        } else {
+          folderSongs.push(updated);
+        }
+        await saveSongsJson(sourceDir, folderSongs);
+        log.info(`renameSong: updated CallerBuddySongs.json for "${updated.musicFile}"`);
       }
-      await saveSongsJson(handle, folderSongs);
-      log.info(`renameSong: updated CallerBuddySongs.json for "${updated.musicFile}"`);
     } catch (err) {
       log.warn("renameSong: could not update CallerBuddySongs.json:", err);
       throw err;
@@ -914,10 +960,10 @@ export class CallerBuddy {
     const current = this.state.currentSong;
     if (current) {
       const curKey = (current.playlistRelPath ?? current.musicFile).toLowerCase();
-      const oldKey = (
+      const snapKey = (
         oldSongSnapshot.playlistRelPath ?? oldSongSnapshot.musicFile
       ).toLowerCase();
-      if (curKey === oldKey) {
+      if (curKey === snapKey) {
         this.state.currentSong = {
           ...current,
           label: updated.label,
@@ -937,9 +983,17 @@ export class CallerBuddy {
     song.musicFile = updated.musicFile;
     song.lyricsFile = updated.lyricsFile;
     song.playlistRelPath = updated.playlistRelPath;
+    song.dirHandle = updated.dirHandle;
 
     this.state.emit(StateEvents.SONG_UPDATED);
     return { ok: true };
+  }
+
+  /** CallerBuddyRoot and every nested folder, for the rename/move folder picker. */
+  async listPlaylistFolders(): Promise<FolderRef[]> {
+    const root = this.state.rootHandle;
+    if (!root) return [];
+    return listDirectoriesRecursive(root);
   }
 
   /** Read the lyrics file for a song. Returns the HTML/MD text or empty string. */

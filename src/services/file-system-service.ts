@@ -360,3 +360,99 @@ export async function renameFile(
   await dirHandle.removeEntry(oldName);
   log.debug(`renameFile: copied then removed old file`);
 }
+
+/** True when two directory handles refer to the same folder. */
+export async function isSameDirectory(
+  a: FileSystemDirectoryHandle,
+  b: FileSystemDirectoryHandle,
+): Promise<boolean> {
+  try {
+    return await a.isSameEntry(b);
+  } catch {
+    return a.name === b.name;
+  }
+}
+
+/**
+ * Move or rename a file, including across directories.
+ * Uses FileSystemFileHandle.move when available; otherwise copy + delete.
+ */
+export async function moveFile(
+  sourceDir: FileSystemDirectoryHandle,
+  destDir: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string,
+): Promise<void> {
+  if ((await isSameDirectory(sourceDir, destDir)) && oldName === newName) return;
+  log.debug(
+    `moveFile: "${sourceDir.name}/${oldName}" → "${destDir.name}/${newName}"…`,
+  );
+  const fileHandle = await sourceDir.getFileHandle(oldName);
+  const movable = fileHandle as FileSystemFileHandle & {
+    move?: (
+      dest: string | FileSystemDirectoryHandle,
+      name?: string,
+    ) => Promise<void>;
+  };
+  if (typeof movable.move === "function") {
+    try {
+      if (await isSameDirectory(sourceDir, destDir)) {
+        await movable.move(newName);
+      } else {
+        await movable.move(destDir, newName);
+      }
+      log.debug("moveFile: moved via FileSystemFileHandle.move");
+      return;
+    } catch (err) {
+      log.warn("moveFile: FileSystemFileHandle.move failed, copying:", err);
+    }
+  }
+
+  const file = await fileHandle.getFile();
+  const data = await file.arrayBuffer();
+  const newHandle = await destDir.getFileHandle(newName, { create: true });
+  const writable = await newHandle.createWritable();
+  await writable.write(data);
+  await writable.close();
+  if (!(await isSameDirectory(sourceDir, destDir)) || oldName !== newName) {
+    await sourceDir.removeEntry(oldName);
+  }
+  log.debug("moveFile: copied then removed old file");
+}
+
+/** A directory under a walk root, with a slash-separated path ("" = the root). */
+export interface FolderRef {
+  relPath: string;
+  handle: FileSystemDirectoryHandle;
+}
+
+/** Root plus every nested subdirectory, sorted by path. */
+export async function listDirectoriesRecursive(
+  root: FileSystemDirectoryHandle,
+): Promise<FolderRef[]> {
+  const result: FolderRef[] = [{ relPath: "", handle: root }];
+  await collectDirectories(root, "", result);
+  result.sort((a, b) =>
+    a.relPath.localeCompare(b.relPath, undefined, { sensitivity: "base" }),
+  );
+  return result;
+}
+
+async function collectDirectories(
+  dir: FileSystemDirectoryHandle,
+  prefix: string,
+  out: FolderRef[],
+): Promise<void> {
+  const entries = await listDirectory(dir);
+  for (const entry of entries) {
+    if (entry.kind !== "directory") continue;
+    try {
+      const handle = await dir.getDirectoryHandle(entry.name);
+      const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+      out.push({ relPath, handle });
+      await collectDirectories(handle, relPath, out);
+    } catch (err) {
+      log.warn(`listDirectoriesRecursive: skip "${entry.name}":`, err);
+    }
+  }
+}

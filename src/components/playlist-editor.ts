@@ -41,7 +41,7 @@ import { StateEvents, TabType } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import type { Song } from "../models/song.js";
 import { loadAndMergeSongs, loadSongsJson } from "../services/song-library.js";
-import { listDirectory, type DirEntry } from "../services/file-system-service.js";
+import { isSameDirectory, listDirectory, type DirEntry, type FolderRef } from "../services/file-system-service.js";
 import { log } from "../services/logger.js";
 import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js";
 import { songMatchesTextFilter } from "../utils/song-text-filter.js";
@@ -105,6 +105,9 @@ export class PlaylistEditor extends LitElement {
   @state() private renameTitle = "";
   @state() private renameConflictName: string | null = null;
   @state() private renameInProgress = false;
+  @state() private renameFolders: FolderRef[] = [];
+  @state() private renameDestRelPath = "";
+  @state() private renameFoldersLoading = false;
 
   /** Create-folder dialog (opened from the app menu). */
   @state() private createFolderOpen = false;
@@ -1256,12 +1259,42 @@ export class PlaylistEditor extends LitElement {
     this.renameTitle = song.title;
     this.renameConflictName = null;
     this.renameInProgress = false;
+    this.renameFolders = [];
+    this.renameDestRelPath = "";
+    this.renameFoldersLoading = true;
+    void this.loadRenameFolders();
+  }
+
+  private async loadRenameFolders() {
+    try {
+      const folders = await callerBuddy.listPlaylistFolders();
+      if (!this.renameSongTarget) return;
+      this.renameFolders = folders;
+      const current = this.currentHandle;
+      let dest = "";
+      if (current) {
+        for (const folder of folders) {
+          if (await isSameDirectory(folder.handle, current)) {
+            dest = folder.relPath;
+            break;
+          }
+        }
+      }
+      this.renameDestRelPath = dest;
+    } catch (err) {
+      log.warn("playlist-editor: could not list folders for rename:", err);
+      if (this.renameSongTarget) this.renameFolders = [];
+    } finally {
+      this.renameFoldersLoading = false;
+    }
   }
 
   private cancelRenameSong() {
     if (this.renameInProgress) return;
     this.renameSongTarget = null;
     this.renameConflictName = null;
+    this.renameFolders = [];
+    this.renameDestRelPath = "";
   }
 
   private async submitRenameSong(e?: Event) {
@@ -1271,16 +1304,22 @@ export class PlaylistEditor extends LitElement {
     this.renameInProgress = true;
     this.renameConflictName = null;
     try {
+      const dest =
+        this.renameFolders.find((f) => f.relPath === this.renameDestRelPath)
+          ?.handle ?? this.currentHandle;
       const result = await callerBuddy.renameSong(
         song,
         this.renameLabel,
         this.renameTitle,
+        dest,
       );
       if (!result.ok) {
         this.renameConflictName = result.conflictName;
         return;
       }
       this.renameSongTarget = null;
+      this.renameFolders = [];
+      this.renameDestRelPath = "";
     } catch (err) {
       log.error(`Failed to rename song "${song.title}":`, err);
       window.alert(
@@ -1291,6 +1330,11 @@ export class PlaylistEditor extends LitElement {
     } finally {
       this.renameInProgress = false;
     }
+  }
+
+  private renameFolderLabel(folder: FolderRef): string {
+    if (folder.relPath) return folder.relPath;
+    return callerBuddy.state.rootHandle?.name ?? folder.handle.name;
   }
 
   private renderGettingStartedHint() {
@@ -1361,10 +1405,12 @@ export class PlaylistEditor extends LitElement {
           ${this.renameConflictName
             ? html`<p class="rename-dialog-conflict" role="alert">
                 A file named <strong>${this.renameConflictName}</strong> already
-                exists. Choose a different label or title.
+                exists in the selected folder. Choose a different label, title,
+                or folder.
               </p>`
             : html`<p class="rename-dialog-body">
-                Edit the label and title. The audio file
+                Edit the label and title, and optionally move the song to
+                another folder. The audio file
                 ${song.lyricsFile ? "and lyrics file " : ""}will be renamed to
                 match.
               </p>`}
@@ -1398,6 +1444,31 @@ export class PlaylistEditor extends LitElement {
                   this.renameConflictName = null;
                 }}
               />
+            </label>
+            <label class="rename-field">
+              <span>Folder</span>
+              <select
+                name="folder"
+                .value=${this.renameDestRelPath}
+                ?disabled=${this.renameInProgress || this.renameFoldersLoading}
+                @change=${(e: Event) => {
+                  this.renameDestRelPath = (e.target as HTMLSelectElement).value;
+                  this.renameConflictName = null;
+                }}
+              >
+                ${this.renameFoldersLoading
+                  ? html`<option value=${this.renameDestRelPath}>Loading folders…</option>`
+                  : this.renameFolders.map(
+                      (folder) => html`
+                        <option
+                          value=${folder.relPath}
+                          ?selected=${folder.relPath === this.renameDestRelPath}
+                        >
+                          ${this.renameFolderLabel(folder)}
+                        </option>
+                      `,
+                    )}
+              </select>
             </label>
             <div class="rename-dialog-actions">
               <button
@@ -2848,7 +2919,7 @@ export class PlaylistEditor extends LitElement {
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      width: min(92vw, 24rem);
+      width: min(92vw, 28rem);
       box-sizing: border-box;
       padding: 1.25rem 1.35rem;
       background: var(--cb-bg);
@@ -2892,7 +2963,8 @@ export class PlaylistEditor extends LitElement {
       font-weight: 500;
     }
 
-    .rename-field input {
+    .rename-field input,
+    .rename-field select {
       font: inherit;
       font-weight: 400;
       font-size: 0.95rem;
@@ -2903,7 +2975,8 @@ export class PlaylistEditor extends LitElement {
       color: var(--cb-fg);
     }
 
-    .rename-field input:focus {
+    .rename-field input:focus,
+    .rename-field select:focus {
       outline: 2px solid var(--cb-accent);
       outline-offset: 1px;
     }
