@@ -67,7 +67,6 @@ import {
   analyzeZipForOnboarding,
   type OnboardingProposal,
 } from "./services/song-onboarding.js";
-import type { EditorTabData } from "./services/app-state.js";
 
 const SETTINGS_JSON = "CallerBuddySettings.json";
 
@@ -1209,6 +1208,40 @@ export class CallerBuddy {
     await this.finalizeSongPlayClose();
     return true;
   }
+
+  /**
+   * Create a subfolder in a playlist editor folder.
+   *
+   * @returns `{ ok: true, name }` on success, or `{ ok: false, reason }` when
+   *   the name is empty/invalid or already used.
+   */
+  async createPlaylistSubfolder(
+    parent: FileSystemDirectoryHandle,
+    rawName: string,
+  ): Promise<
+    | { ok: true; name: string }
+    | { ok: false; reason: "empty" | "conflict" }
+  > {
+    const granted = await ensurePermission(parent);
+    if (!granted) {
+      throw new Error("Write permission is required to create a folder.");
+    }
+
+    const name = sanitizeFilenamePart(rawName);
+    if (!name || name === "." || name === "..") {
+      return { ok: false, reason: "empty" };
+    }
+
+    const entries = await listDirectory(parent);
+    if (entries.some((e) => e.name.toLowerCase() === name.toLowerCase())) {
+      return { ok: false, reason: "conflict" };
+    }
+
+    await parent.getDirectoryHandle(name, { create: true });
+    log.info(`createPlaylistSubfolder: created "${name}" in "${parent.name}"`);
+    return { ok: true, name };
+  }
+
   // -----------------------------------------------------------------------
   // Song onboarding (ZIP or folder import)
   // -----------------------------------------------------------------------
@@ -1219,7 +1252,15 @@ export class CallerBuddy {
    * Read a ZIP file, analyze its contents, and open the song-onboard review tab.
    */
   async openSongOnboard(file: File): Promise<void> {
-    log.info(`openSongOnboard: reading ZIP "${file.name}" (${file.size} bytes)…`);
+    const targetDir = this.resolveImportTargetDir();
+    if (!targetDir) {
+      log.error("openSongOnboard: import requires an active playlist editor");
+      return;
+    }
+    const destFolderName = await this.importTargetFolderLabel(targetDir);
+    log.info(
+      `openSongOnboard: reading ZIP "${file.name}" (${file.size} bytes), dest="${destFolderName}"…`,
+    );
     const data = await file.arrayBuffer();
     const zip = await JSZip.loadAsync(data);
 
@@ -1231,6 +1272,7 @@ export class CallerBuddy {
 
     this.onboardingSource = {
       type: "zip",
+      targetDir,
       readText: async (path) => {
         const entry = zip.file(path);
         if (!entry) throw new Error(`ZIP entry not found: ${path}`);
@@ -1255,7 +1297,12 @@ export class CallerBuddy {
       TabType.SongOnboard,
       `Import: ${proposal.title || file.name}`,
       true,
-      { proposal, sourceName: file.name, sourceType: "zip" as const },
+      {
+        proposal,
+        sourceName: file.name,
+        sourceType: "zip" as const,
+        destFolderName,
+      },
     );
   }
 
@@ -1264,13 +1311,22 @@ export class CallerBuddy {
    * song-onboard review tab — same flow as openSongOnboard but for a folder.
    */
   async openSongOnboardFromFolder(dirHandle: FileSystemDirectoryHandle): Promise<void> {
-    log.info(`openSongOnboardFromFolder: enumerating "${dirHandle.name}"…`);
+    const targetDir = this.resolveImportTargetDir();
+    if (!targetDir) {
+      log.error("openSongOnboardFromFolder: import requires an active playlist editor");
+      return;
+    }
+    const destFolderName = await this.importTargetFolderLabel(targetDir);
+    log.info(
+      `openSongOnboardFromFolder: enumerating "${dirHandle.name}", dest="${destFolderName}"…`,
+    );
 
     const entryPaths = await listFilesRecursive(dirHandle);
     log.info(`openSongOnboardFromFolder: folder contains ${entryPaths.length} files`);
 
     this.onboardingSource = {
       type: "folder",
+      targetDir,
       readText: async (path) => {
         const file = await getFileByPath(dirHandle, path);
         return file.text();
@@ -1294,7 +1350,12 @@ export class CallerBuddy {
       TabType.SongOnboard,
       `Import: ${proposal.title || folderName}`,
       true,
-      { proposal, sourceName: folderName, sourceType: "folder" as const },
+      {
+        proposal,
+        sourceName: folderName,
+        sourceType: "folder" as const,
+        destFolderName,
+      },
     );
   }
 
@@ -1317,6 +1378,7 @@ export class CallerBuddy {
       log.error("importSong: no target directory");
       return false;
     }
+    log.info(`importSong: writing into "${dirHandle.name}"`);
 
     // Read and write the MP3
     if (proposal.selectedMp3) {
@@ -1388,24 +1450,38 @@ export class CallerBuddy {
   }
 
   /**
-   * Get the directory handle for the import target.
-   * Uses the currently active playlist editor folder, falling back to rootHandle.
+   * Directory to write imported song files into.
+   * Captured when the import starts from a playlist editor (see
+   * {@link resolveImportTargetDir}), because the onboard tab is active by
+   * the time Import is pressed.
    */
   private getImportTargetDir(): FileSystemDirectoryHandle | null {
-    const activeTab = this.state.getActiveTab();
-    if (activeTab?.type === TabType.PlaylistEditor) {
-      const data = activeTab.data as EditorTabData | undefined;
-      if (data?.dirHandle) return data.dirHandle;
-    }
+    return this.onboardingSource?.targetDir ?? null;
+  }
 
-    for (const tab of this.state.tabs) {
-      if (tab.type === TabType.PlaylistEditor) {
-        const data = tab.data as EditorTabData | undefined;
-        if (data?.dirHandle) return data.dirHandle;
-      }
-    }
+  /**
+   * The active playlist editor's folder, or null if that is not the
+   * current window. Import is only offered from a playlist editor.
+   */
+  private resolveImportTargetDir(): FileSystemDirectoryHandle | null {
+    return this.state.importTargetDir();
+  }
 
-    return this.state.rootHandle;
+  /** CallerBuddyRoot-relative path for the import destination, or the folder name. */
+  private async importTargetFolderLabel(
+    dir: FileSystemDirectoryHandle | null,
+  ): Promise<string> {
+    if (!dir) return "";
+    const root = this.state.rootHandle;
+    if (!root) return dir.name;
+    try {
+      const segments = await root.resolve(dir);
+      if (!segments) return dir.name;
+      if (segments.length === 0) return root.name;
+      return segments.map(decodePathSegment).join("/");
+    } catch {
+      return dir.name;
+    }
   }
 
   /** Read a text entry from the current onboarding source (ZIP or folder). */
@@ -1427,6 +1503,8 @@ export class CallerBuddy {
 
 interface OnboardingSource {
   type: "zip" | "folder";
+  /** Folder to write imported files into; captured before the onboard tab opens. */
+  targetDir: FileSystemDirectoryHandle | null;
   readText: (path: string) => Promise<string>;
   readBinary: (path: string) => Promise<ArrayBuffer>;
 }

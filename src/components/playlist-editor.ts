@@ -106,6 +106,12 @@ export class PlaylistEditor extends LitElement {
   @state() private renameConflictName: string | null = null;
   @state() private renameInProgress = false;
 
+  /** Create-folder dialog (opened from the app menu). */
+  @state() private createFolderOpen = false;
+  @state() private createFolderName = "";
+  @state() private createFolderError = "";
+  @state() private createFolderInProgress = false;
+
   /** One-time hint shown the first time this (root) editor renders after demo songs were added. */
   @state() private showGettingStartedHint = false;
 
@@ -297,6 +303,11 @@ export class PlaylistEditor extends LitElement {
       return;
     }
 
+    if (e.key === "Escape" && this.createFolderOpen) {
+      e.preventDefault();
+      this.cancelCreateFolder();
+      return;
+    }
     if (e.key === "Escape" && this.renameSongTarget) {
       e.preventDefault();
       this.cancelRenameSong();
@@ -420,6 +431,7 @@ export class PlaylistEditor extends LitElement {
     return (
       callerBuddy.state.demoOfferPending ||
       this.showGettingStartedHint ||
+      this.createFolderOpen ||
       Boolean(this.renameSongTarget) ||
       Boolean(this.deleteConfirmSong) ||
       Boolean(this.contextTarget)
@@ -471,6 +483,7 @@ export class PlaylistEditor extends LitElement {
   private onDiskRefreshed = () => {
     if (this.editingCell) return;
     void this.softReloadSongsFromDisk();
+    void this.refreshSubfolders();
   };
 
   private async softReloadSongsFromDisk() {
@@ -492,6 +505,17 @@ export class PlaylistEditor extends LitElement {
       this.localSongs = persisted;
     } catch (err) {
       log.warn(`playlist-editor: soft reload failed for "${handle.name}":`, err);
+    }
+  }
+
+  private async refreshSubfolders() {
+    const handle = this.currentHandle;
+    if (!handle || this.loading) return;
+    try {
+      const entries = await listDirectory(handle);
+      this.subfolders = entries.filter((e) => e.kind === "directory");
+    } catch (err) {
+      log.warn(`playlist-editor: could not refresh folders for "${handle.name}":`, err);
     }
   }
 
@@ -1058,6 +1082,7 @@ export class PlaylistEditor extends LitElement {
         ${this.renderContextMenu()}
         ${this.renderDeleteConfirm()}
         ${this.renderRenameDialog()}
+        ${this.renderCreateFolderDialog()}
         ${this.renderGettingStartedHint()}
       </div>
     `;
@@ -1387,6 +1412,125 @@ export class PlaylistEditor extends LitElement {
                 class="rename-dialog-secondary"
                 ?disabled=${this.renameInProgress}
                 @click=${() => this.cancelRenameSong()}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+
+  /** Opened from the app-shell "Create Folder…" menu item. */
+  openCreateFolderDialog() {
+    this.createFolderName = "";
+    this.createFolderError = "";
+    this.createFolderInProgress = false;
+    this.createFolderOpen = true;
+  }
+
+  private cancelCreateFolder() {
+    if (this.createFolderInProgress) return;
+    this.createFolderOpen = false;
+    this.createFolderName = "";
+    this.createFolderError = "";
+  }
+
+  private async submitCreateFolder(e?: Event) {
+    e?.preventDefault();
+    if (this.createFolderInProgress) return;
+    const parent = this.currentHandle;
+    if (!parent) {
+      this.createFolderError = "No folder is available to create in.";
+      return;
+    }
+    this.createFolderInProgress = true;
+    this.createFolderError = "";
+    try {
+      const result = await callerBuddy.createPlaylistSubfolder(
+        parent,
+        this.createFolderName,
+      );
+      if (!result.ok) {
+        this.createFolderError =
+          result.reason === "conflict"
+            ? "A folder or file with that name already exists."
+            : "Enter a folder name.";
+        return;
+      }
+      this.createFolderOpen = false;
+      this.createFolderName = "";
+      await this.refreshSubfolders();
+    } catch (err) {
+      log.error("Failed to create folder:", err);
+      this.createFolderError =
+        err instanceof Error
+          ? err.message
+          : "Could not create the folder. Check folder permissions and try again.";
+    } finally {
+      this.createFolderInProgress = false;
+    }
+  }
+
+  private renderCreateFolderDialog() {
+    if (!this.createFolderOpen) return nothing;
+    const parentName = this.currentHandle?.name ?? "this folder";
+
+    return html`
+      <div
+        class="rename-dialog-overlay"
+        @click=${(e: MouseEvent) => {
+          if (e.target !== e.currentTarget) return;
+          this.cancelCreateFolder();
+        }}
+      >
+        <div
+          class="rename-dialog-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-folder-title"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <h2 id="create-folder-title" class="rename-dialog-title">Create folder</h2>
+          ${this.createFolderError
+            ? html`<p class="rename-dialog-conflict" role="alert">
+                ${this.createFolderError}
+              </p>`
+            : html`<p class="rename-dialog-body">
+                New subfolder in <strong>${parentName}</strong>.
+              </p>`}
+          <form
+            class="rename-dialog-form"
+            @submit=${(e: Event) => void this.submitCreateFolder(e)}
+          >
+            <label class="rename-field">
+              <span>Name</span>
+              <input
+                type="text"
+                name="folderName"
+                .value=${this.createFolderName}
+                ?disabled=${this.createFolderInProgress}
+                autofocus
+                @input=${(e: Event) => {
+                  this.createFolderName = (e.target as HTMLInputElement).value;
+                  this.createFolderError = "";
+                }}
+              />
+            </label>
+            <div class="rename-dialog-actions">
+              <button
+                type="submit"
+                class="rename-dialog-primary"
+                ?disabled=${this.createFolderInProgress}
+              >
+                ${this.createFolderInProgress ? "Creating…" : "Create"}
+              </button>
+              <button
+                type="button"
+                class="rename-dialog-secondary"
+                ?disabled=${this.createFolderInProgress}
+                @click=${() => this.cancelCreateFolder()}
               >
                 Cancel
               </button>

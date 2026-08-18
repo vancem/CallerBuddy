@@ -34,6 +34,8 @@ interface OnboardTabData {
   proposal: OnboardingProposal;
   sourceName: string;
   sourceType: "zip" | "folder";
+  /** CallerBuddyRoot-relative destination folder shown in the review UI. */
+  destFolderName?: string;
 }
 
 /** Popups opened from the contents list; closed when the onboard tab goes away. */
@@ -137,6 +139,7 @@ export class SongOnboard extends LitElement {
   @state() private allEntries: string[] = [];
   @state() private sourceName = "";
   @state() private sourceType: "zip" | "folder" = "zip";
+  @state() private destFolderName = "";
   @state() private importing = false;
   /** Destination filenames that already exist in the import folder. */
   @state() private collisionNames: string[] = [];
@@ -218,6 +221,7 @@ export class SongOnboard extends LitElement {
       this.allEntries = data.proposal.allEntries;
       this.sourceName = data.sourceName;
       this.sourceType = data.sourceType ?? "zip";
+      this.destFolderName = data.destFolderName ?? "";
       void this.refreshCollisions();
     }
   }
@@ -512,7 +516,8 @@ export class SongOnboard extends LitElement {
         >
           <h2 id="overwrite-title" class="overwrite-title">Overwrite existing song?</h2>
           <p class="overwrite-body">
-            <strong>${names}</strong> already exists in the destination folder.
+            <strong>${names}</strong> already exists in
+            ${this.destFolderName ? html`<strong>${this.destFolderName}</strong>` : "the destination folder"}.
             Importing will replace the existing file${this.collisionNames.length > 1 ? "s" : ""}.
           </p>
           <form
@@ -651,7 +656,9 @@ export class SongOnboard extends LitElement {
         <div class="action-row">
           <button class="import-btn" @click=${() => void this.onImport()}
             ?disabled=${this.importing || !this.selectedMp3}
-            title="Copy the selected music and lyrics into your CallerBuddy folder">
+            title=${this.destFolderName
+              ? `Copy the selected music and lyrics into ${this.destFolderName}`
+              : "Copy the selected music and lyrics into your CallerBuddy folder"}>
             ${this.importing ? "Importing…" : "Import"}
           </button>
           <button class="cancel-btn" @click=${this.onCancel}
@@ -728,6 +735,11 @@ export class SongOnboard extends LitElement {
         <!-- Destination files -->
         <div class="section">
           <h3>Destination Files</h3>
+          ${this.destFolderName
+            ? html`<div class="dest-line">
+                Folder: <strong>${this.destFolderName}</strong>
+              </div>`
+            : nothing}
           <div class="dest-line">
             Music: <strong>${this.destMp3Name}</strong>
           </div>

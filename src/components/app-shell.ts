@@ -36,7 +36,7 @@ import { bumpLyricsScale } from "../utils/lyrics-scale.js";
 // Side-effect imports to register custom elements
 import "./tab-bar.js";
 import "./welcome-view.js";
-import "./playlist-editor.js";
+import { PlaylistEditor } from "./playlist-editor.js";
 import "./playlist-play.js";
 import "./song-play.js";
 import "./song-onboard.js";
@@ -681,6 +681,7 @@ export class AppShell extends LitElement {
   }
 
   private renderMenu() {
+    const canUseEditorFolder = callerBuddy.state.importTargetDir() !== null;
     return html`
       <div class="menu-overlay" @click=${this.closeMenu}></div>
       <div class="menu" role="menu">
@@ -692,11 +693,38 @@ export class AppShell extends LitElement {
         >
           Reset CallerBuddy
         </button>
-        <button class="menu-item" role="menuitem" @click=${this.onImportSongZip}>
+        <button
+          class="menu-item"
+          role="menuitem"
+          ?disabled=${!canUseEditorFolder}
+          title=${canUseEditorFolder
+            ? "Import into this playlist editor folder"
+            : "Switch to a playlist editor to import songs into that folder"}
+          @click=${this.onImportSongZip}
+        >
           Import Song from ZIP…
         </button>
-        <button class="menu-item" role="menuitem" @click=${this.onImportSongFolder}>
+        <button
+          class="menu-item"
+          role="menuitem"
+          ?disabled=${!canUseEditorFolder}
+          title=${canUseEditorFolder
+            ? "Import into this playlist editor folder"
+            : "Switch to a playlist editor to import songs into that folder"}
+          @click=${this.onImportSongFolder}
+        >
           Import Song from Folder…
+        </button>
+        <button
+          class="menu-item"
+          role="menuitem"
+          ?disabled=${!canUseEditorFolder}
+          title=${canUseEditorFolder
+            ? "Create a subfolder in this playlist editor folder"
+            : "Switch to a playlist editor to create a folder there"}
+          @click=${this.onCreateFolder}
+        >
+          Create Folder…
         </button>
         <button class="menu-item" role="menuitem" @click=${this.toggleFullscreen}>
           ${this.isFullscreenApi() ? "Exit FullScreen" : "Full Screen"}
@@ -890,10 +918,7 @@ export class AppShell extends LitElement {
   private async onImportSongZip() {
     log.info(`[ui] menu: Import Song from ZIP`);
     this.showMenu = false;
-    if (!callerBuddy.state.rootHandle) {
-      alert("Please set a CallerBuddy folder first.");
-      return;
-    }
+    if (!callerBuddy.state.importTargetDir()) return;
     if (callerBuddy.state.tabs.some((t) => t.type === TabType.SongOnboard)) {
       alert("Please complete or cancel the current song import before starting a new one.");
       return;
@@ -915,13 +940,18 @@ export class AppShell extends LitElement {
     }
   }
 
+  private onCreateFolder() {
+    log.info(`[ui] menu: Create Folder`);
+    this.showMenu = false;
+    if (!callerBuddy.state.importTargetDir()) return;
+    const editor = this.renderRoot.querySelector("playlist-editor") as PlaylistEditor | null;
+    editor?.openCreateFolderDialog();
+  }
+
   private async onImportSongFolder() {
     log.info(`[ui] menu: Import Song from Folder`);
     this.showMenu = false;
-    if (!callerBuddy.state.rootHandle) {
-      alert("Please set a CallerBuddy folder first.");
-      return;
-    }
+    if (!callerBuddy.state.importTargetDir()) return;
     if (callerBuddy.state.tabs.some((t) => t.type === TabType.SongOnboard)) {
       alert("Please complete or cancel the current song import before starting a new one.");
       return;
@@ -1081,9 +1111,15 @@ export class AppShell extends LitElement {
       white-space: nowrap;
     }
 
-    .menu-item:hover {
+    .menu-item:hover:not(:disabled) {
       background: var(--cb-accent);
       color: var(--cb-fg-on-accent);
+    }
+
+    .menu-item:disabled {
+      color: var(--cb-fg-tertiary);
+      cursor: default;
+      opacity: 0.55;
     }
 
     .menu-item.version {

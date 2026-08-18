@@ -36,8 +36,8 @@ When CallerBuddy is launched for the first time (or after it is reset from the �
 it will  display a welcome pane that asks the user to create or designate a
  **CallerBuddySongs** folder that will hold songs and the other data CallerBuddy needs.
 However when  you relaunch CallerBuddy it will go strait into the 
-[playlist editor](#playlist-editor). (Due to limitation on Android, you must go through 
-a reconnection process first but you ultimately end in the playList editor).
+[playlist editor](#playlist-editor). (On Android, there is
+a reconnection process first but you still ultimately end in the playList editor).
 
 ## The App Menu
 
@@ -54,8 +54,8 @@ to be performed (probably sequentially) at a dance or workshop.   This lets
 you plan your dance so you are not fumbling for music during a performance.
 To keep the flow simple and consistent, CallerBuddy requires a playList to play
 even one song, but to allow a song to be played quickly it as a 'Play now'
-capability (the ▶ icon, keyboard P), which fuses both adding the song to the playlist and 
-playing the song, so CallerBuddy has the 'feel' of being able to play a single song.
+capability (the ▶ icon, shortcut P), which fuses both adding the song to the playlist and 
+playing the song, so CallerBuddy can have the 'feel' of being able to play a single song.
 
 The editor consists of left pane that represents the set of songs in the current 
 playlist, and a right pane, which is a table of songs from the **CallBuddySongs** folder.
@@ -77,9 +77,9 @@ The song table has the following columns
    Sorting by this lets you find your 'new songs'.  
 * **Label** - The producer of a song has a short designation (a few letters and a number)
    that uniquely define the producer as well as the individual song.  Some songs do not
-   have this, but when they do it sorting by it will allow you to find all the songs 
+   have this, but when they do, sorting by it will allow you to find all the songs 
    by a particular producer (which often have a similar sound or style)
-* **Type** - Indicates if the song is a Patter (no lyrics) or singing call (with Lyrics) 
+* **Type** - Indicates if the song is patter (no lyrics) or singing call (with Lyrics) 
 
 To help choose a song, you sort by any of the columns above (by clicking on the column 
 name), or typing values into the filter textbox or the rank filter at the top of the 
@@ -88,11 +88,11 @@ song table.
 * If you type a word in the filter textbox only songs with that text somewhere in the 
   row will be displayed (includes title, category, label and type columns)
 * If you type !WORD in the filter textbox only songs that do NOT have WORD will
-  be displayed. 
+  be displayed.  (e.g.  !xmas will eliminate the Christmas songs)
 * You can set the >= <=  and the value to filter by rank value (thus look at only
   your popular or less popular songs)
 
-You can add songs to the playlist by clicking on the + (Or typing +), or by dragging a row
+You can add songs to the playlist by clicking on the + (or typing +), or by dragging a row
 to the playlist area.   When you drag, you can place the song in the order you want
 it by finishing the drag at the desired spot.    You can also rearrange songs already
 on the playlist by dragging them to the desired spot.   Dragging on Android works, you 
@@ -123,7 +123,7 @@ clicking** on a song will pay that song independently of whether it is next
 or has been played before.   If you change your mind and don't want to 
 use on of the songs on your playlist, you can check its checkbox (indicating
 it has been played) or **hit the X** icon to delete it entirely.  
-You can also ****drag songs** to reorder them.
+You can also **drag songs** to reorder them.
 Finally you can go back to the playlist editor (using 
 the **'Close'** button or the **Esc** key) add more songs to the playlist and then
 come back to the playlist editor.   In short you can manipulate the 
@@ -151,7 +151,7 @@ you to the song player for the next unplayed song on the playList.
 
 ## Song Player
 
-By default, when the Song player is activated, it immediately starts 
+By default, when the song player is activated, it immediately starts 
 playing (because this is almost always what you want).  However if you
 did not want it to play you can immediately hit the **space bar** or the 
 &lt;Enter&gt; key to pause the music, and type '.' to reset the
@@ -166,14 +166,14 @@ add a new sound device, like the Browser it will switch to it.   If
 for whatever reason sound is still not working you can switch the 
 default sound output at the operating system level and CallerBuddy
 will switch to it.   On windows this is controlled by a sound icon
-which by default is on the right side if the taskbar at the far 
+which by default is on the right side of the taskbar at the far 
 right bottom corner of the screen.  
 
 ![Windows Sound Select ScreenShot](images/WindowSoundSelect.png)
 
 Clicking on this speaker icon opens a popup, on which there is a line for sound.
 Check to make sure that sound is not muted (no X byt the speaker icon)
-and click on the devices icon on the right side of that line.  
+and click on the devices icon on the right side of that line.
 That brings up a menu of output devices, that you can choose from 
 to set the output device.  
 
@@ -181,7 +181,8 @@ Another useful tip is to remember that most laptops have function (Fn)
 buttons across the top of the keyboard.  Typically there are icons for
 muting as well as changing the volume.  Pressing these buttons (or 
 pressing the 'Fn' button as you press them), will allow you to unmute
-and change the volume.  This can be handy to avoid needing the mouse.  
+and change the volume.  This can be handy to avoid needing the mouse
+during a performance. 
 
 ### Song Player Layout
 The Song Player is broken into two panes.  The left pane depends on 
@@ -215,8 +216,8 @@ probably never touch them again)
 CallerBuddy keeps track of when songs are played and updates data 
 shown in the playList editor with this data.   However if you are
 practicing, you probably don't want this data updated.  That is what
-the 'practice' checkbox is for.  WHen you check CallerBuddy assumes
-any playing is no 'official' and does not update the play statistics.  
+the 'practice' checkbox is for.  When you check 'practice' CallerBuddy assumes
+any playing is not 'official' and does not update the play statistics.  
 
 If you run CallerBuddy in a browser, it is pretty easy for the window
 for CallerBuddy to get 'lost' if you navigate away from it.  If music
@@ -225,24 +226,22 @@ default CallerBuddy enables an 'Auto-Pause' feature where CallerBuddy
 will stop playing if its window loses focus.  This does not solve the
 problem of finding the window again, but it does stop the music, and
 allow you to simply open a new version (which remembers where you were
-so that you can continue one reasonably quickly).  However if you 
+so that you can continue reasonably quickly).  However if you 
 are calling over a Zoom connection, Auto-Pause is dangerous because
 you expect to move focus back and forth between CallerBuddy and Zoom.
 For cases like this there is a checkbox to turn off Auto-Pause.  
 
-As the bottom of the right pane of the song player is a a button that
-for singing calls invokes the [lyric editor](#edit-lyrics).  For
-patter is will create a lyric file.  If the song is truly patter you
-don't need lyrics (it will become a singing call if you add lyrics)
-However you might have singing call but you don't have lyrics.  In this
-case you can import it as a patter (since there are no lyrics) and use
-'Create Lyrics' to make lyrics after the fact. 
+At the bottom of the right pane of the song player is a button
+for singing calls that invokes the [lyric editor](#edit-lyrics).  Typically
+you will want to tweak singing call lyrics to your preferences, and this
+allow you to do this quickly and easily.  
 
 ### The Song Progress Bar 
 
 Along the bottom of the Song player is a progress bar that shows where
 in the song the sound is currently playing.   If you click there 
-you can move the current position to a new position.  The bar is 
+you can move where the song is playing (useful for practicing a particular
+hard part).  The bar is 
 divided into 7 equal segments that roughly map into the 7 parts of
 a singing call.  When playing a singing call these regions are labeled.
 This is quite useful so you can remind yourself which section is
@@ -268,8 +267,8 @@ controls instead of lyrics when played. Patter always loops: by
 default the loop is the whole file, but typically this is not
 ideal because many songs have a intro or trailer that is very 
 different than the rest of the song.   Thus CallerBuddy lets 
-you set a end point, which when passed will wrap to a start
-point.   By choosing these points well, you can create a 
+you set a end point, which will cause the song to wrap to the
+start of the loop.   By choosing these points well, you can create a 
 seamless loop.   You can use the [progress bar](#the-song-progress-bar) 
 to grab the red and green lines to do this, but the fine controls
 in the left pane work better.   
@@ -286,7 +285,7 @@ time.   This sets the loop start.
 Next go to near the end of the song (just click somewhere near
 the end in the progress bar) and listen for a point in the 
 music that feels like a good end point.   Rewind a bit and
-again be read to hit the 'Set' button (this time for Loop End)
+again be ready to hit the 'Set' button (this time for Loop End)
 to set this.
 
 Now typically this gets you close, but not perfect.   What you do 
@@ -303,11 +302,11 @@ remember across restarts of the app.
 #### The patter timer
 
 Since all patter loops, patter will go on forever, so it is easy to
-loose track of how long patter has gone on.  The 'Elapsed' value
+loose track of how long patter has played.  The 'Elapsed' value
 on the right pane will tell you this, but it is useful to have a 
-reminder.   That is what the Patter timer is for.
+audio reminder.   That is what the Patter timer is for.
 
-Generally 4 minutes is a 'short' patter length, 6-8 minutes is a 'normal'
+Generally 4 minutes is a 'short' patter length, 6-8 minutes is 'normal'
 and generally you don't want to go over 10 minutes for any reason. 
 CallerBuddy's default is 6 minutes (the short side of normal). 
 
@@ -335,7 +334,7 @@ to edit the lyrics in their 'raw' format.   In CallerBuddy, the Lyrics
 are stored as text files called 
 [Markdown](https://commonmark.org/help/) (*.md files).
 These files are JUST TEXT (no highlighting at all) but you use symbols
-like *, #, _ and \ to indicate that you want various kinds of highlighting.
+like *, #, _ and \ to indicate that you want various kinds of formatting.
 If you click the 'Edit Markdown' you flip the editor to this mode and 
 click 'Edit Formatted' to get back.   You probably won't need this 
 capability, but if the formatting editor ever does something weird, you can
@@ -363,9 +362,9 @@ means that it is running as a web page under the control of a web browser and
 is given no more permissions than any other web page is given.  This means
 it can't affect things outside the browser unless it asks for permission.
 The only permission that CallerBuddy will ask for is to access a single 
-folder (the CallerBuddySongs folder), which starts out empty, and CallerBuddy
+folder (the **CallerBuddySongs** folder), which starts out empty and CallerBuddy
 will fill with music and lyrics and data about CallerBuddy itself (like
-the current playlist).  Thus CallerBuddy can only read and write things 
+the current playList).  Thus CallerBuddy can only read and write things 
 in this folder (and sub-folders), and thus is very safe to run.  
 
 You will see this security in action when you first start up CallerBuddy. 
@@ -380,7 +379,7 @@ without fear of it being malicious software.
 ## Running CallerBuddy Outside the Browser
 
 CallerBuddy is what is known as a **Progressive Web Application** (PWA).  This
-is a fancy name for support for the fact that web browsers are powerful enough
+is a fancy name for the idea that web browsers are powerful enough
 that you can  write what looks and feels like a normal computer application as
 an a web page running in the browser.  The most important property of a PWA is
 that **it has the security model of a web page**.  A user surfing the web does
@@ -396,17 +395,18 @@ up for that purpose, which is (barely) within the scope of what a PWA can do.
 At is heart, a PWA like CallerBuddy is just a web page and like all web pages it
 has a name (URL).  CallerBuddy's is
 [https://vancem.github.io/CallerBuddy](https://vancem.github.io/CallerBuddy).
-When you open this web page, notice that on desktop platforms there is a icon on
-the right side of the textbox for the web page name (URL). Here it is in the
+When you open this web page, notice that on desktop platforms there is a install icon
+on the right side of the textbox for the web page name (URL). Here it is in the
 Microsoft Edge browser: 
 
 ![CallerBuddy Install ScreenShot](images/CallerBuddyEdge.png)
 
-On the Chrome browser the icon looks different (a screen with a down arrow)
+On the Chrome browser the install icon looks different (a screen with a down arrow)
 but it is in the same spot and works the same.   If you click this install
 button the browser will ask you a question or two about how to install it (the
 defaults are fine). CallerBuddy can then be launch like any other application
-(and you can pin it to the task bar if you like). 
+(and you can pin it to the task bar if you like), and it will show up when you 
+search your apps.  
 
 On an Android phone the process is very similar but the phone doesn't have the
 install icon, so you press the vertical ellipses '⋮' and select the 'Install and
@@ -424,25 +424,27 @@ Note that installing CallerBuddy does not give CallerBuddy any more permission
 than it had when it was run inside the browser.  Also uninstalling CallerBuddy
 does **not** touch the CallerBuddySongs folder, so you can freely uninstall
 CallerBuddy (like any other app on Windows go to Add and Remove Programs) without
-any worry about deleting your songs.  
+any worry about deleting your songs, or your CallerBuddy settings.   
 
 ## Cloud Storage for your Songs
 
 There is a pretty good chance that you are already using CallerBuddy 
 with cloud storage.   That is because when you first set up your
-your **CallerBuddySongs** folder, you probably did it in your Documents
+your **CallerBuddySongs** folder, you probably the operating system
+probably defaulted to creating this in the Documents
 folder, and on most operating systems this folder will be set up
-for Cloud Storage (since most of the files you create are in this
-folder, they end up in the cloud, and CallerBuddy is just one specific
-case of this)
+for Cloud Storage.  
 
 Since CallerBuddy puts EVERYTHING it needs into the **CallerBuddySongs**
 folder this means that everything CallerBuddy needs is already in 
 the cloud, which means you can get at it from other computers.  For 
 example:
-  1. Use [CallerBuddy ](https://vancem.github.io/CallerBuddy/) to set up a **CallerBuddySongs** on one laptop (in the Documents folder)
+  1. Use [CallerBuddy ](https://vancem.github.io/CallerBuddy/) to set up 
+     a **CallerBuddySongs** on one laptop (in the Documents folder or other
+     cloud location)
   2. Log in to another laptop and use [CallerBuddy ](https://vancem.github.io/CallerBuddy/)
-  to access the SAMPLE **CallerBuddySongs** folder from another laptop.  
+     to access the **CallerBuddySongs** folder you created on the 
+     first laptop from this other laptop.
 Indeed in CallerBuddy's initial welcome page, it has a button for 
 creating a **CallerBuddySongs** from scratch and another button for 
 connecting to a existing **CallerBuddySongs** folder for just this purpose.  
@@ -460,24 +462,28 @@ really not expecting two versions of the program to be running simultaneously.
 CallerBuddy won't let files be corrupted, but if two programs are running
 and modifying the same things (like the settings, or playlist) it is 
 possible that one copy will overwrite what the other copy changed 
-in surprising ways (typically it will look like you lost edits).  The 
-simple advice is to avoid letting more than one copy run at once.  If 
+in surprising ways (typically it will look like you lost changes).  The 
+simple advice is to avoid letting more than one copy of CallerBuddy run at once.  If 
 you leave one copy running at home and then start another at a performance, 
-that is OK, but when you get back home you should probably restart it.  
+that is OK, but when you get back home you should probably restart it so
+it does not try to write anything that would clobber changes you made at
+your performance (like what songs were played).   
 
 ### Cloud Storage and the Android Phone (Google Drive)
 
 CallerBuddy work quite well on Android phones (unfortunately IPhone only
 half-heartedly supports PWA apps and CallerBuddy does not work).  However,
 Android's support for PWA apps does not include support for Microsoft's 
-One Drive cloud files (which is what is used by default on Windows machines).
-On the other hand, Microsoft Windows (and Mac) DOES have support for Google Drive.  
+One Drive cloud (which is what is used by default on Windows machines).
+On the other hand, Microsoft Windows (and Mac) DOES have support for Google Drive.
 Thus if you wish to have a single place in the cloud that all of your
 devices (Windows, Android phone, Chromebooks, Macs), can access, you should
 use Google Drive.  If you will only be using CallerBuddy on Windows, then
 you can simply leave your **CallerBuddySongs** folder in the Documents folder
-(effectively using Microsoft One Drive to store your songs in the cloud).  
-If you use cloud storage, however please see the [Offline CallerBuddy](#offline-callerbuddy) section to make sure that CallerBuddyWorks when you don't have network connectivity.
+(effectively using Microsoft One Drive to store your songs in the cloud).
+If you use cloud storage, however please see the 
+[Offline CallerBuddy](#offline-callerbuddy) section to make sure that 
+CallerBuddyWorks when you don't have network connectivity.
 
 #### Using Google Drive from All Platforms
 
@@ -508,16 +514,18 @@ lives, it just needs access to it.
 
 Once you have your **CallerBuddySongs** on your Google Drive you can start up 
 CallerBuddy, and set the **CallerBuddySongs** folder on the phone to the location on
-the Google Drive (Use the Reset CallerBuddy on the ☰ menu if needed)
-
-Note that the folder chooser dialog hides the Google Drive.   When choosing a folder
+the Google Drive (Use the Reset CallerBuddy on the ☰ menu if needed).  Unfortunately 
+the folder chooser on Android hides the Google Drive so finding your Google Drive
+is harder than it needs to be.   As shown below, when choosing a folder
 you must activate the ☰ menu in the upper left corner, and then you can choose
-the Google Drive and then locater (or create) your **CallerBuddySongs** folder. 
+the Google Drive and then locate your **CallerBuddySongs** folder. 
 
 ![Android Google Drive Screenshot](images/GoogleDriveAndroid.png)
 
-From here you now have a folder that is equally accessible from Android Phones, Chromebooks,
-Windows or a Mac.   But you still need to do the do the setup in [Offline CallerBuddy](#offline-callerbuddy) to make sure it work without the network.  
+At this point you are set up.  You now have a folder that is equally accessible 
+from Android Phones, Chromebooks, Windows or a Mac.
+But you still need to do the do the setup in [Offline CallerBuddy](#offline-callerbuddy) 
+to make sure it work without the network.  
 
 ## Offline CallerBuddy
 
@@ -526,17 +534,17 @@ offline.   This is true whether CallerBuddy is being run in the browser or as a
 app outside the browser.    However CallerBuddy DOES need to get at files in the
 **CallerBuddySongs** folder and if that folder lives in the Cloud, then by default
 you will need to have network access to get at these files.   One way of solving
-this is to simply put your **CallerBuddySongs** folder in a non-Cloud folder.   
+this is to simply put your **CallerBuddySongs** folder in a non-Cloud folder.
 However if you do this, your songs will only be accessible from that particular
 machine and they will not be backed up, so you could lose data if your hardware
 fails.   This NOT recommended. 
 
-Instead, both Google Drive and Microsoft One Drive and the notion that the 
-file is 'available offline'.  If this is set on a particular file or folder 
+Instead, both Google Drive and Microsoft One Drive have the notion of a 
+file that is 'available offline'.  If this is set on a particular file or folder 
 then the cloud Drive software keeps a local copy on the local machine so that
-you can access the file without a network connection.   This is not the default
-however, so we need to set it.   Basically bring up your file explorer application
-and select the **CallerBuddy**.  On windows they hide the offline capabilities.
+you can access the file without a network connection.   This is not the default,
+however, so we need to set it.   To do this, bring up your file explorer application
+and select the **CallerBuddySongs** folder.  On windows they hide the offline capabilities.
 You have to right click -> Show More Options -> Offline Access -> Available Offline. 
 
 ![Windows Offline Screenshot](images/WindowOffline.png)
@@ -549,20 +557,23 @@ at the top of the display.
 
 On Android Phone, you access the Offline capabilities through the Google Drive application
 available for free on the Android Play Store.  This app acts very much like a 
-File explorer.  **Inexplicably** and **Unfortunately** it does not allow you to 
+file explorer.  **Inexplicably** and **unfortunately** it does not allow you to 
 set a folder offline (like we did on both windows, and chromebook and mac) but 
 you CAN set individual files as offline.   Thus to achieve this effect, you must 
-for every file click on the ⋮ on the right side, and then select 'Make available
-offline'.  The example below shows this for the CallerBuddySettings.json file. 
+do it one by one.  For every file click on the ⋮ on the right side, and then 
+select 'Make available offline' item.
+The example below shows this for the CallerBuddySettings.json file. 
 
 ![Android Offline Screenshot](images/AndroidOffline.png)
 
 You know you have succeeded on any particular file because there is a dark circle 
-with a check inside it that indicates that is available offline.   Note you don't
+with a check inside it that indicates that is available offline (circled in red on
+the left side above).   Note you don't
 need to do the files for every song (as long as you don't need them offline), but 
 you DO need the CallerBuddy*.json files show above.  These are where CallerBuddy
 stores the Settings and Song information that CallerBuddy needs to do just about
-anything, so of they are not available offline, CallerBuddy will fail/hang.   
+anything, so of they are not available offline, CallerBuddy will fail/hang.  See
+[how CallerBuddy stores data](#how-callerbuddy-stores-the-data-it-needs).  
 
 ### Offline Workflows
 
@@ -572,33 +583,30 @@ there is only one), and you get backup for free (because local copies exist on
 all your machines (as well as the cloud)).   
 
 Offline files do have a problem if two different machines are offline and each
-modify the same files while offline.   There is no perfect solution here.  
+modify the same files while offline.   There is no perfect solution here.
 The software will bring up user interface and ask you to chose a winner
 (some edits will be destroyed).   This is unlikely, but you can make it 
-**impossible** by insuring that you don't leave CallerBuddy running on 
+**impossible** by ensuring that you don't leave CallerBuddy running on 
 different computers.   That way it is very easy to make sure that only one
 copy of CallerBuddy is every running at any one time, and if this is true
 the files in **CallerBuddySongs** will never run into the situation that 
 creates a conflict.   This is the recommended workflow.  
 
-------------------------------------------
-# How-to Guides
-
 ## Adding Songs to CallerBuddy
 
 Most Square dance callers buy the music online by using a site like
 [Music for Callers](https://musicforcallers.com/) to find the web site
-of music producer (like Blue Star or Royal or Riverboat ...) where 
-you can browse and buy one or more songs.   Unfortunately where there
-are **rough** standards what you get when you purchase a song, there is
-still a lot of variability.   Typically every producer 
+of music producer (like Rhythm, Blue Star, Royal, ESP, or Riverboat ...) where 
+you can browse and buy one or more songs.   Unfortunately although there
+are **rough** standards about what you get when you purchase a song, there is
+still **a lot** of variability.   Typically every producer 
 
-1. Provides a *.MP3 file that is the actually sounds of the song. 
+1. Provides a *.MP3 file reprensting the music of the song. 
 2. Songs typical have what is called a Label which is usually a small
    number of letters (typically < 5) and a number (typically < 3). 
    This identifies the producer as well as a unique number for the 
    particular song.   
-2. If it is a singing call provides **Something** that represents the lyrics.
+2. If it is a singing call provides *0something** that represents the lyrics.
 3. Packages it up in a *.ZIP file that you download after your purchase.  
 
 Unfortunately, that is where the commonality ends.  
@@ -607,14 +615,14 @@ Unfortunately, that is where the commonality ends.
   the lyrics and music, and there is a lot of variability.  
 * The file name for the *.MP3 files are often LABEL - TITLE, but 
   some produces reverse that order or don't use a -
-* Lyrics are sometimes in HTML, some times PDFs sometimes DOCX
+* Lyrics are sometimes in HTML, sometimes PDFs sometimes DOCX
   files sometimes several of the above.
 * The formatting for the lyrics (what is in the HTML or PDF, or
   DOCX) varies dramatically, and often contains large optional
   things like images or logos.  
-* Sometimes the produces provides several variations of the 
-  music (with harmony with leads ...) and the naming conventions
-  for these vary.
+* Sometimes the producers provides several variations of the 
+  music (with harmony, with leads, keyed for males or females, ...) 
+  and the naming conventions for these variations are unpredictable.  
 * Sometimes the lyrics are in the same folder as the music, 
   sometimes named the same, sometimes not.  
 
@@ -633,22 +641,22 @@ clear
   2. The name of this file is LABEL - TITLE.MP3.  A song
      does not need to have a label, in which case a song
      looks like TITLE.MP3. 
-  3. If the song is a singing call the lyrics are stored
-     a [Markdown](https://commonmark.org/help/) in a *.MD file.
+  3. If the song is a singing call the lyrics are stored as
+     a [Markdown](https://commonmark.org/help/) file.  
   4. The lyric file has the same file name as the music
      with the .MP3 changed to .MD
 
 That is it, and that is what is put into the **CallerBuddySongs** 
 folder.  It is all very simple and clear.
 [Markdown](https://commonmark.org/help/) was chosen because it is just text
-(and text editor can view and modify it), and it is very simple, so
+(and any text editor can view and modify it), and it is very simple, so
 it is relatively easy to convert things to markdown because you can 
 scrape the text from the source and add any [formatting](#lyrics-markdown)
 with a tool or text editor.  This allows CallerBuddy to keep the 
-formatting of every song consistent.   
+formatting of every song consistent regardless of who produced it. 
 
 So in theory anything that puts a *.MP3 file and a *.MD file into
-the **CallerBuddySongs** folder will keep CallerBuddy happy.  
+the **CallerBuddySongs** folder will keep CallerBuddy happy.
 CallerBuddy will naturally find it, and incorporate into the songs
 presented to the user.  If you delete a song, CallerBuddy will notice
 that and remove the song from the view.   It does not take much
@@ -658,57 +666,68 @@ to keep CallerBuddy Happy.
 
 But CallerBuddy can do more.  If you give it a ZIP file, it can look 
 inside it and try to figure out in much the way a human would which
-file is the music file you want, which file has the lyrics, and convert
-the lyrics for Markdown for you (whatever its format is).   In other
-words, it can do most of the work.   The key point is that it can't be
-sure it got this right (it does not know if you wanted the version
-of the song with lead, or harmony, etc).  So it shows you everything
-from the source ZIP (and the ability to inspect the files), along with
-is suggestion on which MP3 file to use, what the title and label of the
-song is, and the lyrics it scraped and converted to Markdown.   You
-get to look at it (as well as the originals), decide that it is good, and
-it will put the resulting two files into the CallerBuddySongs folder. 
-Note that if you later find that you did not like your choice, you are free
-to simply run it again, and make different choices, it will overwrite 
-the first attempt, and so you can fix things even much later.  
+file iYs the music file you want, which file has the lyrics, and convert
+the lyrics for Markdown for you.   In other
+words, it can do most of the work. It is important to note however,
+that CallerBuddy can't be
+sure it got this right.  So it is pretty important that CallerBuddy
+show you what it did and give you an opportunity to fix it in 
+pretty much any way necessary before allow you to commit 
+the result to the **CallerBuddySongs** folder.  
 
-So the process of Importing basically three steps
+So the process of Importing involves three steps
 
-1. Give CallerBUddy the name of a ZIP file or a Folder containing the 
+1. You give CallerBUddy the name of a ZIP file or a Folder containing the 
    distribution that you got from the song's producer.  CallerBuddy
    will analyze it, do lyric conversion and show it its suggestion.
-2. Look over what CallerBuddy is suggesting.   If there is more than
+2. You look over what CallerBuddy is suggesting.   If there is more than
    one variation of the song, you can listen to the other variations.
    You can look at the lyrics that CallerBuddy converted, and you can
-   look at the original files to see if you are satisfied. If not
-   you can fix thing (change which MP3 file is chosen, what the title
-   and label will be, modify the lyrics however you want (possibly 
-   cutting and pasting things in from the original)).  In sort make
-   sure you are happy (but 90+% of the time this takes a few seconds)
-3. Hit the import button which will copy the files into CallerBuddy's
-   folder.  
+   look at the original files to see if anything was lost or garbled. 
+   The user interface allows you to fix pretty much anything (which
+   MP3 file is chosen to be the music, what the title
+   and label will be, and exactly what the lyrics are.   
+3. Hit the import button which will copy the *.MP3 and *.MD files 
+   into the playlist editor folder you were viewing when you started
+   the import.  (The Import menu items are only available while a
+   playlist editor is the current window, so the destination is always
+   that editor's folder.)  
 
 #### Walking through an Example
 
-This is what it looks like in practice.  In the example below I 
-opened the App ☰ menu and selected the 'Import from Folder' option.
-If I had a ZIP file I would have simply chosen 'Import from Zip'.
-I then navigated to the files I can purchased, and clicked OK.
+This is what it looks like in practice.  When you buy a square dance
+song on the internet is always comes as a ZIP file.   It is good practice
+to save these originals in case you want to listen to the vocal tracks
+or want to use a different music variation.  You could save them as
+the original ZIP, or you could unpack the ZIP files into a folder.  
+The size difference between these two choices is small (because MP3 files 
+are already compressed) so I personally unpacked the ZIP files into 
+folders (before CallerBuddy you pretty much had to do this since all
+other software will not take the raw ZIPs).  
+
+Since I was in the playlist editor looking at the folder I wanted
+the song to live in, I opened the App ☰ menu and selected the
+'Import from Folder' option.
+If I had stored my purchases as ZIP files I would have simply chosen 
+'Import from Zip' instead).  I then navigated to the folder where
+my song was (in the case Boogie Shoes) and clicked OK.
 CallerBuddy then returned the following screen:
 
 ![Importing From a Folder](images/ImportingFolder.png)
 
 Notice that it lists all the files in this folder (or ZIP) and they
 all hyperlinks (which mean I can click on them to open them).  Thus 
-could open the HTML file and look at it.  I notice there are two
+I could open the HTML file and look at it.  I notice there are two
 mp3 files, one with a 275A and another with just 275, and notice
 that CallerBuddy has selected the 275 Version .  I can listen
-to the 275A version (which is the song with Wade Driver singing) to 
-decide if which one I want.  If I had wanted the other I would simply
-click on the radio button for that file to select it instead.  
+to the 275A version by clicking on it.  The 275A song happens to be
+the version with Wade Driver singing, so I decide that I am happy
+with the choice CallerBuddy made to choose the other one.
+If I had wanted the other I 
+would simply click on the radio button for that file to select it instead.  
 
-I like the choice CallerBuddy made so I look to see what it deduced for
-the Label and title (and thus what the names of the two output files 
+I then look lower down to see what it deduced for
+the label and title (and thus what the names of the two output files 
 are).   These also look good.  
 
 So I move on to looking at the [lyric editor](#edit-lyrics).  I can 
@@ -719,10 +738,11 @@ original if I needed, but in
 this case (as is typical) CallerBuddy did a great job, so I am happy
 with it and so all I have to is press the 'Import' button.
 
-And that is it.  This new song is now in my folder of songs, and 
-ready for me to use.  It took longer to navigate to the folder to
-import that it did to become happy with the result and finish
-the importation process.  Adding songs has never been easier.  
+And that is it.  This new song is now in the folder I was browsing
+in the playlist editor, and ready for me to use.  It took longer
+to navigate to the folder to import that it did to become happy with
+the result and finish the importation process.  Adding songs has never
+been easier.  
 
 If at a later point I realized I really did want to use a different
 MP3 file, or I want to start over with the lyrics, I simply import
@@ -740,8 +760,8 @@ called whatever you like but here we called it **CallerBuddySongs** (and we
 recommend that name because it is very descriptive).  As mentioned 
 in the [Import Section](#importing-songs) the music associated with the 
 song is a *.MP3 file and if the song has lyrics (it is a singing call) 
-it also has a [Markdown](https://commonmark.org/help/) with the MP3 suffix
-replaced with *.MD.  This is most of heart of the data CallerBuddy needs.
+it also has a [Markdown](https://commonmark.org/help/) file with the MP3 suffix
+replaced with *.MD.  This is most of the data CallerBuddy needs.
 
 However CallerBuddy also has to store three more pieces of information
  1. ***Browser Context** - CallerBuddy saves the handle 
@@ -749,29 +769,29 @@ However CallerBuddy also has to store three more pieces of information
     in a database that the browser maintains.  This is how CallerBuddy
     can avoid prompting the user each time it restarts.  Once the 
     browser has checked that the user authorized access to this folder
-    CallerBuddy can keep using it (even across restarts) so prompt the 
-    user is unnecessary.   On Android the rules are different. There
+    CallerBuddy can keep using it (even across restarts) so further prompting
+    of the user is unnecessary.   On Android the rules are different. There
     CallerBuddy still saves the handle, but Android forces CallerBuddy
     to refresh it which is why CallerBuddy shows a 'Reconnect' page 
-    on startup on Android.   Resetting CallerBuddy flushes this information
-    which is why after a reset CallerBuddy starts up showing the first 
-    time welcome page.  
- 2. **Song Data** - CallerBuddy needs to keep all the information 
-    about a particular 
-    song somewhere.   This includes the Volume, Pitch and Tempo setting,
-    but also when the song was last played, what was its weighted 
-    average, its loop settings, it's rank and categories.  This is all
+    on startup on Android.   Thus starting CallerBuddy on Android will
+    always be a bit less convenient (two more taps).    
+ 2. **Song Data** - CallerBuddy has non-lyric-music information 
+    about songs that it needs to store somewhere.
+    This includes the volume, pitch and tempo settings,
+    but also when the song was last played, what its weighted 
+    average is, its loop settings, it's rank and categories.  This is all
     stored in a file called **CallerBuddySongs.json**.  Like all
     [JSON](https://simple.wikipedia.org/wiki/JSON) files, this file
     is a **text** file that can be viewed and edited with a normal
-    text editor.   Logically it is a list songs where each song is
-    a list of key-value pairs holding information about that song. 
+    text editor (but please don't, you may make it unreadable to CallerBuddy).
+    Logically **CallerBuddySongs.json** is a list songs where each song is
+    a list of key-value pairs holding information. 
     This data is **not** touched when CallerBuddy resets.   Because
-    this data is precious, every few days, CallerBuddy makes a copy 
-    of it called **CallerBuddySongs.json.bak**  CallerBuddy does nothing
+    this data is precious, every few days, CallerBuddy makes a copy
+    of it called **CallerBuddySongs.json.bak**.  CallerBuddy does nothing
     with this file except create it.  The idea is that if something went
     wrong and CallerBuddy corrupted this json file, you could copy the 
-    backup file onto **CallerBuddySongs.json, and only use a few days
+    backup file onto **CallerBuddySongs.json**, and only lose a few days
     of modifications to your songs (rather the all the settings you laboriously
     generated over weeks or months)
  3. **App Data** - CallerBuddy also need a place to store things 
@@ -782,9 +802,10 @@ However CallerBuddy also has to store three more pieces of information
     [JSON](https://simple.wikipedia.org/wiki/JSON) file called 
     **CallerBuddySettings.json** Note that this file **is deleted** when 
     CallerBuddy is reset, because generally this data is the kind of thing
-    that the user is expecting to reset.  
+    that the user is expecting to reset, and is pretty easy to replace.
 
-  That is it.  Note that if the **CallerBuddySongs.json** is not present
+  That is the complete summary of the data that CallerBuddy manages.
+  Note that if the **CallerBuddySongs.json** is not present
   CallerBuddy will create a new one from scratch using the songs that
   are present in the folder.   Obviously it will use defaults for things
   it can't reconstruct (like rank, categories, tempo, pitch, loop points etc),
@@ -795,9 +816,29 @@ However CallerBuddy also has to store three more pieces of information
 ## SubFolders in CallerBuddy
 CallerBuddy does work with subfolders in **CallerBuddySongs**.  This
 allows you to put patter in its own folder, or to have specialty songs
-(like xmas or holiday) in their own folder. 
+(like xmas or holiday) in their own folder.   For most users, it is
+actually better to use the Categories column in the playList editor
+along with the playList editor's filtering feature create categories 
+of songs and find them quickly and efficiently.   The test to see if
+folders are helpful to you is to ask whether having those songs in
+the list is **actively harmful** (it clutters your search for more
+'ordinary' songs).   If you have specialty songs that you only use
+in very particular cases, (or you are a caller-cuer and want to separate your
+calling music from your cueing music), a sub-folder makes sense.  separating
+your patter and singing calls can be a good idea (and very helpful if a 
+song can be used BOTH as a patter and a singing call.  By making a sub-folder
+for patter, and insuring that the song has no lyrics in the patter folder 
+you an get CallerBuddy to create a loop for music that you also use as a 
+singing call).
 
-Explain the tradeoffs and how to set it up.   TODO
+Currently callerbuddy does not have any user interface for creating sub-folders
+in **CallerBuddySongs** but it DOES have support for them if the exist.  
+Eventually sub-folders will be a full fledged feature, but for now you need 
+to use the file explorer application for your operating system to make the folder and
+to move the songs you want into that new folder (copy both the *.MP3 and *.MD files).
+If the folders exist in **CallerBuddySongs** CallerBuddy will show you the
+folders in the playList editor and you can click into them (it will create another
+tab window, so you can go back and forth among folders easily).  
 
 ## How the Played Average is Calculated
 Each time a song is played we need to update the 'Played' average to take

@@ -473,6 +473,17 @@ export class AppState extends EventTarget {
     return this.tabs.find((t) => t.id === this.activeTabId);
   }
 
+  /**
+   * Folder to write an imported song into, or null if the active window is
+   * not a playlist editor. Import menu items are disabled in that case.
+   */
+  importTargetDir(): FileSystemDirectoryHandle | null {
+    const activeTab = this.getActiveTab();
+    if (activeTab?.type !== TabType.PlaylistEditor) return null;
+    const data = activeTab.data as EditorTabData | undefined;
+    return data?.dirHandle ?? null;
+  }
+
   /** True if the tab is a PlaylistEditor for the CallerBuddyRoot folder. */
   async isRootEditorTab(id: string): Promise<boolean> {
     const tab = this.tabs.find((t) => t.id === id);

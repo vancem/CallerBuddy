@@ -407,6 +407,48 @@ describe("AppState", () => {
   });
 
   // -----------------------------------------------------------------------
+  // Import destination folder
+  // -----------------------------------------------------------------------
+
+  describe("importTargetDir", () => {
+    const root = { name: "CallerBuddySongs" } as FileSystemDirectoryHandle;
+    const sub = { name: "Christmas" } as FileSystemDirectoryHandle;
+
+    beforeEach(() => {
+      state.rootHandle = root;
+    });
+
+    it("uses the active playlist editor folder", () => {
+      state.openTab(TabType.PlaylistEditor, "Christmas", true, {
+        dirHandle: sub,
+        folderName: "Christmas",
+      });
+      expect(state.importTargetDir()).toBe(sub);
+    });
+
+    it("uses the root playlist editor folder when that editor is active", () => {
+      state.openTab(TabType.PlaylistEditor, "CallerBuddySongs", false, {
+        dirHandle: root,
+        folderName: "CallerBuddySongs",
+      });
+      expect(state.importTargetDir()).toBe(root);
+    });
+
+    it("returns null when a non-editor tab is active", () => {
+      state.openTab(TabType.PlaylistEditor, "Christmas", true, {
+        dirHandle: sub,
+        folderName: "Christmas",
+      });
+      state.openSingletonTab(TabType.Help, "Help");
+      expect(state.importTargetDir()).toBeNull();
+    });
+
+    it("returns null when no tabs are open", () => {
+      expect(state.importTargetDir()).toBeNull();
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // Current song state
   // -----------------------------------------------------------------------
 
