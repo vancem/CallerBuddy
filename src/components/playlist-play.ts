@@ -98,6 +98,7 @@ export class PlaylistPlay extends LitElement {
     callerBuddy.state.addEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.addEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.addEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
+    callerBuddy.state.addEventListener(StateEvents.CHANGED, this.refresh);
     document.addEventListener("keydown", this._boundKeydown);
     window.addEventListener("blur", this._boundWindowBlur);
     window.addEventListener("focus", this._boundWindowFocus);
@@ -113,6 +114,7 @@ export class PlaylistPlay extends LitElement {
     callerBuddy.state.removeEventListener(StateEvents.PLAYLIST_CHANGED, this.refresh);
     callerBuddy.state.removeEventListener(StateEvents.SETTINGS_CHANGED, this.onSettingsChanged);
     callerBuddy.state.removeEventListener(StateEvents.SONG_ENDED, this.onSongEnded);
+    callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.refresh);
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
     this.stopBreakTimer();
     this.breakWakeLock.dispose();
@@ -371,6 +373,18 @@ export class PlaylistPlay extends LitElement {
                 </div>
               `}
 
+          ${callerBuddy.state.userError
+            ? html`<p class="action-error" role="alert">
+                ${callerBuddy.state.userError}
+                <button
+                  type="button"
+                  class="icon-btn"
+                  title="Dismiss"
+                  aria-label="Dismiss error"
+                  @click=${() => callerBuddy.state.clearUserError()}
+                >×</button>
+              </p>`
+            : nothing}
           <div class="play-actions">
             <button
               class="primary"
@@ -499,9 +513,11 @@ export class PlaylistPlay extends LitElement {
     try {
       this.stopBreakTimer();
       const song = playlist[idx];
-      callerBuddy.state.markSongPlayed(song);
-      this.selectedIndex = null; // reset to auto-select next unplayed
       await callerBuddy.openSongPlay(song);
+      if (callerBuddy.state.currentSong !== null) {
+        callerBuddy.state.markSongPlayed(song);
+        this.selectedIndex = null; // reset to auto-select next unplayed
+      }
     } finally {
       this.isStartingPlayback = false;
       document.body.style.cursor = prevCursor;
@@ -890,6 +906,31 @@ export class PlaylistPlay extends LitElement {
       display: flex;
       gap: 6px;
       align-items: center;
+    }
+
+    .action-error {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      line-height: 1.35;
+      color: var(--cb-error);
+      background: var(--cb-error-light);
+      border-radius: 6px;
+    }
+
+    .action-error .icon-btn {
+      flex-shrink: 0;
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--cb-error);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
     }
 
     .play-actions button {

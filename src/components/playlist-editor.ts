@@ -45,6 +45,7 @@ import { isSameDirectory, listDirectory, type DirEntry, type FolderRef } from ".
 import { log } from "../services/logger.js";
 import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js";
 import { songMatchesTextFilter } from "../utils/song-text-filter.js";
+import { formatUnknownError } from "../utils/format.js";
 import {
   HostLayoutResizeController,
   isHostPortraitLayout,
@@ -166,6 +167,9 @@ export class PlaylistEditor extends LitElement {
 
   /** True while the initial (or navigated) folder is being scanned. */
   @state() private loading = false;
+
+  /** Set when {@link loadCurrentFolder} fails; shown instead of a fake empty library. */
+  @state() private folderLoadError = "";
 
   /** Incrementing token to ignore stale async folder loads (tab switches / navigation). */
   private folderLoadSeq = 0;
@@ -627,6 +631,7 @@ export class PlaylistEditor extends LitElement {
 
     this.editingCell = null;
     this.loading = true;
+    this.folderLoadError = "";
     const seq = ++this.folderLoadSeq;
     try {
       // Fast path: load CallerBuddySongs.json first so the UI can render quickly.
@@ -678,6 +683,7 @@ export class PlaylistEditor extends LitElement {
       log.error(`Failed to load folder "${handle.name}":`, err);
       this.localSongs = [];
       this.subfolders = [];
+      this.folderLoadError = `Could not load folder "${handle.name}": ${formatUnknownError(err)}`;
     } finally {
       if (seq === this.folderLoadSeq) {
         // If we already flipped loading=false after CallerBuddySongs.json, keep it off.
@@ -775,6 +781,18 @@ export class PlaylistEditor extends LitElement {
                   </div>
                 </div>
               `}
+          ${callerBuddy.state.userError
+            ? html`<p class="action-error" role="alert">
+                ${callerBuddy.state.userError}
+                <button
+                  type="button"
+                  class="icon-btn"
+                  title="Dismiss"
+                  aria-label="Dismiss error"
+                  @click=${() => callerBuddy.state.clearUserError()}
+                >×</button>
+              </p>`
+            : nothing}
           <div class="playlist-actions">
             <button
               class="primary"
@@ -912,6 +930,9 @@ export class PlaylistEditor extends LitElement {
             </div>
 
             <div class="table-block">
+              ${this.folderLoadError
+                ? html`<p class="action-error" role="alert">${this.folderLoadError}</p>`
+                : nothing}
               ${this.loading
                 ? html`<p class="muted table-empty">Loading…</p>`
                 : html`
@@ -1066,7 +1087,9 @@ export class PlaylistEditor extends LitElement {
                     )}
                   </tbody>
                 </table>
-                ${songs.length === 0 && this.subfolders.length === 0
+                ${!this.folderLoadError &&
+                songs.length === 0 &&
+                this.subfolders.length === 0
                   ? html`<p class="muted table-empty">
                       ${this.filterText
                         ? "No songs match the filter."
@@ -2309,6 +2332,31 @@ export class PlaylistEditor extends LitElement {
       display: flex;
       gap: 6px;
       margin-top: 6px;
+    }
+
+    .action-error {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      line-height: 1.35;
+      color: var(--cb-error);
+      background: var(--cb-error-light);
+      border-radius: 6px;
+    }
+
+    .action-error .icon-btn {
+      flex-shrink: 0;
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--cb-error);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
     }
 
     .playlist-actions .primary,

@@ -63,6 +63,29 @@ describe("AppState", () => {
   // Settings
   // -----------------------------------------------------------------------
 
+  describe("userError", () => {
+    it("setUserError stores the message and fires CHANGED", () => {
+      const handler = spyOn(state, StateEvents.CHANGED);
+      state.setUserError('Could not play "Song": NotFoundError');
+      expect(state.userError).toBe('Could not play "Song": NotFoundError');
+      expect(handler).toHaveBeenCalledOnce();
+    });
+
+    it("clearUserError no-ops when already empty", () => {
+      const handler = spyOn(state, StateEvents.CHANGED);
+      state.clearUserError();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it("clearUserError clears a message and fires CHANGED", () => {
+      state.setUserError("boom");
+      const handler = spyOn(state, StateEvents.CHANGED);
+      state.clearUserError();
+      expect(state.userError).toBe("");
+      expect(handler).toHaveBeenCalledOnce();
+    });
+  });
+
   describe("setSettings", () => {
     it("updates settings and fires SETTINGS_CHANGED", () => {
       const handler = spyOn(state, StateEvents.SETTINGS_CHANGED);

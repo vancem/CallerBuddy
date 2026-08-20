@@ -61,6 +61,7 @@ import {
   tempoRatioFromSong,
 } from "./utils/play-history.js";
 import { log } from "./services/logger.js";
+import { formatUnknownError } from "./utils/format.js";
 import {
   normalizePlaylistRelPath,
   normalizePlaylistRelPaths,
@@ -1171,10 +1172,14 @@ export class CallerBuddy {
     const t1 = performance.now();
     try {
       await this.loadSongAudio(song);
-    } catch {
+    } catch (err) {
       this.closeNowPlayingWhenSongPlayCloses = false;
+      this.state.setUserError(
+        `Could not play "${song.title}": ${formatUnknownError(err)}`,
+      );
       return;
     }
+    this.state.clearUserError();
     const t2 = performance.now();
     this.state.setCurrentSong(song);
     await this.audio.play();

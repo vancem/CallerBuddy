@@ -108,6 +108,12 @@ export class AppState extends EventTarget {
   playlistGettingStartedHintPending = false;
 
   /**
+   * Transient user-facing error (e.g. audio failed to load). Not persisted.
+   * Views render this as a banner and call {@link clearUserError} to dismiss.
+   */
+  userError = "";
+
+  /**
    * Wall-clock ms when the last qualifying song play ended, or null if none yet.
    * Session-only (not persisted across reloads); survives Now Playing tab close/reopen.
    */
@@ -146,6 +152,17 @@ export class AppState extends EventTarget {
   setPlaylistGettingStartedHintPending(pending: boolean): void {
     if (this.playlistGettingStartedHintPending === pending) return;
     this.playlistGettingStartedHintPending = pending;
+    this.emit(StateEvents.CHANGED);
+  }
+
+  setUserError(message: string): void {
+    this.userError = message;
+    this.emit(StateEvents.CHANGED);
+  }
+
+  clearUserError(): void {
+    if (!this.userError) return;
+    this.userError = "";
     this.emit(StateEvents.CHANGED);
   }
 
