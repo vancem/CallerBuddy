@@ -12,11 +12,8 @@ export function formatTime(seconds: number): string {
 
 /** Format seconds as a signed countdown: "M:SS" or "-M:SS". */
 export function formatCountdown(totalSeconds: number): string {
-  const abs = Math.abs(totalSeconds);
   const sign = totalSeconds < 0 ? "-" : "";
-  const min = Math.floor(abs / 60);
-  const sec = abs % 60;
-  return `${sign}${min}:${sec.toString().padStart(2, "0")}`;
+  return `${sign}${formatTime(Math.abs(totalSeconds))}`;
 }
 
 /** Return a time as a localized "HH:MM" string (now, or `atMs` if given). */

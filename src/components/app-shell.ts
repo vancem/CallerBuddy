@@ -963,14 +963,20 @@ export class AppShell extends LitElement {
     `;
   }
 
+  /** True when another import can start; alerts if a Song Onboard tab is already open. */
+  private assertNoOpenOnboard(): boolean {
+    if (callerBuddy.state.tabs.some((t) => t.type === TabType.SongOnboard)) {
+      alert("Please complete or cancel the current song import before starting a new one.");
+      return false;
+    }
+    return true;
+  }
+
   private async onImportSongZip() {
     log.info(`[ui] menu: Import Song from ZIP`);
     this.showMenu = false;
     if (!callerBuddy.state.importTargetDir()) return;
-    if (callerBuddy.state.tabs.some((t) => t.type === TabType.SongOnboard)) {
-      alert("Please complete or cancel the current song import before starting a new one.");
-      return;
-    }
+    if (!this.assertNoOpenOnboard()) return;
     try {
       const [fileHandle] = await window.showOpenFilePicker({
         types: [
@@ -1000,10 +1006,7 @@ export class AppShell extends LitElement {
     log.info(`[ui] menu: Import Song from Folder`);
     this.showMenu = false;
     if (!callerBuddy.state.importTargetDir()) return;
-    if (callerBuddy.state.tabs.some((t) => t.type === TabType.SongOnboard)) {
-      alert("Please complete or cancel the current song import before starting a new one.");
-      return;
-    }
+    if (!this.assertNoOpenOnboard()) return;
     try {
       const dirHandle = await window.showDirectoryPicker({
         id: DIR_PICKER_IMPORT_ID,

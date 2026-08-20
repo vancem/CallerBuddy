@@ -27,6 +27,7 @@ import {
 } from "../services/song-onboarding.js";
 import { generateLyricsMarkdownTemplate } from "../utils/lyrics-markdown.js";
 import { formatUnknownError } from "../utils/format.js";
+import { openHelpSection } from "../utils/ui-help.js";
 import "./lyrics-editor.js";
 import type { LyricsEditor, LyricsEditorMode } from "./lyrics-editor.js";
 import { getLyricsEditorSessionMode } from "./lyrics-editor.js";
@@ -626,12 +627,7 @@ export class SongOnboard extends LitElement {
   }
 
   private onLyricsMarkdownHelp(e: CustomEvent<{ sectionId?: string }>) {
-    this.openHelpSection(e.detail?.sectionId ?? "lyrics-markdown");
-  }
-
-  /** Open the Help tab (as a singleton) scrolled to a section; Help's Back button / ArrowLeft returns here. */
-  private openHelpSection(sectionId: string) {
-    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, { sectionId });
+    openHelpSection(e.detail?.sectionId ?? "lyrics-markdown");
   }
 
   private onLyricsEditorModeChange(e: CustomEvent<{ mode: LyricsEditorMode }>) {
@@ -646,7 +642,7 @@ export class SongOnboard extends LitElement {
         <div class="panel-heading">
           Import Song from ${sourceLabel}
           <button class="ctx-help-btn" title="Open help: Import songs"
-            @click=${() => this.openHelpSection("importing-songs")}>?</button>
+            @click=${() => openHelpSection("importing-songs")}>?</button>
         </div>
         <p class="explain">
           We analyzed <strong>${this.sourceName}</strong> and made our

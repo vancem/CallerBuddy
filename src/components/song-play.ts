@@ -27,6 +27,7 @@ import {
   clampPatterLoopRegion,
 } from "../models/song.js";
 import { formatTime, formatClock } from "../utils/format.js";
+import { openHelpSection } from "../utils/ui-help.js";
 import { songPlayStyles } from "./song-play-styles.js";
 import {
   renderPatterControls,
@@ -45,7 +46,6 @@ import {
   HostLayoutResizeController,
   isHostPortraitLayout,
 } from "../utils/host-portrait-layout.js";
-import { TabType } from "../services/app-state.js";
 import "./lyrics-editor.js";
 
 function generateLyricsTemplate(song: Song): string {
@@ -678,8 +678,8 @@ export class SongPlay extends LitElement {
                   patterTimerEnabled: this.patterTimerEnabled,
                   patterMinutes: this.patterMinutes,
                   patterCountdown: this.patterCountdown,
-                  onLoopHelp: () => this.openHelpSection("setting-loop-points-for-patter"),
-                  onPatterTimerHelp: () => this.openHelpSection("the-patter-timer"),
+                  onLoopHelp: () => openHelpSection("setting-loop-points-for-patter"),
+                  onPatterTimerHelp: () => openHelpSection("the-patter-timer"),
                   onLoopBoxKeydown: (which, e) => this.onLoopBoxKeydown(which, e),
                   onLoopBtnMousedown: (e) => this.onLoopBtnMousedown(e),
                   nudgeLoop: (which, d) => this.nudgeLoop(which, d),
@@ -695,7 +695,7 @@ export class SongPlay extends LitElement {
                 <button
                   class="ctx-help-btn page-help-btn"
                   title="Help for the whole Song Player page"
-                  @click=${() => this.openHelpSection("song-player")}
+                  @click=${() => openHelpSection("song-player")}
                 >?</button>
               `
             : nothing}
@@ -948,12 +948,7 @@ export class SongPlay extends LitElement {
   }
 
   private onLyricsMarkdownHelp(e: CustomEvent<{ sectionId?: string }>) {
-    this.openHelpSection(e.detail?.sectionId ?? "lyrics-markdown");
-  }
-
-  /** Open the Help tab (as a singleton) scrolled to a section; Help's Back button / ArrowLeft returns here. */
-  private openHelpSection(sectionId: string) {
-    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, { sectionId });
+    openHelpSection(e.detail?.sectionId ?? "lyrics-markdown");
   }
 
   /** Edit/create lyrics (when not editing) plus Close — same exit path as Esc / End or track end. */
@@ -1131,7 +1126,7 @@ export class SongPlay extends LitElement {
           <span class="adj-value">${song.volume}</span>
           <button class="adj-btn" title="Increase volume (V)" @click=${() => this.adjustVolume(5)}>►</button>
           <button class="ctx-help-btn adj-help-btn" title="Open help: Adjust pitch and tempo"
-            @click=${() => this.openHelpSection("adjust-pitch-and-tempo")}>?</button>
+            @click=${() => openHelpSection("adjust-pitch-and-tempo")}>?</button>
         </div>
         <div class="adj-row">
           <span class="adj-label" title="Relative pitch to original, each unit is 1/12 of an octave">Pitch</span>

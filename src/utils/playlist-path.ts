@@ -4,7 +4,8 @@
  * platform paths (e.g. document/primary%3ACallerBuddy%2Fpatter/...).
  */
 
-function decodePathSegment(segment: string): string {
+/** Decode a File System Access path segment when Android returns URI-encoded names. */
+export function decodePathSegment(segment: string): string {
   try {
     return decodeURIComponent(segment);
   } catch {

@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { normalizePlaylistRelPath } from "./playlist-path.js";
+import { decodePathSegment, normalizePlaylistRelPath } from "./playlist-path.js";
+
+describe("decodePathSegment", () => {
+  it("decodes URI-encoded segments", () => {
+    expect(decodePathSegment("primary%3ACallerBuddy")).toBe("primary:CallerBuddy");
+  });
+
+  it("returns the original string when decoding fails", () => {
+    expect(decodePathSegment("%E0%A4%A")).toBe("%E0%A4%A");
+  });
+});
 
 const ROOT = "CallerBuddy";
 

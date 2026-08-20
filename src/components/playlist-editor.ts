@@ -42,7 +42,7 @@ import {
   type PlaylistEditorSortKey,
   type PlaylistEditorViewSettings,
 } from "../models/settings.js";
-import { StateEvents, TabType } from "../services/app-state.js";
+import { StateEvents } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import type { Song } from "../models/song.js";
 import { loadAndMergeSongs, loadSongsJson } from "../services/song-library.js";
@@ -51,6 +51,7 @@ import { log } from "../services/logger.js";
 import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js";
 import { songMatchesTextFilter } from "../utils/song-text-filter.js";
 import { formatUnknownError } from "../utils/format.js";
+import { openHelpSection } from "../utils/ui-help.js";
 import {
   HostLayoutResizeController,
   isHostPortraitLayout,
@@ -735,7 +736,7 @@ export class PlaylistEditor extends LitElement {
             <button
               class="ctx-help-btn"
               title="Help for the whole Playlist Editor page"
-              @click=${() => this.openHelpSection("playlist-editor")}
+              @click=${() => openHelpSection("playlist-editor")}
             >?</button>
           </div>
           ${playlist.length === 0
@@ -2140,11 +2141,6 @@ export class PlaylistEditor extends LitElement {
 
   private onRestorePlaylist() {
     callerBuddy.state.restoreClearedPlaylist();
-  }
-
-  /** Open the Help tab (as a singleton) scrolled to a section; Help's Back button / ArrowLeft returns here. */
-  private openHelpSection(sectionId: string) {
-    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, { sectionId });
   }
 
   static styles = [

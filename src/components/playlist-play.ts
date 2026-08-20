@@ -30,6 +30,7 @@ import { WakeLockService } from "../services/wake-lock.js";
 import { StateEvents, TabType } from "../services/app-state.js";
 import { isSingingCall } from "../models/song.js";
 import { formatCountdown, formatClock } from "../utils/format.js";
+import { openHelpSection } from "../utils/ui-help.js";
 import {
   HostLayoutResizeController,
   isHostPortraitLayout,
@@ -306,7 +307,7 @@ export class PlaylistPlay extends LitElement {
             <button
               class="ctx-help-btn"
               title="Help for the whole Now Playing page"
-              @click=${() => this.openHelpSection("now-playing")}
+              @click=${() => openHelpSection("now-playing")}
             >?</button>
           </div>
           ${playlist.length === 0
@@ -542,11 +543,6 @@ export class PlaylistPlay extends LitElement {
   /** Same as closing the "Now Playing" tab from the tab bar or pressing Esc. */
   private onCloseNowPlayingTab() {
     callerBuddy.state.closeTabByType(TabType.PlaylistPlay);
-  }
-
-  /** Open the Help tab (as a singleton) scrolled to a section; Help's Back button / ArrowLeft returns here. */
-  private openHelpSection(sectionId: string) {
-    callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, { sectionId });
   }
 
   // -- Break timer ----------------------------------------------------------

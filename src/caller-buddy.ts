@@ -63,6 +63,7 @@ import {
 import { log } from "./services/logger.js";
 import { formatUnknownError } from "./utils/format.js";
 import {
+  decodePathSegment,
   normalizePlaylistRelPath,
   normalizePlaylistRelPaths,
 } from "./utils/playlist-path.js";
@@ -1566,15 +1567,6 @@ interface OnboardingSource {
   targetDir: FileSystemDirectoryHandle | null;
   readText: (path: string) => Promise<string>;
   readBinary: (path: string) => Promise<ArrayBuffer>;
-}
-
-/** Decode a File System Access path segment when Android returns URI-encoded names. */
-function decodePathSegment(segment: string): string {
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return segment;
-  }
 }
 
 /**
