@@ -86,9 +86,9 @@ export class AppState extends EventTarget {
   tabs: TabInfo[] = [];
   activeTabId = "";
 
-  /** Tab IDs we can go "back" to (Alt+Left). */
+  /** Tab IDs we can go "back" to (Ctrl+<). */
   private tabBackStack: string[] = [];
-  /** Tab IDs we can go "forward" to (Alt+Right). */
+  /** Tab IDs we can go "forward" to (Ctrl+>). */
   private tabForwardStack: string[] = [];
 
   /** The song currently being played, or null. */
@@ -288,7 +288,7 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.PLAYLIST_CHANGED);
   }
 
-  /** True when the editor can offer Restore after a Clear. */
+  /** True when the editor can offer Undo after a Reset. */
   hasClearedPlaylistBackup(): boolean {
     return this.clearedPlaylistBackup.length > 0;
   }
@@ -409,7 +409,7 @@ export class AppState extends EventTarget {
     this.emit(StateEvents.CHANGED);
   }
 
-  /** Go to previously visited tab (Alt+Left). Returns true if navigated. */
+  /** Go to previously visited tab (Ctrl+<). Returns true if navigated. */
   goBack(): boolean {
     if (this.tabBackStack.length === 0) return false;
     if (this.activeTabId) this.tabForwardStack.push(this.activeTabId);
@@ -419,7 +419,7 @@ export class AppState extends EventTarget {
     return true;
   }
 
-  /** Undo back, go to forward tab (Alt+Right). Returns true if navigated. */
+  /** Undo back, go to forward tab (Ctrl+>). Returns true if navigated. */
   goForward(): boolean {
     if (this.tabForwardStack.length === 0) return false;
     if (this.activeTabId) this.tabBackStack.push(this.activeTabId);

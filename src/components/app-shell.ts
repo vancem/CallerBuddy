@@ -309,7 +309,7 @@ export class AppShell extends LitElement {
     }
   }
 
-  /** Global keyboard shortcuts for tab navigation and close.
+  /** Global keyboard shortcuts for tab navigation.
    *  Uses Ctrl+]/[ instead of Ctrl+Tab because browsers reserve Ctrl+Tab
    *  for browser tab switching and never dispatch it to the page. */
   private onKeydown(e: KeyboardEvent) {
@@ -353,12 +353,6 @@ export class AppShell extends LitElement {
       log.info(`[ui] key Ctrl+[ (prev tab)`);
       e.preventDefault();
       void this.activateAdjacentTab(tabs, activeTabId, "prev");
-      return;
-    }
-    if (e.ctrlKey && e.key === "w") {
-      log.info(`[ui] key Ctrl+W (close tab)`);
-      e.preventDefault();
-      this.closeActiveTab();
       return;
     }
   }
@@ -414,17 +408,6 @@ export class AppShell extends LitElement {
       if (!ok) return;
     }
     callerBuddy.state.activateTab(nextId);
-  }
-
-  private async closeActiveTab() {
-    const tab = callerBuddy.state.getActiveTab();
-    if (!tab) return;
-    if (tab.type === TabType.SongPlay) {
-      callerBuddy.closeSongPlay();
-      return;
-    }
-    if (await callerBuddy.state.isRootEditorTab(tab.id)) return;
-    callerBuddy.state.closeTab(tab.id);
   }
 
   private onStateChanged = () => {

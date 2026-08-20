@@ -42,7 +42,7 @@ export class CbTabBar extends LitElement {
                 ? html`
                     <button
                       class="close-btn"
-                      title="Close tab (Ctrl+W)"
+                      title="Close tab"
                       @click=${(e: Event) => {
                         e.stopPropagation();
                         this.onCloseClick(tab.id);

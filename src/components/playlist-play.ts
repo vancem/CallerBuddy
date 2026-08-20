@@ -6,7 +6,7 @@
  * unplayed song; clicking a song overrides the selection. ArrowUp/ArrowDown
  * move the selection; Home/← and End/→ jump to the first/last song. Play/Enter/Space
  * plays the selected song. Delete removes
- * the selected song. M toggles the selected song's played checkbox. Ctrl+T toggles the break timer on/off; S starts/stops
+ * the selected song. M toggles the selected song's played checkbox. B toggles the break timer on/off; S starts/stops
  * the break timer countdown. Esc closes the tab.
  *
  * See CallerBuddySpec.md §"PlaylistPlay UI".
@@ -153,12 +153,12 @@ export class PlaylistPlay extends LitElement {
       this.resetPlayedSongs();
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "t") {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "b") {
       e.preventDefault();
       this.toggleBreakTimerEnabled();
       return;
     }
-    if (e.key.toLowerCase() === "s") {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "s") {
       e.preventDefault();
       this.onBreakStartStopClick();
       return;
@@ -426,7 +426,7 @@ export class PlaylistPlay extends LitElement {
             <div class="break-controls">
               <div class="break-toggle-row">
                 <label class="break-toggle"
-                  title="When enabled, plays a chime at zero and every 30 sec thereafter (Ctrl+T)">
+                  title="When enabled, plays a chime at zero and every 30 sec thereafter (B)">
                   <input
                     type="checkbox"
                     .checked=${this.breakTimerEnabled}

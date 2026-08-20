@@ -514,9 +514,10 @@ export class SongPlay extends LitElement {
     }
 
     if (
-      (e.ctrlKey || e.metaKey) &&
+      !e.ctrlKey &&
+      !e.metaKey &&
       !e.altKey &&
-      e.key.toLowerCase() === "t" &&
+      e.key.toLowerCase() === "b" &&
       this.song &&
       isPatter(this.song)
     ) {
@@ -535,7 +536,11 @@ export class SongPlay extends LitElement {
         this.onPlayPause();
         break;
       case "Home":
+        e.preventDefault();
+        this.onRestart();
+        break;
       case ".":
+        if (e.ctrlKey || e.metaKey || e.altKey) break;
         e.preventDefault();
         this.onRestart();
         break;
@@ -571,10 +576,12 @@ export class SongPlay extends LitElement {
         this.adjustPitch(-1);
         break;
       case "T":
+        if (e.ctrlKey || e.metaKey) break;
         e.preventDefault();
         this.adjustTempo(1);
         break;
       case "t":
+        if (e.ctrlKey || e.metaKey) break;
         e.preventDefault();
         this.adjustTempo(-1);
         break;

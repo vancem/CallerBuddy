@@ -373,37 +373,42 @@ export class PlaylistEditor extends LitElement {
     }
 
     const isClearShortcut =
-      (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "c";
-    if (isClearShortcut && !inTypingControl && !this.loading) {
-      if (callerBuddy.state.playlist.length > 0) {
-        e.preventDefault();
-        callerBuddy.state.clearPlaylistWithBackup();
-        return;
-      }
-      if (callerBuddy.state.hasClearedPlaylistBackup()) {
-        e.preventDefault();
-        callerBuddy.state.restoreClearedPlaylist();
-        return;
-      }
+      (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "r";
+    if (
+      isClearShortcut &&
+      !inTypingControl &&
+      !this.loading &&
+      callerBuddy.state.playlist.length > 0
+    ) {
+      e.preventDefault();
+      callerBuddy.state.clearPlaylistWithBackup();
+      return;
+    }
+
+    const isUndoShortcut =
+      (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "z";
+    if (
+      isUndoShortcut &&
+      !inTypingControl &&
+      !this.loading &&
+      callerBuddy.state.playlist.length === 0 &&
+      callerBuddy.state.hasClearedPlaylistBackup()
+    ) {
+      e.preventDefault();
+      callerBuddy.state.restoreClearedPlaylist();
+      return;
     }
 
     if (
       !this.loading &&
       !this.editingCell &&
       (e.ctrlKey || e.metaKey) &&
-      !e.altKey
+      !e.altKey &&
+      e.key.toLowerCase() === "f"
     ) {
-      const k = e.key.toLowerCase();
-      if (k === "f") {
-        e.preventDefault();
-        queueMicrotask(() => this.focusFilterInput());
-        return;
-      }
-      if (k === "r" && !e.shiftKey) {
-        e.preventDefault();
-        queueMicrotask(() => this.focusRankFilterInput());
-        return;
-      }
+      e.preventDefault();
+      queueMicrotask(() => this.focusFilterInput());
+      return;
     }
 
     if (e.key !== "Enter") return;
@@ -416,14 +421,6 @@ export class PlaylistEditor extends LitElement {
   private focusFilterInput() {
     const el = this.renderRoot.querySelector(
       ".filter-input",
-    ) as HTMLInputElement | null;
-    el?.focus();
-    el?.select();
-  }
-
-  private focusRankFilterInput() {
-    const el = this.renderRoot.querySelector(
-      ".rank-filter-input",
     ) as HTMLInputElement | null;
     el?.focus();
     el?.select();
@@ -791,10 +788,10 @@ export class PlaylistEditor extends LitElement {
               ? html`
                   <button
                     class="secondary"
-                    title="Clear playlist (Ctrl+C)"
+                    title="Clear playlist (Ctrl+R)"
                     @click=${this.onClearPlaylist}
                   >
-                    Clear
+                    Reset
                   </button>
                 `
               : nothing}
@@ -802,10 +799,10 @@ export class PlaylistEditor extends LitElement {
               ? html`
                   <button
                     class="secondary"
-                    title="Restore cleared playlist (Ctrl+C)"
+                    title="Undo clear (Ctrl+Z)"
                     @click=${this.onRestorePlaylist}
                   >
-                    Restore
+                    Undo
                   </button>
                 `
               : nothing}
@@ -900,7 +897,7 @@ export class PlaylistEditor extends LitElement {
                     max="100"
                     step="1"
                     placeholder=""
-                    title="Rank threshold (0–100). Empty = no rank filter. (Ctrl+R)"
+                    title="Rank threshold (0–100). Empty = no rank filter."
                     .value=${this.rankFilterInput}
                     @input=${this.onRankFilterInput}
                     @keydown=${this.onFilterKeydown}

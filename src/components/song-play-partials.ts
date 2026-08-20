@@ -82,7 +82,7 @@ export function renderPatterControls(ctx: PatterControlsCtx): TemplateResult {
       <div class="patter-timer-controls">
         <div class="patter-toggle-row">
           <label class="patter-toggle"
-            title="When enabled, plays a chime at zero and ever 30 sec thereafter (Ctrl+T)">
+            title="When enabled, plays a chime at zero and ever 30 sec thereafter (B)">
             <input
               type="checkbox"
               .checked=${ctx.patterTimerEnabled}

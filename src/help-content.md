@@ -103,7 +103,8 @@ are present in a context menu.   To support touch, there is a ⋮ icon at the fa
 of each row that also gets you to this context menu.
 
 You can remove items in the playlist by clicking the X beside the entry, you can 
-remove all entries in the list with the 'Clear' button at the bottom.
+remove all entries in the list with the 'Reset' button at the bottom (Ctrl+R).
+If you Reset by mistake, 'Undo' (Ctrl+Z) restores the playlist.
 
 When you are happy with your playlist, click the 'Play' button (or type &lt;Enter&gt;).
 
@@ -139,7 +140,7 @@ The other piece of functionality on the 'Now Playing' page is the break
 timer.   It is a simple count-down timer that runs after a song has been
 played, and will chime when the countdown reaches zero (and then every
 30 seconds after that).   You can set the amount of time, and you can 
-turn the timer off if you don't need it.   
+turn the timer off if you don't need it (shortcut B).   
 
 Finally CallerBuddy will tell you the time that the last song ended, so that
 even if you don't use the timer, you can know how long the break has been.  
@@ -312,7 +313,7 @@ CallerBuddy's default is 6 minutes (the short side of normal).
 
 When the timer goes off it just makes a short chime.  It will
 repeat this every 30 seconds (you should be able to resolve in
-that amount of time).  You can hit Ctrl+T to disable the timer
+that amount of time).  You can hit B to disable the timer
 if the chime is annoying.
 
 ## Edit lyrics
@@ -891,37 +892,68 @@ overusing or underusing a particular song.
 
 ## Keyboard Shortcuts
 ### Global (all views)
-| Key              | Action                   |
-| ---------------- | ------------------------ |
-| Ctrl+]           | Next tab                 |
-| Ctrl+[           | Previous tab             |
-| Ctrl+< or Ctrl+, | Go back (tab history)    |
-| Ctrl+> or Ctrl+. | Go forward (tab history) |
-| Ctrl+W           | Close current tab        |
+| Key    | Action                |
+| ------ | --------------------- |
+| Ctrl+] | Next tab              |
+| Ctrl+[ | Previous tab          |
+| Ctrl+< | Go back (tab history) |
+| Ctrl+> | Go forward (tab history) |
+
+### Playlist Editor shortcuts
+| Key           | Action                                      |
+| ------------- | ------------------------------------------- |
+| + / =         | Add focused song to playlist                |
+| P             | Play now (add focused song and play)        |
+| ↑ / ↓         | Move song-table selection                   |
+| Ctrl+F        | Focus the song filter                       |
+| Ctrl+R        | Reset (clear) the playlist                  |
+| Ctrl+Z        | Undo last playlist Reset                    |
+| Enter         | Play the playlist                           |
+| Esc           | Cancel dialog, or close a folder editor tab |
 
 ### Now Playing shortcuts
-| Key           | Action                            |
-| ------------- | --------------------------------- |
-| Enter / Space | Play selected song                |
-| Ctrl+R        | Reset played status for all songs |
-| S             | Start/stop break timer            |
-| Esc           | Close Now Playing tab             |
+| Key             | Action                            |
+| --------------- | --------------------------------- |
+| Enter / Space   | Play selected song                |
+| ↑ / ↓           | Move selection                    |
+| Home / ←        | Select first song                 |
+| End / →         | Select last song                  |
+| M               | Toggle selected song's played mark |
+| Delete          | Remove selected song              |
+| Ctrl+R          | Reset played status for all songs |
+| B               | Enable/disable break timer        |
+| S               | Start/stop break timer            |
+| Esc             | Close Now Playing tab             |
 
 ### Song Player shortcuts
 | Key       | Action                                                                  |
 | --------- | ----------------------------------------------------------------------- |
-| Space     | Play / Pause                                                            |
+| Space / Enter | Play / Pause                                                        |
 | ←         | Back 2 seconds                                                          |
 | →         | Forward 2 seconds                                                       |
 | Ctrl+←    | Back 5 seconds                                                          |
 | Ctrl+→    | Forward 5 seconds                                                       |
-| Home      | Restart song                                                            |
+| Home / .  | Restart song                                                            |
 | End / Esc | Close player, return to playlist                                        |
 | v / V     | Volume down / up (by 5)                                                 |
 | p / P     | Pitch down / up (by 1 half-step)                                        |
 | t / T     | Tempo down / up (by 1 BPM)                                              |
+| B         | Enable/disable patter timer (patter songs)                              |
+| Ctrl+P    | Toggle practice mode                                                    |
+| Ctrl+E    | Edit or create lyrics                                                   |
 | Alt++     | Lyrics text larger (~10%; plus / = key, not Ctrl — avoids browser zoom) |
 | Alt+−     | Lyrics text smaller                                                     |
+
+### Lyrics Editor shortcuts
+| Key       | Action                    |
+| --------- | ------------------------- |
+| Ctrl+S    | Save lyrics               |
+| Esc       | Exit the editor           |
+| Ctrl+B    | Bold                      |
+| Ctrl+H    | Section heading           |
+| Ctrl+I    | Info (blue) text          |
+| Ctrl+P    | Paragraph                 |
+| Alt++ / − | Lyrics text larger / smaller |
 
 ### Loop Controls (patter songs, when focused)
 | Key             | Action                                      |
@@ -929,4 +961,9 @@ overusing or underusing a particular song.
 | ← / →           | Nudge ±10 ms                                |
 | Ctrl+← / Ctrl+→ | Nudge ±100 ms                               |
 | Enter           | Set loop point to current playback position |
+
+### Help shortcuts
+| Key | Action                                              |
+| --- | --------------------------------------------------- |
+| ←   | Back (in-help history, then leave Help)             |
 
