@@ -64,6 +64,8 @@ export class AppShell extends LitElement {
   @state() private showFullscreenResumePrompt = false;
   @state() private demoInstallInProgress = false;
   @state() private demoInstallError = "";
+  @state() private showResetConfirm = false;
+  @state() private resetInProgress = false;
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   private _boundFsChange = () => this.onFullscreenChange();
@@ -313,6 +315,11 @@ export class AppShell extends LitElement {
    *  Uses Ctrl+]/[ instead of Ctrl+Tab because browsers reserve Ctrl+Tab
    *  for browser tab switching and never dispatch it to the page. */
   private onKeydown(e: KeyboardEvent) {
+    if (this.showResetConfirm && e.key === "Escape") {
+      e.preventDefault();
+      this.cancelResetCallerBuddy();
+      return;
+    }
     const inInput =
       e.target instanceof HTMLInputElement ||
       e.target instanceof HTMLTextAreaElement ||
@@ -451,6 +458,7 @@ export class AppShell extends LitElement {
               type="button"
               class="menu-btn"
               title="Menu"
+              aria-label="Menu"
               @click=${this.toggleMenu}
               aria-haspopup="true"
               aria-expanded="${this.showMenu}"
@@ -507,6 +515,7 @@ export class AppShell extends LitElement {
           ? this.renderFullscreenResumePrompt()
           : nothing}
         ${this.showLogs ? this.renderLogModal() : nothing}
+        ${this.showResetConfirm ? this.renderResetConfirm() : nothing}
       </div>
     `;
   }
@@ -887,15 +896,70 @@ export class AppShell extends LitElement {
     this.showMenu = false;
   }
 
-  private async onResetCallerBuddy() {
+  private onResetCallerBuddy() {
     log.info(`[ui] menu: Reset CallerBuddy`);
     this.showMenu = false;
+    this.showResetConfirm = true;
+  }
+
+  private cancelResetCallerBuddy() {
+    if (this.resetInProgress) return;
+    this.showResetConfirm = false;
+  }
+
+  private async confirmResetCallerBuddy() {
+    if (this.resetInProgress) return;
+    this.resetInProgress = true;
+    log.info(`[ui] reset confirm: Reset CallerBuddy`);
     try {
       await resetCallerBuddyBrowserState(callerBuddy.state.rootHandle);
     } catch (err) {
       log.warn("Reset CallerBuddy failed:", err);
+      this.resetInProgress = false;
+      this.showResetConfirm = false;
       alert("Could not reset CallerBuddy. Try clearing site data in the browser.");
     }
+  }
+
+  private renderResetConfirm() {
+    return html`
+      <div
+        class="fs-startup-overlay"
+        @click=${this.cancelResetCallerBuddy}
+      ></div>
+      <div
+        class="fs-startup-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reset-confirm-title"
+        @click=${(e: Event) => e.stopPropagation()}
+      >
+        <h2 id="reset-confirm-title" class="fs-startup-title">Reset CallerBuddy?</h2>
+        <p class="fs-startup-body">
+          This clears CallerBuddy settings and the saved folder connection.
+          Your song files in the CallerBuddySongs folder are not deleted.
+          You will need to choose or reconnect a folder after reset.
+        </p>
+        <div class="fs-startup-actions">
+          <button
+            type="button"
+            class="fs-startup-danger"
+            ?disabled=${this.resetInProgress}
+            @click=${() => void this.confirmResetCallerBuddy()}
+          >
+            ${this.resetInProgress ? "Resetting…" : "Reset CallerBuddy"}
+          </button>
+          <button
+            type="button"
+            class="fs-startup-secondary"
+            ?disabled=${this.resetInProgress}
+            @click=${this.cancelResetCallerBuddy}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    `;
   }
 
   private async onImportSongZip() {
@@ -1213,7 +1277,20 @@ export class AppShell extends LitElement {
       color: var(--cb-fg-on-accent);
     }
 
+    .fs-startup-danger {
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 0.65em 1em;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      background: var(--cb-error);
+      color: var(--cb-fg-on-accent);
+    }
+
     .fs-startup-primary:disabled,
+    .fs-startup-danger:disabled,
     .fs-startup-secondary:disabled {
       opacity: 0.65;
       cursor: default;

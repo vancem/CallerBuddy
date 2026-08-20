@@ -50,6 +50,8 @@ export class WelcomeView extends LitElement {
   @state() private loading = false;
   /** "Instructions to Create CallerBuddySongs Folder" popup (New Users). */
   @state() private showInstructions = false;
+  @state() private showResetConfirm = false;
+  @state() private resetInProgress = false;
 
   connectedCallback() {
     super.connectedCallback();
@@ -126,6 +128,7 @@ export class WelcomeView extends LitElement {
       </div>
 
       ${this.showInstructions ? this.renderInstructions() : ""}
+      ${this.showResetConfirm ? this.renderResetConfirm() : ""}
     `;
   }
 
@@ -154,7 +157,7 @@ export class WelcomeView extends LitElement {
             type="button"
             class="secondary"
             title="Keeps song data. Clears settings and resets to first launch state"
-            @click=${this.resetCallerBuddy}
+            @click=${this.requestResetCallerBuddy}
             ?disabled=${this.loading}
           >
             Reset CallerBuddy
@@ -349,18 +352,71 @@ export class WelcomeView extends LitElement {
   }
 
   /** Same path as the hamburger-menu "Reset CallerBuddy" action. */
-  private async resetCallerBuddy() {
+  private requestResetCallerBuddy() {
     log.info(`[ui] welcome: Reset CallerBuddy`);
     this.pickerError = "";
+    this.showResetConfirm = true;
+  }
+
+  private cancelResetCallerBuddy() {
+    if (this.resetInProgress) return;
+    this.showResetConfirm = false;
+  }
+
+  private async confirmResetCallerBuddy() {
+    if (this.resetInProgress) return;
+    this.resetInProgress = true;
+    this.pickerError = "";
     try {
-      this.loading = true;
       await resetCallerBuddyBrowserState(callerBuddy.state.rootHandle);
     } catch (err) {
       log.warn("Reset CallerBuddy failed:", err);
       this.pickerError =
         "Could not reset CallerBuddy. Try clearing site data in the browser.";
-      this.loading = false;
+      this.resetInProgress = false;
+      this.showResetConfirm = false;
     }
+  }
+
+  private renderResetConfirm() {
+    return html`
+      <div
+        class="prompt-overlay"
+        @click=${this.cancelResetCallerBuddy}
+      ></div>
+      <div
+        class="prompt-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reset-confirm-title"
+        @click=${(e: Event) => e.stopPropagation()}
+      >
+        <h2 id="reset-confirm-title" class="prompt-title">Reset CallerBuddy?</h2>
+        <p class="prompt-body">
+          This clears CallerBuddy settings and the saved folder connection.
+          Your song files in the CallerBuddySongs folder are not deleted.
+          You will need to choose or reconnect a folder after reset.
+        </p>
+        <div class="prompt-cta prompt-cta-stack">
+          <button
+            type="button"
+            class="danger"
+            ?disabled=${this.resetInProgress}
+            @click=${() => void this.confirmResetCallerBuddy()}
+          >
+            ${this.resetInProgress ? "Resetting…" : "Reset CallerBuddy"}
+          </button>
+          <button
+            type="button"
+            class="secondary"
+            ?disabled=${this.resetInProgress}
+            @click=${this.cancelResetCallerBuddy}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    `;
   }
 
   private openHelp(sectionId: string) {
@@ -587,7 +643,8 @@ export class WelcomeView extends LitElement {
     }
 
     .primary:disabled,
-    .secondary:disabled {
+    .secondary:disabled,
+    .danger:disabled {
       opacity: 0.6;
       cursor: wait;
     }
@@ -665,6 +722,24 @@ export class WelcomeView extends LitElement {
 
     .prompt-cta {
       text-align: center;
+    }
+
+    .prompt-cta-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .danger {
+      border-radius: 6px;
+      border: 1px solid transparent;
+      padding: 0.65em 1em;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      background-color: var(--cb-error);
+      color: var(--cb-fg-on-accent);
+      cursor: pointer;
     }
 
     /*
