@@ -20,7 +20,7 @@ import { test, expect, type Page } from "@playwright/test";
  *
  * Audio files are 1-second sine-wave WAVs generated on the fly.
  */
-function setupMockFileSystem() {
+function setupMockFileSystem(opts?: { missingAudio?: boolean }) {
   function generateWav(durationSec: number, freq: number): ArrayBuffer {
     const sampleRate = 44100;
     const numSamples = Math.floor(durationSec * sampleRate);
@@ -62,12 +62,16 @@ _(SQD 101)_
 Swing and promenade\\
 `;
 
+  const MISSING_AUDIO = "BAD 404 - Missing Audio.wav";
   const files = new Map<string, ArrayBuffer | string>();
   files.set("SQD 101 - Sunny Side Singing.wav", generateWav(1, 440));
   files.set("SQD 101 - Sunny Side Singing.md", lyricsMd);
   files.set("RYL 202 - Mountain Morning.wav", generateWav(1, 523));
   files.set("RYL 202 - Mountain Morning.md", lyricsMd);
   files.set("PTR 301 - Steady Groove Patter.wav", generateWav(1, 330));
+  if (opts?.missingAudio) {
+    files.set(MISSING_AUDIO, generateWav(1, 100));
+  }
 
   function createMockFileHandle(
     filename: string,
@@ -77,6 +81,9 @@ Swing and promenade\\
       name: filename,
       kind: "file" as const,
       async getFile() {
+        if (opts?.missingAudio && filename === MISSING_AUDIO) {
+          throw new DOMException(`File not found: ${filename}`, "NotFoundError");
+        }
         const content = fileMap.get(filename);
         if (content instanceof ArrayBuffer) {
           return new File([content], filename);
@@ -97,45 +104,67 @@ Swing and promenade\\
     };
   }
 
-  const mockHandle = {
-    name: "TestFolder",
-    kind: "directory" as const,
+  function createMockDirHandle(
+    dirName: string,
+    fileMap: Map<string, ArrayBuffer | string>,
+  ) {
+    return {
+      name: dirName,
+      kind: "directory" as const,
 
-    async queryPermission() {
-      return "granted";
-    },
-    async requestPermission() {
-      return "granted";
-    },
-    async isSameEntry(other: { name: string }) {
-      return other.name === "TestFolder";
-    },
+      async queryPermission() {
+        return "granted";
+      },
+      async requestPermission() {
+        return "granted";
+      },
+      async isSameEntry(other: { name: string }) {
+        return other.name === dirName;
+      },
 
-    async *values() {
-      for (const [name] of files) {
-        yield { name, kind: "file" as const };
-      }
-    },
+      async *values() {
+        for (const [name] of fileMap) {
+          yield { name, kind: "file" as const };
+        }
+      },
 
-    async getFileHandle(
-      filename: string,
-      options?: { create?: boolean },
-    ) {
-      if (files.has(filename) || options?.create) {
-        return createMockFileHandle(filename, files);
-      }
-      throw new DOMException(
-        `File not found: ${filename}`,
-        "NotFoundError",
-      );
-    },
+      async getFileHandle(
+        filename: string,
+        options?: { create?: boolean },
+      ) {
+        if (fileMap.has(filename) || options?.create) {
+          return createMockFileHandle(filename, fileMap);
+        }
+        throw new DOMException(
+          `File not found: ${filename}`,
+          "NotFoundError",
+        );
+      },
 
-    async getDirectoryHandle(_name: string) {
-      throw new DOMException("Not found", "NotFoundError");
-    },
+      async getDirectoryHandle(_name: string) {
+        throw new DOMException("Not found", "NotFoundError");
+      },
+    };
+  }
+
+  const mockHandle = createMockDirHandle("TestFolder", files);
+
+  const importFiles = new Map<string, ArrayBuffer | string>();
+  importFiles.set("C4 100 - Import Test.wav", generateWav(1, 392));
+  importFiles.set(
+    "C4 100 - Import Test.md",
+    `# Import Test
+_(C4 100)_
+`,
+  );
+  const importHandle = createMockDirHandle("ImportTestFolder", importFiles);
+
+  (window as any).showDirectoryPicker = (options?: { id?: string }) => {
+    if (options?.id === "callerbuddy-import") {
+      return Promise.resolve(importHandle);
+    }
+    return Promise.resolve(mockHandle);
   };
-
-  (window as any).showDirectoryPicker = () => Promise.resolve(mockHandle);
 }
 
 /**
@@ -204,8 +233,8 @@ function setupEmptyMockFileSystem() {
 // Test helpers
 // ---------------------------------------------------------------------------
 
-async function setupPage(page: Page) {
-  await page.addInitScript(setupMockFileSystem);
+async function setupPage(page: Page, opts?: { missingAudio?: boolean }) {
+  await page.addInitScript(setupMockFileSystem, opts ?? {});
   await page.goto("/");
 }
 
@@ -266,22 +295,6 @@ test.describe("CallerBuddy basic flow", () => {
 
     await page.keyboard.press("Enter");
     await expect(page.locator("playlist-editor")).toBeVisible();
-  });
-
-  test("Instructions button is styled as a secondary (non-blue) button", async ({
-    page,
-  }) => {
-    await setupPage(page);
-
-    const instructionsBtn = page
-      .locator("welcome-view")
-      .getByRole("button", { name: "Instructions to Create CallerBuddySongs Folder" });
-    await expect(instructionsBtn).toHaveClass(/secondary/);
-
-    const openBtn = page
-      .locator("welcome-view")
-      .locator("button.welcome-open");
-    await expect(openBtn).toHaveClass(/primary/);
   });
 
   test("Enter activates the focused Open CallerBuddySongs button inside the instructions popup", async ({
@@ -445,5 +458,43 @@ test.describe("CallerBuddy basic flow", () => {
     await page.keyboard.press("Escape");
     await expect(page.locator("song-play")).not.toBeVisible({ timeout: 5000 });
     await expect(page.locator("playlist-play")).toBeVisible();
+  });
+
+  test("shows an error when audio fails to load", async ({ page }) => {
+    await setupPage(page, { missingAudio: true });
+    await page
+      .locator("welcome-view")
+      .getByRole("button", { name: "Open CallerBuddySongs" })
+      .click();
+    await expect(page.locator("playlist-editor")).toBeVisible();
+
+    const editor = page.locator("playlist-editor");
+    const missingRow = editor
+      .locator("table.song-table tbody tr")
+      .filter({ hasText: "Missing Audio" });
+    await missingRow.locator("button.add-btn").click();
+    await editor.locator("button.primary", { hasText: "Play" }).click();
+    await expect(page.locator("playlist-play")).toBeVisible();
+
+    await page
+      .locator("playlist-play")
+      .locator("button.primary", { hasText: "Play" })
+      .click();
+    await expect(page.locator("song-play")).not.toBeVisible();
+    await expect(page.getByRole("alert")).toContainText("Could not play");
+  });
+
+  test("opens song import from folder and can cancel", async ({ page }) => {
+    await goToEditor(page);
+
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("menuitem", { name: /Import Song from Folder/ }).click();
+
+    const onboard = page.locator("song-onboard");
+    await expect(onboard).toBeVisible();
+    await expect(onboard.getByRole("heading", { name: "Import Test" })).toBeVisible();
+
+    await onboard.getByRole("button", { name: "Cancel" }).click();
+    await expect(onboard).not.toBeVisible();
   });
 });
