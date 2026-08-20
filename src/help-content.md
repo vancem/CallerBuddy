@@ -217,7 +217,7 @@ probably never touch them again)
 CallerBuddy keeps track of when songs are played and updates data 
 shown in the playlist editor with this data.   However if you are
 practicing, you probably don't want this data updated.  That is what
-the 'practice' checkbox is for.  When you check 'practice' CallerBuddy assumes
+the 'practice' checkbox is for (shortcut Ctrl+P).  When you check 'practice' CallerBuddy assumes
 any playing is not 'official' and does not update the play statistics.  
 
 If you run CallerBuddy in a browser, it is pretty easy for the window
@@ -807,7 +807,9 @@ about the song not stored in the music and lyrics files.
 CallerBuddy was carefully designed to keep its data needs **clean** and very 
 simple.  CallerBuddy only needs access to a single folder which can be 
 called whatever you like but here we called it **CallerBuddySongs** (and we
-recommend that name because it is very descriptive).  As mentioned 
+recommend that name because it is very descriptive).  Developer docs may
+call the same folder CallerBuddyRoot; in the app and this help it is always
+the **CallerBuddySongs** folder.  As mentioned 
 in the [Import Section](#importing-songs) the music associated with the 
 song is a *.MP3 file and if the song has lyrics (it is a singing call) 
 it also has a [Markdown](https://commonmark.org/help/) file with the MP3 suffix
@@ -894,10 +896,10 @@ overusing or underusing a particular song.
 ### Global (all views)
 | Key    | Action                |
 | ------ | --------------------- |
-| Ctrl+] | Next tab              |
-| Ctrl+[ | Previous tab          |
-| Ctrl+< | Go back (tab history) |
-| Ctrl+> | Go forward (tab history) |
+| Ctrl+]           | Next tab                   |
+| Ctrl+[           | Previous tab               |
+| Ctrl+< or Ctrl+, | Go back (tab history)      |
+| Ctrl+> or Ctrl+. | Go forward (tab history)   |
 
 ### Playlist Editor shortcuts
 | Key           | Action                                      |

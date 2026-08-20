@@ -15,6 +15,7 @@ export const HELP_TOC: HelpTocEntry[] = [
   { id: "the-break-timer", title: "The Break Timer", indent: true },
   { id: "song-player", title: "Song Player" },
   { id: "controlling-where-the-sound-goes", title: "Controlling where the sound goes", indent: true },
+  { id: "song-player-layout", title: "Song Player Layout", indent: true },
   { id: "adjust-pitch-and-tempo", title: "Adjust pitch and tempo", indent: true },
   { id: "the-song-progress-bar", title: "The Song Progress Bar", indent: true },
   { id: "the-left-pane-in-the-song-player", title: "The left pane", indent: true },
