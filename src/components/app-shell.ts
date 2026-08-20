@@ -172,7 +172,7 @@ export class AppShell extends LitElement {
     return el instanceof HelpView ? el : null;
   }
 
-  /** Refresh menu label ("Full Screen" vs "Exit FullScreen"). OS may exit FS anytime. */
+  /** Refresh menu label ("Full Screen" vs "Exit Full Screen"). OS may exit FS anytime. */
   private onFullscreenChange() {
     log.info(`[fs] change -> ${this.isFullscreenApi() ? "IN" : "OUT"}`);
     this.requestUpdate();
@@ -288,7 +288,7 @@ export class AppShell extends LitElement {
     this.showMenu = false;
     const wasIn = this.isFullscreenApi();
     log.info(
-      `[ui] menu: ${wasIn ? "Exit FullScreen" : "Full Screen"} ` +
+      `[ui] menu: ${wasIn ? "Exit Full Screen" : "Full Screen"} ` +
         `(toggle, wasIn=${wasIn})`,
     );
     log.info(`[fs] menu toggle (was ${wasIn ? "IN" : "OUT"})`);
@@ -710,7 +710,7 @@ export class AppShell extends LitElement {
           Create Folder…
         </button>
         <button class="menu-item" role="menuitem" @click=${this.toggleFullscreen}>
-          ${this.isFullscreenApi() ? "Exit FullScreen" : "Full Screen"}
+          ${this.isFullscreenApi() ? "Exit Full Screen" : "Full Screen"}
         </button>
         <button
           class="menu-item"

@@ -89,7 +89,7 @@ song table.
   row will be displayed (includes title, category, label and type columns).
 * If you type !WORD in the filter textbox only songs that do NOT have WORD will
   be displayed.  (e.g.  !xmas will eliminate the Christmas songs)
-* You can set >= or <= and a value to filter by rank (thus look at only
+* You can set >= or < and a value to filter by rank (thus look at only
   your popular or less popular songs).
 
 You can add songs to the playlist by clicking on the + (or typing +), or by dragging a row

@@ -864,7 +864,7 @@ export class PlaylistEditor extends LitElement {
                     <input
                       type="text"
                       class="filter-input"
-                      placeholder="Filter… !word excludes)"
+                      placeholder="Filter…  !word excludes"
                       title="Filter by title, label, categories, or type (Singing/Patter). Space-separated words must all match; prefix a word with ! to exclude. Case insensitive. (Ctrl+F)"
                       .value=${this.filterText}
                       @input=${this.onFilterInput}
