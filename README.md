@@ -9,7 +9,11 @@ but redesigned from scratch as a modern, cross-platform PWA.
 **Run CallerBuddy Now in the browser:**
 [https://vancem.github.io/CallerBuddy/](https://vancem.github.io/CallerBuddy/)
 
+To learn about **using** CallerBuddy, open the app above and read the help.  
+The rest of this file README is about how to BUILD or MODIFY CallerBuddy itself.  
 ---
+Before you can build CallerBuddy, you will need some developer software installed
+on your machine.   None of this costs money, but you do have to trust it.  
 
 ## First-Time Machine Setup
 
