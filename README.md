@@ -158,7 +158,7 @@ node scripts/generate-test-data.cjs
 ```
 
 This creates a `test-data/` folder with 3 short WAV files (2 singing calls
-with HTML lyrics, 1 patter with no lyrics).
+with Markdown lyrics, 1 patter with no lyrics).
 
 ---
 

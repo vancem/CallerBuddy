@@ -3,7 +3,7 @@
  *
  * Creates a `test-data/` folder at the project root with:
  *  - 3 WAV audio files following the LABEL - TITLE.wav naming convention
- *  - 2 matching HTML lyrics files (one song has no lyrics = patter)
+ *  - 2 matching Markdown lyrics files (one song has no lyrics = patter)
  *  - These files can be used by pointing CallerBuddyRoot at the test-data folder
  *
  * The WAV files are simple sine-wave tones, ~60–90 seconds each.
@@ -59,35 +59,17 @@ function generateWav(durationSec, freq, sampleRate = 44100) {
   return buf;
 }
 
-// -- Lyrics HTML generation -------------------------------------------------
+// -- Lyrics Markdown generation ---------------------------------------------
 
-function lyricsHtml(title, label, verses) {
-  const verseHtml = verses.map(v => `<p class="verse">${v}</p>`).join("\n");
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>${label} - ${title}</title>
-  <style>
-    body {
-      font-family: Georgia, serif;
-      max-width: 600px;
-      margin: 2em auto;
-      line-height: 1.8;
-      color: #222;
-    }
-    h1 { font-size: 1.4em; margin-bottom: 0.3em; }
-    .label { color: #888; font-size: 0.9em; }
-    .verse { margin: 1.2em 0; }
-  </style>
-</head>
-<body>
-  <h1>${title}</h1>
-  <p class="label">${label}</p>
-${verseHtml}
-</body>
-</html>
-`;
+function lyricsMd(title, label, verses) {
+  const body = verses
+    .map((v) => {
+      const [heading, ...rest] = v.split(":<br>");
+      const lines = rest.join(":<br>").split("<br>").map((l) => l.trim()).filter(Boolean);
+      return `## ${heading}\n${lines.join("  \n")}`;
+    })
+    .join("\n\n");
+  return `# ${title}\n_(${label})_\n\n${body}\n`;
 }
 
 // -- Main -------------------------------------------------------------------
@@ -104,8 +86,8 @@ function main() {
     generateWav(90, 440), // A4, 90 seconds
   );
   fs.writeFileSync(
-    path.join(OUT_DIR, song1Name + ".html"),
-    lyricsHtml("Sunny Side Singing", "SQD 101", [
+    path.join(OUT_DIR, song1Name + ".md"),
+    lyricsMd("Sunny Side Singing", "SQD 101", [
       "Opener:<br>Circle left and walk around the ring,<br>Walk right back, let's hear the caller sing.<br>Swing your partner, promenade along,<br>This is just a sunny singing song.",
       "Figure 1:<br>Heads go forward, back, then star thru,<br>Pass thru, do-sa-do like you always do.<br>Swing the corner lady round and round,<br>Promenade that girl back home to town.",
       "Figure 2:<br>Sides go forward, back, then star thru,<br>Pass thru, do-sa-do like you always do.<br>Swing the corner lady round and round,<br>Promenade that girl back home to town.",
@@ -123,8 +105,8 @@ function main() {
     generateWav(75, 523.25), // C5, 75 seconds
   );
   fs.writeFileSync(
-    path.join(OUT_DIR, song2Name + ".html"),
-    lyricsHtml("Mountain Morning", "RYL 202", [
+    path.join(OUT_DIR, song2Name + ".md"),
+    lyricsMd("Mountain Morning", "RYL 202", [
       "Opener:<br>Bow to your partner, bow to the corner too,<br>Circle to the left with the morning dew.<br>Reverse back, allemande left the corner girl,<br>Do-sa-do your own and promenade the world.",
       "Figure 1:<br>Heads square thru, four hands round you go,<br>Meet that corner, do-sa-do.<br>Swing thru, boys run to the right,<br>Promenade her home in the morning light.",
       "Figure 2:<br>Sides square thru, four hands round you go,<br>Meet that corner, do-sa-do.<br>Swing thru, boys run to the right,<br>Promenade her home in the morning light.",
