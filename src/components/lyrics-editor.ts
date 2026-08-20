@@ -14,6 +14,7 @@
 import { LitElement, css, html, nothing, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { live } from "lit/directives/live.js";
+import { ctxHelpBtnStyles } from "../styles/chrome.js";
 import { bumpLyricsScale } from "../utils/lyrics-scale.js";
 import { parseLyricsMarkdown } from "../utils/lyrics-markdown.js";
 import { htmlToLyricsMarkdown } from "../utils/html-to-lyrics-md.js";
@@ -461,7 +462,9 @@ export class LyricsEditor extends LitElement {
     );
   }
 
-  static styles = css`
+  static styles = [
+    ctxHelpBtnStyles,
+    css`
     :host {
       display: block;
       height: 100%;
@@ -525,28 +528,7 @@ export class LyricsEditor extends LitElement {
     }
 
     .ctx-help-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 1.125rem;
-      height: 1.125rem;
-      font-size: 0.7rem;
-      font-weight: 700;
-      border-radius: 50%;
-      border: 1px solid var(--cb-accent);
-      background: none;
-      color: var(--cb-accent);
-      cursor: pointer;
-      vertical-align: middle;
       margin-left: 2px;
-      padding: 0;
-      line-height: 1;
-      flex-shrink: 0;
-    }
-
-    .ctx-help-btn:hover {
-      border-color: var(--cb-accent-hover);
-      color: var(--cb-accent-hover);
     }
 
     .save-btn {
@@ -650,7 +632,8 @@ export class LyricsEditor extends LitElement {
       outline: 2px solid var(--cb-accent);
       outline-offset: -2px;
     }
-  `;
+  `,
+  ];
 }
 
 declare global {

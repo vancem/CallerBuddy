@@ -1,10 +1,13 @@
 import { css } from "lit";
+import { ctxHelpBtnStyles } from "../styles/chrome.js";
 
 /**
  * Styles for the `song-play` view (lyrics, patter/loop, transport, slider).
  * Kept in a separate module to keep `song-play.ts` focused on behavior.
  */
-export const songPlayStyles = css`
+export const songPlayStyles = [
+  ctxHelpBtnStyles,
+  css`
     :host {
       display: block;
       height: 100%;
@@ -236,31 +239,6 @@ export const songPlayStyles = css`
     }
 
     /* -- Contextual help --------------------------------------------------- */
-
-    .ctx-help-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 1.125rem;
-      height: 1.125rem;
-      font-size: 0.7rem;
-      font-weight: 700;
-      border-radius: 50%;
-      border: 1px solid var(--cb-accent);
-      background: none;
-      color: var(--cb-accent);
-      cursor: pointer;
-      vertical-align: middle;
-      margin-left: 6px;
-      padding: 0;
-      line-height: 1;
-    }
-
-    .ctx-help-btn:hover {
-      background: none;
-      border-color: var(--cb-accent-hover);
-      color: var(--cb-accent-hover);
-    }
 
     .adj-help-btn {
       margin-left: 4px;
@@ -762,4 +740,5 @@ export const songPlayStyles = css`
         flex-wrap: wrap;
       }
     }
-`;
+  `,
+];

@@ -26,6 +26,11 @@ import { LitElement, css, html, nothing } from "lit";
 import type { PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
+import {
+  chromeButtonStyles,
+  ctxHelpBtnStyles,
+  modalOverlayStyles,
+} from "../styles/chrome.js";
 import { PlaylistReorderController } from "../controllers/playlist-reorder-controller.js";
 import { PanelResizeController } from "../controllers/panel-resize-controller.js";
 import {
@@ -1362,7 +1367,7 @@ export class PlaylistEditor extends LitElement {
 
     return html`
       <div
-        class="getting-started-overlay"
+        class="getting-started-overlay cb-modal-overlay"
         @click=${() => this.dismissGettingStartedHint()}
       >
         <div
@@ -1408,7 +1413,7 @@ export class PlaylistEditor extends LitElement {
 
     return html`
       <div
-        class="rename-dialog-overlay"
+        class="rename-dialog-overlay cb-modal-overlay"
         @click=${(e: MouseEvent) => {
           if (e.target !== e.currentTarget) return;
           this.cancelRenameSong();
@@ -1570,7 +1575,7 @@ export class PlaylistEditor extends LitElement {
 
     return html`
       <div
-        class="rename-dialog-overlay"
+        class="rename-dialog-overlay cb-modal-overlay"
         @click=${(e: MouseEvent) => {
           if (e.target !== e.currentTarget) return;
           this.cancelCreateFolder();
@@ -1663,7 +1668,7 @@ export class PlaylistEditor extends LitElement {
     const hasLyrics = Boolean(song.lyricsFile.trim());
     return html`
       <div
-        class="delete-confirm-overlay"
+        class="delete-confirm-overlay cb-modal-overlay"
         @click=${(e: MouseEvent) => {
           if (e.target !== e.currentTarget) return;
           this.cancelDeleteSong();
@@ -2142,7 +2147,11 @@ export class PlaylistEditor extends LitElement {
     callerBuddy.state.openSingletonTab(TabType.Help, "Help", true, { sectionId });
   }
 
-  static styles = css`
+  static styles = [
+    ctxHelpBtnStyles,
+    modalOverlayStyles,
+    chromeButtonStyles,
+    css`
     :host {
       display: block;
       height: 100%;
@@ -2196,30 +2205,6 @@ export class PlaylistEditor extends LitElement {
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-    }
-
-    .ctx-help-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      width: 1.125rem;
-      height: 1.125rem;
-      font-size: 0.7rem;
-      font-weight: 700;
-      border-radius: 50%;
-      border: 1px solid var(--cb-accent);
-      background: none;
-      color: var(--cb-accent);
-      cursor: pointer;
-      padding: 0;
-      line-height: 1;
-    }
-
-    .ctx-help-btn:hover {
-      background: none;
-      border-color: var(--cb-accent-hover);
-      color: var(--cb-accent-hover);
     }
 
     .playlist-body {
@@ -2876,13 +2861,6 @@ export class PlaylistEditor extends LitElement {
 
     /* -- Delete confirm dialog --------------------------------------------- */
 
-    .delete-confirm-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.55);
-      z-index: 2100;
-    }
-
     .delete-confirm-modal {
       position: fixed;
       left: 50%;
@@ -2951,13 +2929,6 @@ export class PlaylistEditor extends LitElement {
     }
 
     /* -- Rename dialog ----------------------------------------------------- */
-
-    .rename-dialog-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.55);
-      z-index: 2100;
-    }
 
     .rename-dialog-modal {
       position: fixed;
@@ -3068,13 +3039,6 @@ export class PlaylistEditor extends LitElement {
 
     /* -- Getting started hint (shown once, after demo songs are added) ----- */
 
-    .getting-started-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.55);
-      z-index: 2100;
-    }
-
     .getting-started-modal {
       position: fixed;
       left: 50%;
@@ -3142,26 +3106,6 @@ export class PlaylistEditor extends LitElement {
 
     /* -- Shared button styles ---------------------------------------------- */
 
-    .primary {
-      border-radius: 6px;
-      border: 1px solid transparent;
-      padding: 6px 16px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      background: var(--cb-accent);
-      color: var(--cb-fg-on-accent);
-      cursor: pointer;
-    }
-
-    .primary:hover:not(:disabled) {
-      background: var(--cb-accent-hover);
-    }
-
-    .primary:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-
     .secondary {
       border-radius: 6px;
       border: 1px solid var(--cb-btn-border);
@@ -3174,27 +3118,6 @@ export class PlaylistEditor extends LitElement {
 
     .secondary:hover {
       background: var(--cb-btn-bg-hover);
-    }
-
-    .icon-btn {
-      background: none;
-      border: none;
-      color: var(--cb-fg-secondary);
-      font-size: 1rem;
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 4px;
-      line-height: 1;
-    }
-
-    .icon-btn:hover {
-      color: var(--cb-fg);
-      background: var(--cb-hover);
-    }
-
-    .muted {
-      color: var(--cb-fg-tertiary);
-      font-size: 0.85rem;
     }
 
     /* Narrow layout: playlist on top when host is taller than wide (not viewport MQ). */
@@ -3246,7 +3169,8 @@ export class PlaylistEditor extends LitElement {
         max-width: 27ch;
       }
     }
-  `;
+  `,
+  ];
 }
 
 declare global {

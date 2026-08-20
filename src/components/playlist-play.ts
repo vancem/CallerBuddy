@@ -15,6 +15,10 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
+import {
+  chromeButtonStyles,
+  ctxHelpBtnStyles,
+} from "../styles/chrome.js";
 import { PlaylistReorderController } from "../controllers/playlist-reorder-controller.js";
 import { PanelResizeController } from "../controllers/panel-resize-controller.js";
 import {
@@ -679,7 +683,10 @@ export class PlaylistPlay extends LitElement {
     return ms !== null ? formatClock(ms) : "—";
   }
 
-  static styles = css`
+  static styles = [
+    ctxHelpBtnStyles,
+    chromeButtonStyles,
+    css`
     :host {
       display: block;
       height: 100%;
@@ -742,30 +749,6 @@ export class PlaylistPlay extends LitElement {
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-    }
-
-    .ctx-help-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      width: 1.125rem;
-      height: 1.125rem;
-      font-size: 0.7rem;
-      font-weight: 700;
-      border-radius: 50%;
-      border: 1px solid var(--cb-accent);
-      background: none;
-      color: var(--cb-accent);
-      cursor: pointer;
-      padding: 0;
-      line-height: 1;
-    }
-
-    .ctx-help-btn:hover {
-      background: none;
-      border-color: var(--cb-accent-hover);
-      color: var(--cb-accent-hover);
     }
 
     .empty-playlist {
@@ -1103,33 +1086,6 @@ export class PlaylistPlay extends LitElement {
       font-style: italic;
     }
 
-    /* -- Shared styles ------------------------------------------------------ */
-
-    .primary {
-      border-radius: 6px;
-      border: 1px solid transparent;
-      padding: 4px 10px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      background: var(--cb-accent);
-      color: var(--cb-fg-on-accent);
-      cursor: pointer;
-    }
-
-    .primary:hover:not(:disabled) {
-      background: var(--cb-accent-hover);
-    }
-
-    .primary:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-
-    .muted {
-      color: var(--cb-fg-tertiary);
-      font-size: 0.85rem;
-    }
-
     /* Narrow layout: playlist on top when host is taller than wide (not viewport MQ). */
 
     @container cb-playlist-play (max-aspect-ratio: 6/5) {
@@ -1163,7 +1119,8 @@ export class PlaylistPlay extends LitElement {
         touch-action: none;
       }
     }
-  `;
+  `,
+  ];
 }
 
 declare global {

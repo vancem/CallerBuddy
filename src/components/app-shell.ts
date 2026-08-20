@@ -23,6 +23,7 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
+import { modalOverlayStyles } from "../styles/chrome.js";
 import { StateEvents, TabType, type EditorTabData, type TabInfo } from "../services/app-state.js";
 import {
   DIR_PICKER_IMPORT_ID,
@@ -539,7 +540,7 @@ export class AppShell extends LitElement {
   private renderFullscreenResumePrompt() {
     return html`
       <div
-        class="fs-startup-overlay fs-resume-overlay"
+        class="fs-startup-overlay fs-resume-overlay cb-modal-overlay"
         @click=${this.onFullscreenResumeNo}
       ></div>
       <div
@@ -580,7 +581,7 @@ export class AppShell extends LitElement {
   private renderDemoOfferPrompt() {
     return html`
       <div
-        class="fs-startup-overlay"
+        class="fs-startup-overlay cb-modal-overlay"
         @click=${() => {
           if (!this.demoInstallInProgress) this.onDemoOfferNo();
         }}
@@ -924,7 +925,7 @@ export class AppShell extends LitElement {
   private renderResetConfirm() {
     return html`
       <div
-        class="fs-startup-overlay"
+        class="fs-startup-overlay cb-modal-overlay"
         @click=${this.cancelResetCallerBuddy}
       ></div>
       <div
@@ -1062,7 +1063,9 @@ export class AppShell extends LitElement {
     });
   }
 
-  static styles = css`
+  static styles = [
+    modalOverlayStyles,
+    css`
     :host {
       display: block;
       height: 100vh;
@@ -1214,13 +1217,6 @@ export class AppShell extends LitElement {
     }
 
     /* ── Startup fullscreen prompt (above tabs & menu) ───────────────── */
-    .fs-startup-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.55);
-      z-index: 2100;
-    }
-
     .fs-startup-modal {
       position: fixed;
       left: 50%;
@@ -1385,7 +1381,8 @@ export class AppShell extends LitElement {
       word-break: break-word;
       background: var(--cb-panel-bg);
     }
-  `;
+  `,
+  ];
 }
 
 declare global {

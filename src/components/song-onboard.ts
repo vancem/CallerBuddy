@@ -14,6 +14,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { callerBuddy } from "../caller-buddy.js";
+import { ctxHelpBtnStyles, modalOverlayStyles } from "../styles/chrome.js";
 import { StateEvents, TabType } from "../services/app-state.js";
 import {
   computeDestNames,
@@ -501,7 +502,7 @@ export class SongOnboard extends LitElement {
     const names = this.collisionNames.join(", ");
     return html`
       <div
-        class="overwrite-overlay"
+        class="overwrite-overlay cb-modal-overlay"
         @click=${(e: MouseEvent) => {
           if (e.target !== e.currentTarget) return;
           this.closeOverwriteConfirm();
@@ -762,7 +763,10 @@ export class SongOnboard extends LitElement {
   // Styles
   // ---------------------------------------------------------------------------
 
-  static styles = css`
+  static styles = [
+    ctxHelpBtnStyles,
+    modalOverlayStyles,
+    css`
     :host {
       display: block;
       height: 100%;
@@ -856,31 +860,6 @@ export class SongOnboard extends LitElement {
       margin: 0;
     }
 
-    .ctx-help-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 1.125rem;
-      height: 1.125rem;
-      font-size: 0.7rem;
-      font-weight: 700;
-      border-radius: 50%;
-      border: 1px solid var(--cb-accent);
-      background: none;
-      color: var(--cb-accent);
-      cursor: pointer;
-      vertical-align: middle;
-      margin-left: 6px;
-      padding: 0;
-      line-height: 1;
-    }
-
-    .ctx-help-btn:hover {
-      background: none;
-      border-color: var(--cb-accent-hover);
-      color: var(--cb-accent-hover);
-    }
-
     .explain {
       font-size: 0.85rem;
       color: var(--cb-fg-secondary, #aaa);
@@ -955,13 +934,6 @@ export class SongOnboard extends LitElement {
     .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* -- Overwrite confirm dialog ------------------------------------------ */
-
-    .overwrite-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.55);
-      z-index: 2100;
-    }
 
     .overwrite-modal {
       position: fixed;
@@ -1161,7 +1133,8 @@ export class SongOnboard extends LitElement {
 
       .field-row { flex-direction: column; }
     }
-  `;
+  `,
+  ];
 }
 
 declare global {

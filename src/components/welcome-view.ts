@@ -23,6 +23,7 @@ import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
+import { modalOverlayStyles } from "../styles/chrome.js";
 import { TabType } from "../services/app-state.js";
 import {
   DIR_PICKER_ROOT_ID,
@@ -251,7 +252,7 @@ export class WelcomeView extends LitElement {
   private renderInstructions() {
     return html`
       <div
-        class="prompt-overlay"
+        class="prompt-overlay cb-modal-overlay"
         @click=${this.closeInstructions}
       ></div>
       <div
@@ -381,7 +382,7 @@ export class WelcomeView extends LitElement {
   private renderResetConfirm() {
     return html`
       <div
-        class="prompt-overlay"
+        class="prompt-overlay cb-modal-overlay"
         @click=${this.cancelResetCallerBuddy}
       ></div>
       <div
@@ -507,7 +508,9 @@ export class WelcomeView extends LitElement {
     }
   }
 
-  static styles = css`
+  static styles = [
+    modalOverlayStyles,
+    css`
     /*
      * Side margins restored to the pre-redesign centered-column approach
      * (gutter formula + centered max-width), but with the max-width scaled
@@ -684,13 +687,6 @@ export class WelcomeView extends LitElement {
       color: var(--cb-fg-tertiary);
     }
 
-    .prompt-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.55);
-      z-index: 2100;
-    }
-
     .prompt-modal {
       position: fixed;
       left: 50%;
@@ -802,7 +798,8 @@ export class WelcomeView extends LitElement {
     .instructions-img-confirm {
       width: 238px;
     }
-  `;
+  `,
+  ];
 }
 
 declare global {
