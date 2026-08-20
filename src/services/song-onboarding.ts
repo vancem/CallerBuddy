@@ -11,7 +11,7 @@
  * rules, derived from 90+ real-world square-dance song archives.
  */
 
-import { toTitleCase } from "./html-scraper.js";
+import { toTitleCase } from "../utils/text.js";
 import { importHtmlToMarkdown, importTextToMarkdown, replaceLyricsHeader } from "./lyrics-import.js";
 import { decodeHtmlBytes, filterLyricsText } from "../utils/lyrics-text-filter.js";
 import { scoreMp3Candidates, type Mp3Candidate } from "./mp3-candidate-scoring.js";

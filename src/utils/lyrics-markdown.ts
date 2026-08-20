@@ -6,6 +6,7 @@
  */
 
 import { Marked } from "marked";
+import { escapeHtml } from "./text.js";
 
 const lyricsMarked = new Marked();
 
@@ -34,14 +35,6 @@ lyricsMarked.use({
     },
   },
 });
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 /**
  * Parse CallerBuddy lyrics Markdown into an HTML fragment for `.lyrics-content`.

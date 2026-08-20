@@ -4,7 +4,7 @@
  * Prefers keeping text (easy to edit) over perfect structure.
  */
 
-import { toTitleCase } from "./html-scraper.js";
+import { toTitleCase } from "../utils/text.js";
 import { filterLyricsText, formatLyricsBodyLine } from "../utils/lyrics-text-filter.js";
 
 const SECTION_KEYWORD_RE =
