@@ -6,7 +6,7 @@ and play songs with independent pitch and tempo control while reading lyrics
 on-screen. It is loosely inspired by [SqView](https://www.SqView.se/download.php)
 but redesigned from scratch as a modern, cross-platform PWA.
 
-**Pre-release access:**
+**Run CallerBuddy Now in the browser:**
 [https://vancem.github.io/CallerBuddy/](https://vancem.github.io/CallerBuddy/)
 
 ---
