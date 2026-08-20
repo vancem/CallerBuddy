@@ -3,8 +3,10 @@
 ## Overview
 
 CallerBuddy is a tool for square dance callers to manage a collection of music
-(MP3 files) and Lyrics (HTML or MD files) so they can select songs for a dance,
-then play songs and read the associated lyrics during the dance. It is loosely
+(MP3 files) and lyrics so they can select songs for a dance, then play songs
+and read the associated lyrics during the dance. Library lyrics are Markdown
+(`.md`). HTML (and plain text) are import sources, converted during song
+onboarding. It is loosely
 based on the [SqView](https://www.SqView.se/download.php) program, the general
 purpose is the same, but most of the UI details are different.
 
@@ -19,10 +21,12 @@ needs to be cross platform. This is the prioritized list of platforms
 2. MacOS
 3. Chromebook
 4. Android Phone
-5. IPhone
+5. iPhone — **unsupported for V1** (no File System Access API). Help and Welcome
+   state this explicitly; do not plan extra work for Safari/iOS in the first
+   release.
 
-The two phone platforms are not as important, and iPhone is the least important.
-A minimum viable product would support Windows and macOS.
+The phone platform that matters for V1 is Android. A minimum viable product
+would support Windows and macOS (Chrome/Edge).
 
 The user is likely to wish to store the music and lyrics in some cloud service
 (OneDrive, Google Drive, ICloud) so it is available from more than one device
@@ -52,13 +56,14 @@ things locally for offline capabilities, however this storage will only be used
 for caching, from the user's point of view its use is invisible.
 
 From the user's point of view we expect all the data the user cares about will
-be a folder (or subfolder) of what we will call the CallerBuddyRoot. This is the
+be a folder (or subfolder) of what we will call the CallerBuddyRoot (in the app
+and Help this folder is named **CallerBuddySongs**). This is the
 folder that the user provides the app to initialize it. All music (MP3 files)
-and lyrics (HTML or MD files) will be in this folder. In addition the app will
+and lyrics (Markdown `.md` files in the library) will be in this folder. In addition the app will
 put any persistent state it needs in this location.
 
-In addition to the original song (MP3) file and the possible lyric file (HTML or
-MD), the app will have some general settings that will be put in a CallerBuddySettings.json
+In addition to the original song (MP3) file and the possible lyric file
+(Markdown; HTML/text may be imported and converted), the app will have some general settings that will be put in a CallerBuddySettings.json
 file and a small table of data associated with each song in a CallerBuddySongs.json file.
 It is possible that these files are in the cloud and are being accessed
 simultaneously from two different devices. This is not a important scenario, so
@@ -144,7 +149,7 @@ called
 
 and its lyrics could be stored in the file
 
-    "RYL 607 - Come Sail Away.HTML"
+    "RYL 607 - Come Sail Away.md"
 
 Thus we know the _label_ and the _title_ just by having the MP3 file. If there
 is an associated HTML or MD file then we also know the lyrics. All the other
@@ -362,11 +367,10 @@ WIDE number of conventions on exactly what is in the ZIP files and what the file
 names are called. While MP3 file format is standard, HTML files can vary widely,
 including images and other things that make things bloated and/or cause grief.
 
-The goal of the onboarding process is to end up with a MP3 file and a HTML file
-that follow the "<Label> - <Title>.\*" pattern for both the MP3 and HTML file
-and the HTML has been normalized to use the simple scheme of title, info,
-headers and paragraphs (with line breaks), as seen in "demoMusic\Maple Leaf
-Rag.html".
+The goal of the onboarding process is to end up with an MP3 file and a Markdown
+lyrics file that follow the "<Label> - <Title>.*" pattern. Source HTML/text from
+the ZIP is converted to CallerBuddy Markdown (title, info, section headings, and
+paragraphs).
 
 The demoMusic\songArchiveExamples.txt shows a list of file names for many
 different ZIP archive that have been unpacked. Note that each distinct archive
@@ -383,13 +387,12 @@ make our best guess for
 2.  THe title ("Witch Doctor") for "BS 2469 - WITCH DOCTOR\" folder in
     songArchiveExamples.txt
 3.  The file name of the MP3 file that will be used as the song.
-4.  The data in a simplified HTML for the lyrics.
+4.  The lyrics as CallerBuddy Markdown.
 
-To produce (4) we should be scraping the original HTML file for visible text
-looking for formats that look like the 'title' 'info' 'header' 'paragraph'
-structure that we are expecting. We take this scrapped text and try to form the
-simplified result that would look like the example in "demoMusic\Maple Leaf
-Rag.html"
+To produce (4) we convert the original HTML or text lyrics to Markdown
+(title, info, section headings, paragraphs). The conversion should be robust
+(it works on anything, even large files) but may ignore things outside the
+`<body>` element.
 
 Note that this scaping needs to be ROBUST (it works on anything, even large
 files) but probably ignores things outside the <body> element, and while it

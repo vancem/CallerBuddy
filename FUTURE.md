@@ -22,12 +22,9 @@ track of them. But they are low priority right now.
 - [] Named playlists - In Version 1 playlists are ephemeral. You should be able
   to save them as named entities (probably represented as files with JSON in
   them)
-- [] Song playing history - keep track of every day a song has been played to
-  the end (Or near the end). Introduce the concept of practice, which is when
-  playlists are short (e.g. single songs) or are designated as practice. Only
-  non-practice (that is performances) are tracked. Then provide filters to avoid
-  songs used in the last month, or sort songs by the amount of time since last
-  use.
+- [x] Song playing history (V1 Last / Played / practice checkbox) — shipped.
+  Still future: keep a full day-by-day history, auto-detect practice from
+  short playlists, and add filters such as "avoid songs used in the last month".
 - [x] Add editing of the lyrics - Typically callers buy songs on the internet
   that come in ZIP files that contain music (sometimes with several variations
   of the song), and lyrics in various formats (html, docx, text...). Depending

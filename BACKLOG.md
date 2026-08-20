@@ -282,15 +282,14 @@ it integrated into the code base.
   playback/editor flows. When we revisit OPFS, include aggressive caching of
   playlist assets, eviction policy (e.g. 10+ days unused), and clear UX when
   files are unavailable offline.
-- [q] MEDIUM: Drag-and-drop support in the playlist editor.
-  - The spec calls for drag-and-drop of songs into the playlist and reordering
-  within the playlist. Currently using buttons and context menus.
-  Drag-and-drop should be added for a more natural UX.
-- [] MEDIUM: Keyboard shortcuts for all major actions.
-  - The spec emphasizes keyboard usability (on-stage use). Need to add keyboard
-  handlers for: play/pause (Space), seek (arrows), stop (Esc), volume (+/-),
-  tab switching (Ctrl+Tab), etc. Shortcuts should appear in tooltips.
-- MEDIUM: Subfolder navigation in the playlist editor.
+- [x] MEDIUM: Drag-and-drop support in the playlist editor.
+  - DONE: Drag songs from the table onto the playlist, reorder within the
+  playlist, including touch-and-hold on Android.
+- [x] MEDIUM: Keyboard shortcuts for all major actions.
+  - DONE: Shortcuts for play/pause, seek, volume/pitch/tempo, tab switching
+  (Ctrl+] / Ctrl+[), playlist editor, Now Playing, and lyrics editor. Listed in
+  in-app Help and in control tooltips.
+- [x] MEDIUM: Subfolder navigation in the playlist editor.
   - The spec describes navigating into sub-folders of CallerBuddyRoot and
   opening additional editors in new tabs. Currently the editor only shows the
   root folder contents. Need to add folder entry rendering and "open in new
@@ -340,59 +339,23 @@ relevant design document.
 
 ## Features
 
-- [] SONG HISTORY - We want to keep track of the songs that where played so that
-callers can avoid playing any song repeatedly. First we must create two new
-data columns in the Songs database: (1) the date the song was last played and
-(2) a weighted average how much the song was played over time (a float value).
-A song will be considered to be played if the player cursor is at least 90% of
-the way through the song before the player was closed. There should be a
-'practice' button on the player that will say 'start practice' when the
-practice is off and 'stop practice' when the practice is on. The tooltip will
-explain that during practice the song is not marked as played for history
-purposes. This practice state is app wide (thus if a new song is played the
-state will be what it was for the last song), but not persistent restarting
-the app will reset it to practice being off.
-  - The date the last song was played will be updated when 90% of the song is
-  played. In CallerBuddySongs.json it will be stored as a date, but it will be displayed
-  in the song list editor as a 'last used' column which is the number of days
-  ago the song was played (a tooltip on the column will explain this)
-  - the weighted average will be computed as weighted exponential window of the
-  number of times the song was played in the past. The value of this average
-  is normalized to 2 when a song is played exactly once every 28 days forever.
-  The weight of the song drops by factor of 1/2 every 28 days. Every time a
-  song is played the new weight W is computed as Wnew = 1 + pow(2,
-  -delta/28)_Wold where Wold is the previous weight, delta is the number of
-  days between the current date and the last time the song was played
-  (conveniently stored in the songs data structure). Notice that if a song is
-  played every 28 days the weight converges to 1 + 1/2 + 1/4 + 1/8 .... = 1.
-  This number should be displayed in the song list editor as a column called
-  'played' that has a tooltip that says it is a the weighted average of how
-  often the song was played recently. It should take the W number computed
-  above, but it should scale it to the current time. e.g. Wdisp = W _ pow(2,
-  -delta/28). Where delta is the number of days between the current time and
-  the time the song was last played (if there is no last time played Wdisp
-  will be 0). The result is that if this displayed number is under 1 then it
-  is OK to play the song again without being too repetitive.
-- Add the ability to edit the lyrics of a song. The lyrics are assumed to to
-be HTML. There should be a button on the song player 'edit lyrics'.  
- If there are no lyrics, then a lyrics html file (named based on the MP3
-file) and initialized to with a title, one section and a figure with
-sample text. When in editing mode, the left pane which normally just
-displays the lyrics becomes an editor for the lyrics. There is a toolbar
-across the top with buttons for bolding (selected text) making a header
-(of selected text) Making an info block (the blue block), and saving. When
-saving the left pane goes back to just displaying the lyrics (and of
-course the lyric file will be updated). If there is a nice simple/easy
-editor control that already exists, use it, since the details above are
-negotiable. The goal is to allow for simple edits without making the code
-complex. We are shooting for simplicity in the code. Ideally the editor
-does not make many assumptions about the HTML (it does not need to be a
-particular style of HTML), but again simplicity is king, most HTML will be
-generated by the app itself, and that is the key scenario.
-  - DONE: Implemented using native `contenteditable` + `document.execCommand`
-  (no new dependencies). Toolbar: Bold, H2, Info, P, Save, Cancel. New lyrics
-  creation generates template HTML matching existing file format. See
-  AI_Logs/Summary.26-03-25.01.md.
+- [x] SONG HISTORY (V1) - Last-played date and weighted "Played" average are
+stored in CallerBuddySongs.json and shown in the playlist editor. A qualifying
+play is ~90% of song duration (pauses excluded). Practice is an app-wide
+checkbox on the song player (Ctrl+P); it is not persisted across restarts.
+  - Remaining ideas (named/practice-gated history, richer filters) are in
+  FUTURE.md.
+  - The date the last song was played is stored in CallerBuddySongs.json and
+  displayed as a 'Last' column (days ago).
+  - The weighted average is an exponential sliding window with increment 1 and
+  half-life 28 days. Displayed value under 1 means the song is used less often
+  than once a month on average. See in-app help "How the Played Average is
+  Calculated".
+- [x] Lyrics editor.
+  - DONE: Library lyrics are Markdown (`.md`). The song player and import review
+  share `lyrics-editor` (formatted + raw Markdown, Bold / heading / Info / P,
+  Save, Cancel). HTML/text from purchased ZIPs is converted on import. See
+  `src/services/lyrics-import.ts`.
 - [] WHen the code is pretty complete, an analysis should be done locate any
 lifetime issues. Lifetime issues (e.g. potential leaks) need an explicit
 GitHub issue tracking the problem.
@@ -402,16 +365,16 @@ JS-only and doesn't parse .ts files). Need @typescript-eslint/parser and
   - DONE: TypeScript-aware ESLint wired via `@typescript-eslint/parser` and
   `plugin:@typescript-eslint/recommended`; `npm run lint` covers
   `src/**/*.ts`.
-- [] Add Vitest unit tests for core services (song-library.ts, app-state.ts,
-audio-engine.ts). The project has Vitest as a design decision but no tests
-yet.
+- [x] Add Vitest unit tests for core services (song-library.ts, app-state.ts).
+  Audio-engine pitch/tempo quality tests remain deferred (FUTURE.md / design
+  Q&A): we test position/loop helpers, not that SoundTouch output "sounds right".
 - Add Playwright E2E tests for the main workflows (welcome → folder picker →
 playlist editor → play).
   - DONE: `e2e/basic-flow.spec.ts` (mocked File System Access API). CI runs
   `npm run e2e` after build/unit tests (see GitHub Actions workflow).
-- [] Implement settings persistence for break timer and patter timer durations
-(currently settings are loaded but the UI doesn't update CallerBuddySettings.json when
-the user changes timer values in the playlist-play or song-play views).
+- [x] Implement settings persistence for break timer and patter timer durations.
+  - DONE: playlist-play and song-play call `updateSetting` when the user changes
+  timer minutes.
 - [] Song table column filters (like Google Sheets). Currently only a global
 text filter is implemented. Per-column dropdown filters would match the spec.
 - [] The playlist editor should show the number of items in the playlist and
@@ -421,9 +384,8 @@ the app is stable; rely on browser devtools / exported diagnostics instead.
 
 ## Bugs
 
-- [] The old `src/my-element.ts` (Vite demo) and `src/welcome-view.ts` (pre-
-architecture) files have been deleted. If any import references them, that is
-a build error to fix.
+- [x] The old `src/my-element.ts` (Vite demo) and pre-architecture welcome view
+  have been deleted; no remaining imports.
 
 ## Questions/Clarifications.
 

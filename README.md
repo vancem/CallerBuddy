@@ -1,7 +1,8 @@
 # CallerBuddy
 
 CallerBuddy is a Progressive Web App for square dance callers to manage a
-collection of music (MP3) and lyrics (HTML/MD), build playlists for a dance,
+collection of music (MP3) and lyrics (Markdown in the library; HTML/text on
+import), build playlists for a dance,
 and play songs with independent pitch and tempo control while reading lyrics
 on-screen. It is loosely inspired by [SqView](https://www.SqView.se/download.php)
 but redesigned from scratch as a modern, cross-platform PWA.
@@ -229,9 +230,9 @@ Before pushing to `main`, run the same build + test pipeline that CI runs:
 npm run ci
 ```
 
-This executes `npm run build` (TypeScript type-check + Vite bundle) followed by
-`npm test` (all unit tests). If it passes locally, the GitHub Actions build will
-pass too.
+This executes `npm run build` (TypeScript type-check + Vite bundle), `npm test`
+(unit tests), `npm run lint`, and `npm run e2e` (Playwright). If it passes
+locally, the GitHub Actions build will pass too.
 
 ---
 
@@ -239,24 +240,26 @@ pass too.
 
 ### Unit tests (Vitest)
 
-90 tests across 6 files. Runs in ~300ms.
+Tests live alongside the source files they cover (`*.test.ts` next to the
+corresponding `*.ts`). Run `npm test` for the current count.
 
 ```bash
 npm test              # single run
 npm run test:watch    # re-run on file changes
 ```
 
-Tests live alongside the source files they cover (`*.test.ts` next to the
-corresponding `*.ts`). They cover:
+They cover:
 
-- **Pure functions:** `format.ts`, `song.ts`, `settings.ts`, `mergeSongs()`
+- **Pure functions:** time formatting, song filename parse/build, settings
+  normalize, lyrics import, play-history math, song-table text filter
 - **Stateful logic:** `AppState` playlist operations, tab management, events
 - **Mocked integrations:** `scanDirectory`, `loadSongsJson`, `saveSongsJson`,
-  `detectBPM`
+  `detectBPM`, ZIP onboarding heuristics
 
 ### E2E tests (Playwright)
 
-6 tests covering the core happy path. Runs in ~3-4 seconds (Chromium only).
+Chromium-only tests in `e2e/basic-flow.spec.ts`. Run `npm run e2e` for the
+current count (~a few seconds).
 
 ```bash
 npm run e2e           # headless run
@@ -369,7 +372,7 @@ gh repo edit vancem/CallerBuddy --description "..." --homepage "https://vancem.g
 |---|---|
 | [CallerBuddySpec.md](CallerBuddySpec.md) | Product specification: requirements, user workflows, UI layout, file conventions. Read this first. |
 | [BACKLOG.md](BACKLOG.md) | Active task list, design rules, design philosophy, and all major design decisions with rationale (framework choices, audio engine, state management, etc.). |
-| [FUTURE.md](FUTURE.md) | Features deferred from V1 (named playlists, play history, song structure analysis). |
+| [FUTURE.md](FUTURE.md) | Features deferred from V1 (named playlists, richer play-history filters, song structure analysis). |
 | [RELEASE.md](RELEASE.md) | Versioning scheme and GitHub Pages deployment process. |
 | [src/caller-buddy.ts](src/caller-buddy.ts) | Application singleton. Start here for the code: it owns all services, coordinates initialization, and handles the song-play lifecycle. |
 | [src/services/app-state.ts](src/services/app-state.ts) | Centralized state with EventTarget-based change notification. Manages tabs, playlist, settings, and playback state. |
@@ -384,29 +387,37 @@ CallerBuddy/
   src/
     caller-buddy.ts           # App singleton (entry point for logic)
     main.ts                   # Bootstrap: creates singleton, mounts <app-shell>
+    help-content.md           # In-app user help (Markdown)
+    help-toc.ts               # Help table of contents (must match heading ids)
     components/               # Lit web components
       app-shell.ts            #   Root shell with tab management
       welcome-view.ts         #   First-run folder picker
       playlist-editor.ts      #   Song browser + playlist builder
       playlist-play.ts        #   Now Playing view with break timer
       song-play.ts            #   Single-song playback with controls
+      song-onboard.ts         #   ZIP/folder import review
+      lyrics-editor.ts        #   Shared lyrics Markdown editor
+      help-view.ts            #   In-app help tab
       tab-bar.ts              #   Chrome-style tab strip
+    controllers/              # Panel resize, playlist drag-and-drop
     services/                 # Core services (no UI)
       app-state.ts            #   Centralized state + events
       audio-engine.ts         #   Web Audio + SoundTouchJS playback
       bpm-detector.ts         #   Background BPM analysis
       file-system-service.ts  #   File System Access API wrapper
       song-library.ts         #   Scan folders, load/merge/save CallerBuddySongs.json
+      song-onboarding.ts      #   ZIP/folder import heuristics
+      lyrics-import.ts        #   HTML/text → lyrics Markdown
       logger.ts               #   Logging with levels
     models/                   # Data models
       song.ts                 #   Song interface + parsing utilities
-      settings.ts             #   App settings (timers)
+      settings.ts             #   App settings (timers, panel sizes)
     utils/
       format.ts               #   Time formatting helpers
   e2e/
     basic-flow.spec.ts        # Playwright E2E tests
   scripts/
-    generate-test-data.cjs    # Creates test WAV/HTML files
+    generate-test-data.cjs    # Creates test WAV/lyrics files
     inject-version.cjs        # Stamps version into source + manifest
   public/                     # Static assets copied to dist (icons, manifest, SW, Google verify HTML)
 ```
