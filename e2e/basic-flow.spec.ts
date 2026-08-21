@@ -393,7 +393,7 @@ test.describe("CallerBuddy basic flow", () => {
     const items = editor.locator("ol.playlist-list li.playlist-item");
     await expect(items).toHaveCount(3);
 
-    const playBtn = editor.locator("button.primary", { hasText: "Play" });
+    const playBtn = editor.locator("button.primary", { hasText: "Play playlist" });
     await expect(playBtn).toBeEnabled();
   });
 
@@ -404,14 +404,14 @@ test.describe("CallerBuddy basic flow", () => {
     // Start playlist playback
     await page
       .locator("playlist-editor")
-      .locator("button.primary", { hasText: "Play" })
+      .locator("button.primary", { hasText: "Play playlist" })
       .click();
     await expect(page.locator("playlist-play")).toBeVisible();
 
     // Play the first song (auto-selected)
     await page
       .locator("playlist-play")
-      .locator("button.primary", { hasText: "Play" })
+      .locator("button.primary", { hasText: "Play song" })
       .click();
     await expect(page.locator("song-play")).toBeVisible();
 
@@ -439,13 +439,13 @@ test.describe("CallerBuddy basic flow", () => {
     await patterRow.locator("button.add-btn").click();
 
     // Start playlist playback
-    await editor.locator("button.primary", { hasText: "Play" }).click();
+    await editor.locator("button.primary", { hasText: "Play playlist" }).click();
     await expect(page.locator("playlist-play")).toBeVisible();
 
     // Play the patter song
     await page
       .locator("playlist-play")
-      .locator("button.primary", { hasText: "Play" })
+      .locator("button.primary", { hasText: "Play song" })
       .click();
     await expect(page.locator("song-play")).toBeVisible();
 
@@ -473,12 +473,12 @@ test.describe("CallerBuddy basic flow", () => {
       .locator("table.song-table tbody tr")
       .filter({ hasText: "Missing Audio" });
     await missingRow.locator("button.add-btn").click();
-    await editor.locator("button.primary", { hasText: "Play" }).click();
+    await editor.locator("button.primary", { hasText: "Play playlist" }).click();
     await expect(page.locator("playlist-play")).toBeVisible();
 
     await page
       .locator("playlist-play")
-      .locator("button.primary", { hasText: "Play" })
+      .locator("button.primary", { hasText: "Play song" })
       .click();
     await expect(page.locator("song-play")).not.toBeVisible();
     await expect(page.getByRole("alert")).toContainText("Could not play");

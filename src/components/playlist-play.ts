@@ -314,7 +314,7 @@ export class PlaylistPlay extends LitElement {
             ? html`<div class="empty-playlist">
                 <p class="muted">
                   No songs in playlist. Add songs in the Playlist Editor, then
-                  press Play (or &lt;Enter&gt;).
+                  press Play playlist (or &lt;Enter&gt;).
                 </p>
               </div>`
             : html`
@@ -397,7 +397,7 @@ export class PlaylistPlay extends LitElement {
               title="Play selected song (Enter / Space)"
               @click=${() => this.playSelected()}
             >
-              ▶ Play
+              ▶ Play song
             </button>
             <button
               title="Reset played status for all songs (Ctrl+R)"

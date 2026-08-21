@@ -106,7 +106,7 @@ You can remove items in the playlist by clicking the X beside the entry, you can
 remove all entries in the list with the 'Reset' button at the bottom (Ctrl+R).
 If you Reset by mistake, 'Undo' (Ctrl+Z) restores the playlist.
 
-When you are happy with your playlist, click the 'Play' button (or type &lt;Enter&gt;).
+When you are happy with your playlist, click the **Play playlist** button (or type &lt;Enter&gt;).
 
 ## Now Playing
 
@@ -114,7 +114,7 @@ A completed playlist moves on to the 'Now Playing' page.  This page represents
 your progress at a single performance.   Each song has a checkbox beside it 
 that indicates if it has been played or not, and by default the first unchecked
 song is selected. Typing the **space bar**, or  &lt;Enter&gt; or clicking
-the 'Play' button will play the selected song.   Thus in a typical dance 
+the **Play song** button will play the selected song.   Thus in a typical dance 
 you simply need to keep hitting the **space bar** to play the next song.
 
 However you are free to modify your playlist during the performance. 

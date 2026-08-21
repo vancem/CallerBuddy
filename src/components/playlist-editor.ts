@@ -14,7 +14,7 @@
  *  │  2. Song B  │  │📁 sub│       │     │      │       │
  *  │  3. Song C  │  │Title │ Label │ Cat │ Rank │       │
  *  │             │  └──────┴───────┴─────┴──────┘       │
- *  │  [▶ Play]   │                                      │
+ *  │  [Play playlist] │                                 │
  *  └─────────────┴──────────────────────────────────────┘
  *
  * Closable folder tabs (not the root editor) show Close beside Play/Clear; Esc closes the tab.
@@ -806,7 +806,7 @@ export class PlaylistEditor extends LitElement {
               title="Play the playlist (Enter)"
               @click=${this.onPlayPlaylist}
             >
-              ▶ Play
+              ▶ Play playlist
             </button>
             ${playlist.length > 0
               ? html`
@@ -1383,7 +1383,7 @@ export class PlaylistEditor extends LitElement {
           </h2>
           <p class="getting-started-body">
             To get started, click the <strong>+</strong> on songs to add them
-            to the playlist and click the <strong>Play</strong> button (or &lt;Enter&gt;) to play
+            to the playlist and click the <strong>Play playlist</strong> button (or &lt;Enter&gt;) to play
             the playlist you created.  
           </p>
           <p> 
