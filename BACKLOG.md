@@ -248,7 +248,14 @@ strategy, offline fallback, install prompt).
   aligned with app UI; start_url / scope at app root.
   - Service worker caching: static assets cache-first; app shell cached for
   offline; cache versioning via version in cache name so updates invalidate
-  old caches.()
+  old caches.
+  - **Updates must not take over a live window.** `skipWaiting()` +
+    `clients.claim()` in install/activate deletes the previous cache
+    (`callerbuddy-v<version>`) while the open page still needs the old hashed
+    JS/CSS. That can hang until the user closes the app/tab. New workers stay
+    waiting until the page posts `skipWaiting` when idle (no current song),
+    then the page reloads on `controllerchange`. Existing 1.0.0 windows that
+    never send that message keep their old worker until the next restart.
   - Offline: serve cached app shell when offline; show clear offline indicator;
   queue writes (e.g. to CallerBuddyRoot) for sync when back online.
   - Install prompt: trigger manually from UI (e.g. after folder setup), not

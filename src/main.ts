@@ -108,6 +108,7 @@ import {
   logDeviceInfo,
   logEnv,
 } from "./services/env-log.js";
+import { registerProductionServiceWorker } from "./services/pwa-update.js";
 import "./components/app-shell.js";
 import { initLyricsScale } from "./utils/lyrics-scale.js";
 
@@ -158,28 +159,15 @@ installEnvListeners();
 
 callerBuddy.init();
 
-// Register service worker only in production (avoids caching issues in dev)
-if (!import.meta.env.DEV && "serviceWorker" in navigator) {
+// Register service worker only in production (avoids caching issues in dev).
+// Updates wait until the song player is closed so we don't yank caches out
+// from under a live window (that hang cleared only after restart).
+if (!import.meta.env.DEV) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register(import.meta.env.BASE_URL + "sw.js", { updateViaCache: "none" })
-      .then((registration) => {
-        document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState !== "visible" || !navigator.onLine) return;
-          const ctrl = new AbortController();
-          const tid = setTimeout(() => ctrl.abort(), 1500);
-          fetch(import.meta.env.BASE_URL + "sw.js", {
-            method: "HEAD",
-            signal: ctrl.signal,
-            cache: "no-store",
-          })
-            .then(() => {
-              clearTimeout(tid);
-              registration.update();
-            })
-            .catch(() => clearTimeout(tid));
-        });
-      })
-      .catch(() => {});
+    registerProductionServiceWorker({
+      isIdle: () =>
+        !callerBuddy.audio.isPlaying() && callerBuddy.state.currentSong === null,
+      reload: () => window.location.reload(),
+    });
   });
 }

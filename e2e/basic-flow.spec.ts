@@ -397,6 +397,31 @@ test.describe("CallerBuddy basic flow", () => {
     await expect(playBtn).toBeEnabled();
   });
 
+  test("filter Enter focuses the song list; + adds and clears the filter", async ({
+    page,
+  }) => {
+    await goToEditor(page);
+    const editor = page.locator("playlist-editor");
+    const filter = editor.locator(".filter-input");
+    const table = editor.locator("table.song-table");
+    const items = editor.locator("ol.playlist-list li.playlist-item");
+
+    await page.keyboard.press("ControlOrMeta+f");
+    await expect(filter).toBeFocused();
+    await page.keyboard.type("Patter");
+    await expect(
+      table.locator("tbody tr").filter({ hasText: "Steady Groove Patter" }),
+    ).toBeVisible();
+
+    await page.keyboard.press("Enter");
+    await expect(table).toBeFocused();
+
+    await page.keyboard.press("=");
+    await expect(items).toHaveCount(1);
+    await expect(items).toContainText("Steady Groove Patter");
+    await expect(filter).toHaveValue("");
+  });
+
   test("plays a singing call with lyrics", async ({ page }) => {
     await goToEditor(page);
     await buildPlaylist(page);

@@ -1,7 +1,13 @@
-/* built: 2026-08-21T13:22:10.260Z */
-const CACHE_NAME = "callerbuddy-v1.0.0-a493de4d";
+/* built: 2026-08-21T14:25:05.813Z */
+const CACHE_NAME = "callerbuddy-v1.0.1-d2bf83d6-dirty";
 const PRECACHE_URLS = ["","index.html"];
 
+/**
+ * Do not skipWaiting() here. Taking over a live window and deleting the previous
+ * cache (new CACHE_NAME on each version) leaves the old page fetching hashed
+ * assets that no longer exist — the UI can hang until the window is closed.
+ * The page posts "skipWaiting" when it is idle, then reloads on controllerchange.
+ */
 self.addEventListener("install", (event) => {
   const base = new URL("./", self.location).href;
   event.waitUntil(
@@ -9,30 +15,42 @@ self.addEventListener("install", (event) => {
       cache.addAll(PRECACHE_URLS.map((url) => base + url))
     )
   );
-  self.skipWaiting();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data === "skipWaiting") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
+    (async () => {
+      await self.clients.claim();
+      const keys = await caches.keys();
+      await Promise.all(
         keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
       );
-    })
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   if (!event.request.url.startsWith(self.location.origin)) return;
 
+  let pathname = "";
+  try {
+    pathname = new URL(event.request.url).pathname;
+  } catch {
+    return;
+  }
+
+  // Let the browser fetch the worker script itself (update checks).
+  if (pathname.endsWith("/sw.js")) return;
+
   // Demo music is large and fetched on demand — do not intercept (avoids the
   // short network timeout and keeps install-time precache free of ~10MB assets).
-  try {
-    if (new URL(event.request.url).pathname.includes("/demo/")) return;
-  } catch {
-    /* ignore */
-  }
+  if (pathname.includes("/demo/")) return;
 
   // Navigation requests (HTML pages): network first with 1s timeout so we get
   // fresh content when online but don't hang long when offline.
@@ -47,9 +65,17 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return response;
         })
-        .catch(() => {
+        .catch(async () => {
           clearTimeout(timeoutId);
-          return caches.match(event.request);
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          const shell =
+            (await caches.match(new URL("./", self.location).href)) ||
+            (await caches.match(new URL("./index.html", self.location).href));
+          return (
+            shell ||
+            new Response("Offline", { status: 503, statusText: "Offline" })
+          );
         })
     );
     return;

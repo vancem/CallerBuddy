@@ -96,7 +96,11 @@ You can add songs to the playlist by clicking on the + (or typing +), or by drag
 to the playlist area.   When you drag, you can place the song in the order you want
 it by finishing the drag at the desired spot.    You can also rearrange songs already
 on the playlist by dragging them to the desired spot.   Dragging on Android works, you 
-simply touch and hold to start a drag.  
+simply touch and hold to start a drag.
+
+A fast keyboard search-and-add loop is **Ctrl+F**, type a word, **Enter** (moves
+focus to the matching list), then **+**.  Adding with **+** or **Play now** (**P**)
+clears the text filter so you can search for the next song the same way.  
 
 If you right click on a row of a song, all the operations you can perform on the song
 are present in a context menu.   To support touch, there is a ⋮ icon at the far right
@@ -904,13 +908,14 @@ overusing or underusing a particular song.
 ### Playlist Editor shortcuts
 | Key           | Action                                      |
 | ------------- | ------------------------------------------- |
-| + / =         | Add focused song to playlist                |
-| P             | Play now (add focused song and play)        |
+| + / =         | Add focused song to playlist (clears text filter) |
+| P             | Play now (add focused song and play; clears text filter) |
 | ↑ / ↓         | Move song-table selection                   |
 | Ctrl+F        | Focus the song filter                       |
+| Enter (in filter) | Move focus to the song list             |
 | Ctrl+R        | Reset (clear) the playlist                  |
 | Ctrl+Z        | Undo last playlist Reset                    |
-| Enter         | Play the playlist                           |
+| Enter         | Play the playlist (when not in the filter)  |
 | Esc           | Cancel dialog, or close a folder editor tab |
 
 ### Now Playing shortcuts

@@ -902,7 +902,7 @@ export class PlaylistEditor extends LitElement {
                       type="text"
                       class="filter-input"
                       placeholder="Filter…  !word excludes"
-                      title="Filter by title, label, categories, or type (Singing/Patter). Space-separated words must all match; prefix a word with ! to exclude. Case insensitive. (Ctrl+F)"
+                      title="Filter by title, label, categories, or type (Singing/Patter). Space-separated words must all match; prefix a word with ! to exclude. Case insensitive. Ctrl+F focuses this box; Enter moves to the song list."
                       .value=${this.filterText}
                       @input=${this.onFilterInput}
                       @keydown=${this.onFilterKeydown}
@@ -1271,12 +1271,13 @@ export class PlaylistEditor extends LitElement {
   private addToPlaylistFromCtx(position: "start" | "end") {
     if (!this.contextTarget || this.contextTarget.kind !== "song") return;
     const song = this.contextTarget.song;
+    this.contextTarget = null;
     if (position === "start") {
       void callerBuddy.insertSongAtStartOfPlaylist(song);
+      this.clearTextFilter();
     } else {
-      void callerBuddy.addSongToPlaylist(song);
+      void this.addToPlaylist(song);
     }
-    this.contextTarget = null;
   }
 
   private async playSongFromCtx() {
@@ -2027,17 +2028,27 @@ export class PlaylistEditor extends LitElement {
     return idx === 0 ? arrow : `${arrow}${idx + 1}`;
   }
 
-  /** Consume Enter inside the filter so it doesn't bubble up to the
-   *  page-level keydown handler (which would start playback). */
+  /**
+   * Filter/rank boxes: Enter in the text filter moves focus to the song list
+   * (so + / P apply to the highlighted row). Enter is consumed in both boxes
+   * so it does not start playlist playback.
+   */
   private onFilterKeydown(e: KeyboardEvent) {
-    if (e.key === "Enter") e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = e.target as HTMLInputElement;
+      if (t.classList.contains("filter-input")) {
+        queueMicrotask(() => this.focusSongTable());
+      }
+      return;
+    }
     if (e.key === "Escape") {
       const t = e.target as HTMLInputElement;
       if (t.classList.contains("filter-input") && this.filterText) {
         e.preventDefault();
         e.stopPropagation();
-        this.filterText = "";
-        this.persistBrowserViewImmediate();
+        this.clearTextFilter();
         queueMicrotask(() => this.focusSongTable());
       }
     }
@@ -2050,6 +2061,12 @@ export class PlaylistEditor extends LitElement {
 
   private onClearFilter(e: MouseEvent) {
     e.stopPropagation();
+    this.clearTextFilter();
+  }
+
+  /** Clear the song-table text filter (not rank) and persist the empty value. */
+  private clearTextFilter() {
+    if (!this.filterText) return;
     this.filterText = "";
     this.persistBrowserViewImmediate();
   }
@@ -2127,6 +2144,7 @@ export class PlaylistEditor extends LitElement {
 
   private async addToPlaylist(song: Song) {
     await callerBuddy.addSongToPlaylist(song);
+    this.clearTextFilter();
   }
 
   /**
@@ -2134,7 +2152,7 @@ export class PlaylistEditor extends LitElement {
    * See CallerBuddySpec.md §"Single song Workflow".
    */
   private async playSongNow(song: Song) {
-    await callerBuddy.addSongToPlaylist(song);
+    await this.addToPlaylist(song);
     callerBuddy.openPlaylistPlay();
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = "wait";
