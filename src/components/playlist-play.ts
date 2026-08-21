@@ -21,6 +21,7 @@ import {
 } from "../styles/chrome.js";
 import { PlaylistReorderController } from "../controllers/playlist-reorder-controller.js";
 import { PanelResizeController } from "../controllers/panel-resize-controller.js";
+import { CountdownAlarmController } from "../controllers/countdown-alarm-controller.js";
 import {
   DEFAULT_BREAK_TIMER_MINUTES,
   DEFAULT_PLAYLIST_PANEL_HEIGHT,
@@ -51,10 +52,11 @@ export class PlaylistPlay extends LitElement {
   @state() private isStartingPlayback = false;
 
   // Break timer
-  @state() private breakTimerEnabled = true;
   @state() private breakMinutes = DEFAULT_BREAK_TIMER_MINUTES;
-  @state() private breakCountdown = 0; // seconds remaining
-  @state() private breakTimerRunning = false;
+  private breakTimer = new CountdownAlarmController(this, {
+    playBeep: () => callerBuddy.audio.playBeep(),
+    alarmCapMs: () => Math.max(0, Math.round(this.breakMinutes * 60 * 1000)),
+  });
 
   // Clock
   @state() private clockTime = "";
@@ -87,15 +89,12 @@ export class PlaylistPlay extends LitElement {
   private breakWakeLock = new WakeLockService();
 
   private clockInterval: number | null = null;
-  private breakInterval: number | null = null;
-  private breakAlarmInterval: number | null = null;
-  /** Stops {@link breakAlarmInterval} after {@link breakMinutes} from alarm start. */
-  private breakAlarmStopTimeout: number | null = null;
 
   connectedCallback() {
     super.connectedCallback();
     void this._hostLayoutRo;
     this.breakMinutes = callerBuddy.state.settings.breakTimerMinutes;
+    this.breakTimer.setDurationSeconds(Math.round(this.breakMinutes * 60));
     this.resizerX.width =
       callerBuddy.state.settings.playlistPanelWidth ?? DEFAULT_PLAYLIST_PANEL_WIDTH;
     this.resizerY.size =
@@ -128,7 +127,7 @@ export class PlaylistPlay extends LitElement {
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
 
   private _boundWindowBlur = () => {
-    if (this.breakTimerRunning && this.breakInterval !== null) {
+    if (this.breakTimer.running && this.breakTimer.ticking) {
       this.pauseBreakTimer();
       this.breakPausedByBlur = true;
     }
@@ -448,7 +447,7 @@ export class PlaylistPlay extends LitElement {
                   title="When enabled, plays a chime at zero and every 30 sec thereafter (B)">
                   <input
                     type="checkbox"
-                    .checked=${this.breakTimerEnabled}
+                    .checked=${this.breakTimer.enabled}
                     @change=${this.toggleBreakTimer}
                   />
                   Enabled
@@ -459,7 +458,7 @@ export class PlaylistPlay extends LitElement {
                   title="Start or stop break timer (S)"
                   @click=${this.onBreakStartStopClick}
                 >
-                  ${this.breakTimerRunning ? "Stop" : "Start"}
+                  ${this.breakTimer.running ? "Stop" : "Start"}
                 </button>
               </div>
               <div class="break-input-row">
@@ -474,11 +473,11 @@ export class PlaylistPlay extends LitElement {
                   @keydown=${this.onBreakMinutesKeydown}
                 />
               </div>
-              <div class="countdown time-row ${this.breakTimerRunning ? "" : "countdown-idle"}">
+              <div class="countdown time-row ${this.breakTimer.running ? "" : "countdown-idle"}">
                 <span class="time-label">Time left:</span>
-                <span class="time-value ${this.breakTimerRunning && this.breakCountdown <= 0 ? "alarm" : ""}">
-                 ${this.breakTimerRunning
-                    ? formatCountdown(this.breakCountdown)
+                <span class="time-value ${this.breakTimer.running && this.breakTimer.countdown <= 0 ? "alarm" : ""}">
+                 ${this.breakTimer.running
+                    ? formatCountdown(this.breakTimer.countdown)
                     : formatCountdown(Math.round(this.breakMinutes * 60))}
                 </span>
               </div>
@@ -552,21 +551,15 @@ export class PlaylistPlay extends LitElement {
   }
 
   private toggleBreakTimerEnabled() {
-    this.setBreakTimerEnabled(!this.breakTimerEnabled);
+    this.setBreakTimerEnabled(!this.breakTimer.enabled);
   }
 
   private setBreakTimerEnabled(enabled: boolean) {
-    if (this.breakTimerEnabled === enabled) return;
-    this.breakTimerEnabled = enabled;
-    if (!enabled) {
-      this.stopBreakAlarm();
-    } else if (this.breakTimerRunning && this.breakCountdown <= 0) {
-      this.playBreakAlarm();
-    }
+    this.breakTimer.setEnabled(enabled);
   }
 
   private onBreakStartStopClick() {
-    if (this.breakTimerRunning) {
+    if (this.breakTimer.running) {
       this.stopBreakTimer();
     } else {
       this.startBreakTimer();
@@ -585,7 +578,7 @@ export class PlaylistPlay extends LitElement {
   private onBreakMinutesChange(e: Event) {
     const v = Number((e.target as HTMLInputElement).value);
     this.breakMinutes = Number.isFinite(v) && v >= 0 ? v : DEFAULT_BREAK_TIMER_MINUTES;
-    if (this.breakTimerRunning) {
+    if (this.breakTimer.running) {
       this.stopBreakTimer();
     }
     void callerBuddy.updateSetting("breakTimerMinutes", this.breakMinutes);
@@ -593,78 +586,26 @@ export class PlaylistPlay extends LitElement {
 
   private startBreakTimer() {
     this.stopBreakTimer();
-    this.breakCountdown = Math.round(this.breakMinutes * 60);
-    this.breakTimerRunning = true;
+    this.breakTimer.setDurationSeconds(Math.round(this.breakMinutes * 60));
+    this.breakTimer.start();
     this.breakPausedByBlur = false;
-    this.startBreakTick();
     void this.breakWakeLock.acquire();
   }
 
-  private startBreakTick() {
-    if (this.breakInterval !== null) return;
-    this.breakInterval = window.setInterval(() => {
-      this.breakCountdown--;
-      if (this.breakCountdown === 0 && this.breakTimerEnabled) {
-        this.playBreakAlarm();
-      }
-    }, 1000);
-  }
-
   private stopBreakTimer() {
-    this.breakTimerRunning = false;
     this.breakPausedByBlur = false;
-    if (this.breakInterval !== null) {
-      clearInterval(this.breakInterval);
-      this.breakInterval = null;
-    }
-    this.stopBreakAlarm();
+    this.breakTimer.stop();
     void this.breakWakeLock.release();
-  }
-
-  private stopBreakAlarm() {
-    if (this.breakAlarmInterval !== null) {
-      clearInterval(this.breakAlarmInterval);
-      this.breakAlarmInterval = null;
-    }
-    if (this.breakAlarmStopTimeout !== null) {
-      clearTimeout(this.breakAlarmStopTimeout);
-      this.breakAlarmStopTimeout = null;
-    }
   }
 
   /** Pause the break timer tick without resetting countdown (used on window blur). */
   private pauseBreakTimer() {
-    if (this.breakInterval !== null) {
-      clearInterval(this.breakInterval);
-      this.breakInterval = null;
-    }
-    this.stopBreakAlarm();
+    this.breakTimer.pause();
   }
 
   /** Resume the break timer tick from where it left off (used on window focus). */
   private resumeBreakTimer() {
-    if (!this.breakTimerRunning || this.breakInterval !== null) return;
-    this.startBreakTick();
-  }
-
-  private playBreakAlarm() {
-    if (!this.breakTimerEnabled) return;
-    callerBuddy.audio.playBeep();
-    // Replay every 30 seconds; stop after break-length wall time so it cannot run forever.
-    this.breakAlarmInterval = window.setInterval(() => {
-      callerBuddy.audio.playBeep();
-    }, 30_000);
-    if (this.breakAlarmStopTimeout !== null) {
-      clearTimeout(this.breakAlarmStopTimeout);
-    }
-    const capMs = Math.max(0, Math.round(this.breakMinutes * 60 * 1000));
-    this.breakAlarmStopTimeout = window.setTimeout(() => {
-      this.breakAlarmStopTimeout = null;
-      if (this.breakAlarmInterval !== null) {
-        clearInterval(this.breakAlarmInterval);
-        this.breakAlarmInterval = null;
-      }
-    }, capMs);
+    this.breakTimer.resume();
   }
 
   // -- Clock ----------------------------------------------------------------

@@ -29,6 +29,7 @@ import {
 import { formatTime, formatClock } from "../utils/format.js";
 import { openHelpSection } from "../utils/ui-help.js";
 import { renderAlertDialog } from "../utils/ui-alert.js";
+import { CountdownAlarmController } from "../controllers/countdown-alarm-controller.js";
 import { songPlayStyles } from "./song-play-styles.js";
 import {
   renderPatterControls,
@@ -98,13 +99,10 @@ export class SongPlay extends LitElement {
   private draggingMarker: "start" | "end" | null = null;
 
   // Patter timer
-  @state() private patterTimerEnabled = true;
   @state() private patterMinutes = 6;
-  @state() private patterCountdown = 0;
-  @state() private patterTimerRunning = false;
-  private patterInterval: number | null = null;
-  private patterAlarmInterval: number | null = null;
-  @state() private patterAlarmFired = false;
+  private patterTimer = new CountdownAlarmController(this, {
+    playBeep: () => callerBuddy.audio.playBeep(),
+  });
 
   // Phone portrait split: controls (top) vs lyrics (bottom)
   @state() private mobileControlsSplitPct = 1 / 3;
@@ -617,7 +615,8 @@ export class SongPlay extends LitElement {
     this.loopStart = eff.start;
     this.loopEnd = eff.end;
     this.patterMinutes = callerBuddy.state.settings.patterTimerMinutes;
-    this.patterCountdown = this.patterMinutes * 60;
+    this.patterTimer.setDurationSeconds(this.patterMinutes * 60);
+    this.patterTimer.reset();
 
     if (isSingingCall(song)) {
       this.lyrics = await callerBuddy.loadLyrics(song);
@@ -667,7 +666,7 @@ export class SongPlay extends LitElement {
     if (this.firstPlayTime === null) {
       this.firstPlayTime = Date.now();
       this.startElapsedTimer();
-      if (this.song && isPatter(this.song) && !this.patterTimerRunning) {
+      if (this.song && isPatter(this.song) && !this.patterTimer.running) {
         this.startPatterTimer();
       }
     }
@@ -696,9 +695,9 @@ export class SongPlay extends LitElement {
               : renderPatterControls({
                   loopStart: this.loopStart,
                   loopEnd: this.loopEnd,
-                  patterTimerEnabled: this.patterTimerEnabled,
+                  patterTimerEnabled: this.patterTimer.enabled,
                   patterMinutes: this.patterMinutes,
-                  patterCountdown: this.patterCountdown,
+                  patterCountdown: this.patterTimer.countdown,
                   onLoopHelp: () => openHelpSection("setting-loop-points-for-patter"),
                   onPatterTimerHelp: () => openHelpSection("the-patter-timer"),
                   onLoopBoxKeydown: (which, e) => this.onLoopBoxKeydown(which, e),
@@ -1387,97 +1386,41 @@ export class SongPlay extends LitElement {
   }
 
   private togglePatterTimerEnabled() {
-    this.setPatterTimerEnabled(!this.patterTimerEnabled);
+    this.setPatterTimerEnabled(!this.patterTimer.enabled);
   }
 
   private setPatterTimerEnabled(enabled: boolean) {
-    if (this.patterTimerEnabled === enabled) return;
-    this.patterTimerEnabled = enabled;
-    if (!enabled) {
-      this.stopPatterAlarm();
-    } else if (
-      this.patterTimerRunning &&
-      this.patterCountdown <= 0 &&
-      this.patterAlarmFired
-    ) {
-      this.playPatterAlarm();
-    }
+    this.patterTimer.setEnabled(enabled);
   }
 
   /** Set countdown to duration and clear running state; does not start tick. */
   private resetPatterTimer() {
-    this.patterCountdown = this.patterMinutes * 60;
-    this.patterTimerRunning = false;
-    this.patterAlarmFired = false;
-    if (this.patterInterval !== null) {
-      clearInterval(this.patterInterval);
-      this.patterInterval = null;
-    }
-    this.stopPatterAlarm();
+    this.patterTimer.setDurationSeconds(this.patterMinutes * 60);
+    this.patterTimer.reset();
   }
 
   private startPatterTimer() {
-    this.patterCountdown = this.patterMinutes * 60;
-    this.patterTimerRunning = true;
-    this.patterAlarmFired = false;
-    if (this.playing) {
-      this.startPatterTick();
+    this.patterTimer.setDurationSeconds(this.patterMinutes * 60);
+    this.patterTimer.start();
+    if (!this.playing) {
+      this.patterTimer.pause();
     }
-  }
-
-  /** Start the 1s tick; only runs while music is playing. */
-  private startPatterTick() {
-    if (this.patterInterval !== null) return;
-    this.patterInterval = window.setInterval(() => {
-      this.patterCountdown--;
-      if (this.patterCountdown === 0 && !this.patterAlarmFired) {
-        this.patterAlarmFired = true;
-        if (this.patterTimerEnabled) {
-          this.playPatterAlarm();
-        }
-      }
-    }, 1000);
   }
 
   /** Pause countdown (music paused); keeps remaining time. */
   private pausePatterTimer() {
-    if (this.patterInterval !== null) {
-      clearInterval(this.patterInterval);
-      this.patterInterval = null;
-    }
-    this.stopPatterAlarm();
-  }
-
-  private stopPatterAlarm() {
-    if (this.patterAlarmInterval !== null) {
-      clearInterval(this.patterAlarmInterval);
-      this.patterAlarmInterval = null;
-    }
-  }
-
-  private playPatterAlarm() {
-    if (!this.patterTimerEnabled) return;
-    callerBuddy.audio.playBeep();
-    // Replay every 30 seconds while still overtime / timer running.
-    this.patterAlarmInterval = window.setInterval(() => {
-      callerBuddy.audio.playBeep();
-    }, 30_000);
+    this.patterTimer.pause();
   }
 
   /** Resume countdown when music resumes. */
   private resumePatterTimer() {
-    if (this.patterTimerRunning && this.playing && this.patterInterval === null) {
-      this.startPatterTick();
+    if (this.patterTimer.running && this.playing) {
+      this.patterTimer.resume();
     }
   }
 
   private stopPatterTimer() {
-    this.patterTimerRunning = false;
-    if (this.patterInterval !== null) {
-      clearInterval(this.patterInterval);
-      this.patterInterval = null;
-    }
-    this.stopPatterAlarm();
+    this.patterTimer.stop();
   }
 
   // -- Elapsed timer --------------------------------------------------------
