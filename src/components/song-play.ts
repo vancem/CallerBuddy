@@ -28,6 +28,7 @@ import {
 } from "../models/song.js";
 import { formatTime, formatClock } from "../utils/format.js";
 import { openHelpSection } from "../utils/ui-help.js";
+import { renderAlertDialog } from "../utils/ui-alert.js";
 import { songPlayStyles } from "./song-play-styles.js";
 import {
   renderPatterControls,
@@ -77,6 +78,7 @@ export class SongPlay extends LitElement {
   @state() private lyricsModified = false;
   /** Unsaved-changes prompt when exiting the lyrics editor or closing the player with dirty lyrics. */
   @state() private lyricsExitConfirmOpen = false;
+  @state() private alertMessage = "";
   @state() private clockTime = "";
 
   /** Set while `runSongPlayUnsavedGuard` is showing the shared dialog (song end, tab nav, Close, etc.). */
@@ -284,7 +286,16 @@ export class SongPlay extends LitElement {
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   /** Capture phase: Esc / Del / Enter (when needed) while the unsaved-lyrics dialog is open. */
   private _boundLyricsExitDialogKeydown = (e: KeyboardEvent) => {
-    if (!this.active || !this.lyricsExitConfirmOpen) return;
+    if (!this.active) return;
+    if (this.alertMessage) {
+      if (e.key === "Enter" || e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.alertMessage = "";
+      }
+      return;
+    }
+    if (!this.lyricsExitConfirmOpen) return;
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -466,6 +477,13 @@ export class SongPlay extends LitElement {
   private onKeydown(e: KeyboardEvent) {
     // Keep-alive: ignore shortcuts while another tab (e.g. Help) is active.
     if (!this.active) return;
+    if (this.alertMessage) {
+      if (e.key === "Enter" || e.key === "Escape") {
+        e.preventDefault();
+        this.alertMessage = "";
+      }
+      return;
+    }
     /** Lyrics exit modal — focus may be on Save (inside shadow DOM); bubble reaches here and would otherwise steal Enter/Space/Esc for transport. */
     if (this.lyricsExitConfirmOpen) return;
     if (this.eventTargetIsInsideLyricsEditor(e)) return;
@@ -666,6 +684,9 @@ export class SongPlay extends LitElement {
 
     return html`
       ${this.lyricsExitConfirmOpen ? this.renderLyricsExitConfirm() : nothing}
+      ${renderAlertDialog(this.alertMessage, () => {
+        this.alertMessage = "";
+      })}
       <div class="song-play">
         <!-- Left panel: lyrics or loop controls -->
         <div class="left-panel">
@@ -910,7 +931,7 @@ export class SongPlay extends LitElement {
     try {
       await this.persistLyricsFromEditor();
     } catch {
-      window.alert("Could not save lyrics.");
+      this.alertMessage = "Could not save lyrics.";
       return;
     }
     this.lyricsExitConfirmOpen = false;
@@ -1098,7 +1119,7 @@ export class SongPlay extends LitElement {
     try {
       await this.persistLyricsFromEditor();
     } catch {
-      window.alert("Could not save lyrics.");
+      this.alertMessage = "Could not save lyrics.";
     }
   }
 

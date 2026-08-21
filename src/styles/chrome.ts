@@ -87,3 +87,53 @@ export const chromeButtonStyles = css`
     background: var(--cb-hover);
   }
 `;
+
+/** Simple OK-only message dialog (replaces window.alert). Sits above other modals. */
+export const alertDialogStyles = css`
+  .cb-alert-overlay {
+    z-index: 2400;
+  }
+
+  .cb-alert-dialog {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 24rem);
+    box-sizing: border-box;
+    padding: 1.25rem 1.35rem;
+    background: var(--cb-bg);
+    color: var(--cb-fg);
+    border: 1px solid var(--cb-border);
+    border-radius: 10px;
+    box-shadow: 0 12px 40px var(--cb-shadow);
+    z-index: 2401;
+  }
+
+  .cb-alert-body {
+    margin: 0 0 1.1rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .cb-alert-actions {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cb-alert-ok {
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 0.65em 1em;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    background: var(--cb-accent);
+    color: var(--cb-fg-on-accent);
+  }
+
+  .cb-alert-ok:hover {
+    background: var(--cb-accent-hover, var(--cb-accent));
+  }
+`;

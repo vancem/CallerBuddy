@@ -27,6 +27,7 @@ import type { PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
 import {
+  alertDialogStyles,
   chromeButtonStyles,
   ctxHelpBtnStyles,
   modalOverlayStyles,
@@ -52,6 +53,7 @@ import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js
 import { songMatchesTextFilter } from "../utils/song-text-filter.js";
 import { formatUnknownError } from "../utils/format.js";
 import { openHelpSection } from "../utils/ui-help.js";
+import { renderAlertDialog } from "../utils/ui-alert.js";
 import {
   HostLayoutResizeController,
   isHostPortraitLayout,
@@ -176,6 +178,9 @@ export class PlaylistEditor extends LitElement {
 
   /** Set when {@link loadCurrentFolder} fails; shown instead of a fake empty library. */
   @state() private folderLoadError = "";
+
+  /** Blocking message that replaces window.alert. */
+  @state() private alertMessage = "";
 
   /** Incrementing token to ignore stale async folder loads (tab switches / navigation). */
   private folderLoadSeq = 0;
@@ -307,6 +312,14 @@ export class PlaylistEditor extends LitElement {
 
   private onKeydown(e: KeyboardEvent) {
     if (this.tabId && callerBuddy.state.activeTabId !== this.tabId) return;
+
+    if (this.alertMessage) {
+      if (e.key === "Enter" || e.key === "Escape") {
+        e.preventDefault();
+        this.alertMessage = "";
+      }
+      return;
+    }
 
     if (this.showGettingStartedHint) {
       if (e.key === "Enter" || e.key === "Escape") {
@@ -1113,6 +1126,9 @@ export class PlaylistEditor extends LitElement {
         ${this.renderRenameDialog()}
         ${this.renderCreateFolderDialog()}
         ${this.renderGettingStartedHint()}
+        ${renderAlertDialog(this.alertMessage, () => {
+          this.alertMessage = "";
+        })}
       </div>
     `;
   }
@@ -1348,11 +1364,10 @@ export class PlaylistEditor extends LitElement {
       this.renameDestRelPath = "";
     } catch (err) {
       log.error(`Failed to rename song "${song.title}":`, err);
-      window.alert(
+      this.alertMessage =
         err instanceof Error
           ? err.message
-          : "Could not rename the song. Check folder permissions and try again.",
-      );
+          : "Could not rename the song. Check folder permissions and try again.";
     } finally {
       this.renameInProgress = false;
     }
@@ -1652,11 +1667,10 @@ export class PlaylistEditor extends LitElement {
       this.deleteConfirmSong = null;
     } catch (err) {
       log.error(`Failed to delete song "${song.title}":`, err);
-      window.alert(
+      this.alertMessage =
         err instanceof Error
           ? err.message
-          : "Could not delete the song. Check folder permissions and try again.",
-      );
+          : "Could not delete the song. Check folder permissions and try again.";
     } finally {
       this.deleteInProgress = false;
     }
@@ -2147,6 +2161,7 @@ export class PlaylistEditor extends LitElement {
     ctxHelpBtnStyles,
     modalOverlayStyles,
     chromeButtonStyles,
+    alertDialogStyles,
     css`
     :host {
       display: block;

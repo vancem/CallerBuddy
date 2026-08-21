@@ -23,7 +23,7 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
-import { modalOverlayStyles } from "../styles/chrome.js";
+import { modalOverlayStyles, alertDialogStyles } from "../styles/chrome.js";
 import { StateEvents, TabType, type EditorTabData, type TabInfo } from "../services/app-state.js";
 import {
   DIR_PICKER_IMPORT_ID,
@@ -33,6 +33,7 @@ import { APP_VERSION } from "../version.js";
 import { log, getRecentLogs, clearRecentLogs } from "../services/logger.js";
 import { isPhoneLikeTouchDevice } from "../utils/device-traits.js";
 import { bumpLyricsScale } from "../utils/lyrics-scale.js";
+import { renderAlertDialog } from "../utils/ui-alert.js";
 
 // Side-effect imports to register custom elements
 import "./tab-bar.js";
@@ -67,6 +68,7 @@ export class AppShell extends LitElement {
   @state() private demoInstallError = "";
   @state() private showResetConfirm = false;
   @state() private resetInProgress = false;
+  @state() private alertMessage = "";
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
   private _boundFsChange = () => this.onFullscreenChange();
@@ -316,6 +318,11 @@ export class AppShell extends LitElement {
    *  Uses Ctrl+]/[ instead of Ctrl+Tab because browsers reserve Ctrl+Tab
    *  for browser tab switching and never dispatch it to the page. */
   private onKeydown(e: KeyboardEvent) {
+    if (this.alertMessage && (e.key === "Enter" || e.key === "Escape")) {
+      e.preventDefault();
+      this.alertMessage = "";
+      return;
+    }
     if (this.showResetConfirm && e.key === "Escape") {
       e.preventDefault();
       this.cancelResetCallerBuddy();
@@ -517,6 +524,9 @@ export class AppShell extends LitElement {
           : nothing}
         ${this.showLogs ? this.renderLogModal() : nothing}
         ${this.showResetConfirm ? this.renderResetConfirm() : nothing}
+        ${renderAlertDialog(this.alertMessage, () => {
+          this.alertMessage = "";
+        })}
       </div>
     `;
   }
@@ -918,7 +928,8 @@ export class AppShell extends LitElement {
       log.warn("Reset CallerBuddy failed:", err);
       this.resetInProgress = false;
       this.showResetConfirm = false;
-      alert("Could not reset CallerBuddy. Try clearing site data in the browser.");
+      this.alertMessage =
+        "Could not reset CallerBuddy. Try clearing site data in the browser.";
     }
   }
 
@@ -966,7 +977,8 @@ export class AppShell extends LitElement {
   /** True when another import can start; alerts if a Song Onboard tab is already open. */
   private assertNoOpenOnboard(): boolean {
     if (callerBuddy.state.tabs.some((t) => t.type === TabType.SongOnboard)) {
-      alert("Please complete or cancel the current song import before starting a new one.");
+      this.alertMessage =
+        "Please complete or cancel the current song import before starting a new one.";
       return false;
     }
     return true;
@@ -1068,6 +1080,7 @@ export class AppShell extends LitElement {
 
   static styles = [
     modalOverlayStyles,
+    alertDialogStyles,
     css`
     :host {
       display: block;

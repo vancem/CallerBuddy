@@ -14,7 +14,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { callerBuddy } from "../caller-buddy.js";
-import { ctxHelpBtnStyles, modalOverlayStyles } from "../styles/chrome.js";
+import { ctxHelpBtnStyles, modalOverlayStyles, alertDialogStyles } from "../styles/chrome.js";
 import { StateEvents, TabType } from "../services/app-state.js";
 import {
   computeDestNames,
@@ -28,6 +28,7 @@ import {
 import { generateLyricsMarkdownTemplate } from "../utils/lyrics-markdown.js";
 import { formatUnknownError } from "../utils/format.js";
 import { openHelpSection } from "../utils/ui-help.js";
+import { renderAlertDialog } from "../utils/ui-alert.js";
 import "./lyrics-editor.js";
 import type { LyricsEditor, LyricsEditorMode } from "./lyrics-editor.js";
 import { getLyricsEditorSessionMode } from "./lyrics-editor.js";
@@ -147,6 +148,7 @@ export class SongOnboard extends LitElement {
   @state() private collisionNames: string[] = [];
   /** Confirm dialog when Import is pressed while collisions remain. */
   @state() private overwriteConfirmOpen = false;
+  @state() private alertMessage = "";
 
   /** Left panel width fraction (0–1). Default: 2/3. */
   @state() private splitFraction = 2 / 3;
@@ -193,6 +195,11 @@ export class SongOnboard extends LitElement {
   }
 
   private onDocKeydown = (e: KeyboardEvent) => {
+    if (this.alertMessage && (e.key === "Enter" || e.key === "Escape")) {
+      e.preventDefault();
+      this.alertMessage = "";
+      return;
+    }
     if (e.key !== "Escape" || !this.overwriteConfirmOpen) return;
     e.preventDefault();
     this.closeOverwriteConfirm();
@@ -487,7 +494,7 @@ export class SongOnboard extends LitElement {
     try {
       await callerBuddy.importSong(editedProposal);
     } catch (err) {
-      alert(`Import failed: ${formatUnknownError(err)}`);
+      this.alertMessage = `Import failed: ${formatUnknownError(err)}`;
     } finally {
       this.importing = false;
     }
@@ -564,6 +571,9 @@ export class SongOnboard extends LitElement {
         ${this.renderRightPanel()}
       </div>
       ${this.renderOverwriteConfirm()}
+      ${renderAlertDialog(this.alertMessage, () => {
+        this.alertMessage = "";
+      })}
     `;
   }
 
@@ -762,6 +772,7 @@ export class SongOnboard extends LitElement {
   static styles = [
     ctxHelpBtnStyles,
     modalOverlayStyles,
+    alertDialogStyles,
     css`
     :host {
       display: block;

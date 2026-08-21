@@ -1,5 +1,5 @@
 import { css } from "lit";
-import { ctxHelpBtnStyles } from "../styles/chrome.js";
+import { alertDialogStyles, ctxHelpBtnStyles, modalOverlayStyles } from "../styles/chrome.js";
 
 /**
  * Styles for the `song-play` view (lyrics, patter/loop, transport, slider).
@@ -7,6 +7,8 @@ import { ctxHelpBtnStyles } from "../styles/chrome.js";
  */
 export const songPlayStyles = [
   ctxHelpBtnStyles,
+  modalOverlayStyles,
+  alertDialogStyles,
   css`
     :host {
       display: block;
