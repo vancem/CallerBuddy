@@ -110,6 +110,7 @@ import {
 } from "./services/env-log.js";
 import { registerProductionServiceWorker } from "./services/pwa-update.js";
 import "./components/app-shell.js";
+import { applyHelpDeepLink } from "./utils/ui-help.js";
 import { initLyricsScale } from "./utils/lyrics-scale.js";
 
 /**
@@ -157,7 +158,10 @@ logDeviceInfo();
 logEnv("startup");
 installEnvListeners();
 
-callerBuddy.init();
+void callerBuddy.init().then(() => {
+  applyHelpDeepLink();
+  window.addEventListener("hashchange", () => applyHelpDeepLink());
+});
 
 // Register service worker only in production (avoids caching issues in dev).
 // Updates wait until the song player is closed so we don't yank caches out

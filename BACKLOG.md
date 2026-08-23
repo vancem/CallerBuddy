@@ -263,6 +263,17 @@ strategy, offline fallback, install prompt).
   - Rationale: Matches spec (offline-first, cloud folder, cached audio). Simple
   cache-first for shell gives reliable offline; manual install avoids
   intrusive prompts.
+- **Shareable Help URLs (hash deep links).** Help sections can be opened from a
+  URL hash so we can link people to a specific topic (e.g. from email, README,
+  or another site). GitHub Pages is static and has no SPA fallback, so we use
+  the hash — the server still serves the same `index.html`; no `404.html` or
+  per-section files. Format: `#help/<gfm-heading-id>`. Title Case is accepted
+  and folded to the heading id. Bare `#help` opens Welcome to CallerBuddy.
+  Example (CallerBuddy Security):
+  https://vancem.github.io/CallerBuddy/#help/callerbuddy-security
+  Slugs match `HELP_TOC` / GFM ids in `src/help-content.md` (see
+  `src/utils/help-deep-link.ts`). In-app Help navigation is unchanged; these
+  hashes are only for shareable links.
 
 ## Open Design Issues
 
@@ -313,6 +324,8 @@ it integrated into the code base.
   guides, keyboard shortcuts reference, and glossary. Also added contextual ?
   help icons for loop controls, pitch/tempo, patter timer, and song import.
   Enhanced tooltips across all components. See AI_Logs/Summary.26-03-26.01.md.
+  Shareable deep links: `#help/<section-id>` (see Design Decisions). Example:
+  https://vancem.github.io/CallerBuddy/#help/callerbuddy-security
 
 ## Coding Standards
 

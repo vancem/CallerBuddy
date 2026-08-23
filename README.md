@@ -10,7 +10,8 @@ but redesigned from scratch as a modern, cross-platform PWA.
 **Run CallerBuddy Now in the browser:**
 [https://vancem.github.io/CallerBuddy/](https://vancem.github.io/CallerBuddy/)
 
-To learn about **using** CallerBuddy, open the app above and read the help.  
+To learn about **using** CallerBuddy, open the app above and read the 
+[CallerBuddy help](https://vancem.github.io/CallerBuddy/#help/welcome-to-callerbuddy). 
 The rest of this file README is about how to BUILD or MODIFY CallerBuddy itself.  
 
 ---------------------------------
