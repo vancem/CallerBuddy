@@ -1,7 +1,7 @@
 # Welcome to CallerBuddy
 
-CallerBuddy is a web-based program that Square Dance Callers can use to play
-music during performances.  Here are some of its key features.  
+CallerBuddy is a web-based program that plays music and
+displays lyrics for square dance callers during performances.  Here are some of its key features.  
 
 1. **Browser or App** - CallerBuddy can be used just as a website in your browser, 
    but it can also be installed as a normal desktop app (so you can launch it 
@@ -16,8 +16,8 @@ music during performances.  Here are some of its key features.
    one copy of your songs.  See [Cloud Storage](#cloud-storage-for-your-songs).
 4. **Works Offline** - CallerBuddy can run without any network connection, 
    so it will work wherever you need to perform.  See [Offline CallerBuddy](#offline-callerbuddy).
-5. **Cross Platform** - CallerBuddy works on Windows,
-   Macs (with Chrome Browser), Chromebooks, Linux, and Android phones (sadly 
+5. **Cross Platform** - CallerBuddy works on **Windows**,
+   **Macs** (with Chrome Browser), **Chromebooks**, **Linux**, and **Android phones** (sadly 
    iPhone does not support all the needed functionality, and is unsupported).
 6. **Keyboard Friendly** - CallerBuddy has extensive keyboard shortcuts that are easy 
    to learn with hover-over help.  You never need to be fiddling with a 
