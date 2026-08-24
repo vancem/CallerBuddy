@@ -994,7 +994,7 @@ export class PlaylistEditor extends LitElement {
                       </th>
                       <th
                         class="sortable played-col-head"
-                        title="Weighted average of how often the song was played recently. Under 1 means OK to use again without being too repetitive."
+                        title="Weighted average of how many times you've used it per month.  Wait until well under 1 before using it again."
                         @click=${() => this.toggleSort("playedDisplay")}
                       >
                         Played ${this.sortIndicator("playedDisplay")}
@@ -1066,25 +1066,10 @@ export class PlaylistEditor extends LitElement {
                             <span class="title-ellipsis" title=${song.title}>${song.title}</span>
                           </td>
                           ${this.renderRankCell(song)}
-                          <td
-                            class="last-cell"
-                            title="Days since this song was last counted as played (practice sessions do not count)."
-                          >
-                            ${this.formatLastUsedDays(song)}
-                          </td>
-                          <td
-                            class="played-cell"
-                            title="Weighted average of how often the song was played recently. Under 1 means OK to use again without being too repetitive."
-                          >
-                            ${this.formatPlayedDisplay(song)}
-                          </td>
+                          <td class="last-cell">${this.formatLastUsedDays(song)}</td>
+                          <td class="played-cell">${this.formatPlayedDisplay(song)}</td>
                           ${this.renderCategoriesCell(song)}
-                          <td
-                            class="order-cell"
-                            title="The order that the song was added to the database of songs. Recent songs have high numbers."
-                          >
-                            ${song.orderAdded}
-                          </td>
+                          <td class="order-cell">${song.orderAdded}</td>
                           <td class="label-cell">${song.label}</td>
                           <td class="type-cell">
                             <span
