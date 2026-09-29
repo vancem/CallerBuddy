@@ -90,11 +90,23 @@ Swing and promenade\\
         }
         return new File([content ?? ""], filename);
       },
-      async createWritable() {
-        let data = "";
+      async createWritable(options?: { keepExistingData?: boolean }) {
+        const existing = fileMap.get(filename);
+        let data =
+          options?.keepExistingData && typeof existing === "string" ? existing : "";
+        let pos = data.length;
         return {
-          async write(chunk: string) {
-            data += chunk;
+          async seek(position: number) {
+            pos = position;
+          },
+          async write(chunk: unknown) {
+            if (typeof chunk !== "string") {
+              data += chunk as string;
+              pos = data.length;
+              return;
+            }
+            data = data.slice(0, pos) + chunk + data.slice(pos + chunk.length);
+            pos += chunk.length;
           },
           async close() {
             fileMap.set(filename, data);
@@ -184,11 +196,23 @@ function setupEmptyMockFileSystem() {
       async getFile() {
         return new File([fileMap.get(filename) ?? ""], filename);
       },
-      async createWritable() {
-        let data = "";
+      async createWritable(options?: { keepExistingData?: boolean }) {
+        const existing = fileMap.get(filename);
+        let data =
+          options?.keepExistingData && typeof existing === "string" ? existing : "";
+        let pos = data.length;
         return {
-          async write(chunk: string) {
-            data += chunk;
+          async seek(position: number) {
+            pos = position;
+          },
+          async write(chunk: unknown) {
+            if (typeof chunk !== "string") {
+              data += chunk as string;
+              pos = data.length;
+              return;
+            }
+            data = data.slice(0, pos) + chunk + data.slice(pos + chunk.length);
+            pos += chunk.length;
           },
           async close() {
             fileMap.set(filename, data);
@@ -507,6 +531,43 @@ test.describe("CallerBuddy basic flow", () => {
       .click();
     await expect(page.locator("song-play")).not.toBeVisible();
     await expect(page.getByRole("alert")).toContainText("Could not play");
+  });
+
+  test("Song History is disabled until a folder is open", async ({ page }) => {
+    await setupPage(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await expect(page.getByRole("menuitem", { name: "Song History" })).toBeDisabled();
+  });
+
+  test("Song History is empty before any qualifying play", async ({ page }) => {
+    await goToEditor(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("menuitem", { name: "Song History" }).click();
+    const history = page.locator("song-history-view");
+    await expect(history).toBeVisible();
+    await expect(history).toContainText("No plays yet");
+  });
+
+  test("Song History lists a song after it plays through", async ({ page }) => {
+    await goToEditor(page);
+    const row = page
+      .locator("playlist-editor")
+      .locator("table.song-table tbody tr")
+      .filter({ hasText: "Sunny Side Singing" });
+    await row.getByRole("button", { name: "▶" }).click();
+    await expect(page.locator("song-play")).toBeVisible();
+    // 1-second singing call reaches the end and counts as a play.
+    await expect(page.locator("song-play")).not.toBeVisible({ timeout: 8000 });
+
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("menuitem", { name: "Song History" }).click();
+    const history = page.locator("song-history-view");
+    await expect(history).toBeVisible();
+    const played = history.locator("tbody tr").filter({ hasText: "Sunny Side Singing" });
+    await expect(played).toHaveCount(1);
+    await expect(played).toContainText("SQD 101");
+    await expect(played).toContainText("50");
+    await expect(played).toContainText("1.00");
   });
 
   test("opens song import from folder and can cancel", async ({ page }) => {

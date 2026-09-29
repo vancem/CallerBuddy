@@ -267,6 +267,27 @@ export async function writeTextFile(
 }
 
 /**
+ * Append text to a file in the directory, creating it if necessary.
+ * Does not rewrite bytes already in the file.
+ * Requires readwrite permission on the handle.
+ */
+export async function appendTextFile(
+  dirHandle: FileSystemDirectoryHandle,
+  filename: string,
+  contents: string,
+): Promise<void> {
+  assert(typeof contents === "string", "appendTextFile: contents must be string");
+  log.debug(`appendTextFile: appending "${filename}" (${contents.length} chars)…`);
+  const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+  const existing = await fileHandle.getFile();
+  const writable = await fileHandle.createWritable({ keepExistingData: true });
+  await writable.seek(existing.size);
+  await writable.write(contents);
+  await writable.close();
+  log.debug(`appendTextFile: "${filename}" appended successfully`);
+}
+
+/**
  * Write a binary file to the directory, creating it if necessary.
  * Requires readwrite permission on the handle.
  */

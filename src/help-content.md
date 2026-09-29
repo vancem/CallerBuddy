@@ -44,8 +44,35 @@ a reconnection process first but you still ultimately end in the playlist editor
 In the upper right corner of CallerBuddy is a ☰ icon that activates a menu of 
 operations on CallerBuddy as a whole.   Resetting CallerBuddy, 
 [Adding Songs](#adding-songs-to-callerbuddy), 
+[Song History](#song-history), 
 and Help are in this menu, among other things.  Generally speaking, you will use this
 menu rarely.  
+
+## Song History
+
+**Song History** on the ☰ menu opens a table of plays, with the most recent
+play at the top.  Each row is one play, so the same song can appear more than
+once.  The columns are:
+
+* **Title**
+* **Rank**
+* **Time Played** - the date and time of that play
+* **Played** - the current weighted average (see [How the Played Average is Calculated](#how-the-played-average-is-calculated))
+* **Label**
+* **Type** - singing call or patter
+
+Rank, Played, Label, and Type are the song's current values, not a snapshot from
+the moment it was played.
+
+The log is a text file named **CallerBuddyHistory.csv** in the
+CallerBuddySongs folder.  It has two columns: the music file's path from
+that folder (for example `Christmas/RYL 607 - Come Sail Away.MP3`), and the
+date-time the song was played.  CallerBuddy only adds lines to this file.
+A play is recorded under the same rules as a play that can update song
+statistics: practice mode is off, and the song played through at least 90%
+of its length (or reached the end).  Unlike the Played average, which
+updates at most once per calendar day, every qualifying play is added here.
+Resetting CallerBuddy does not delete this file.
 
 ## Playlist Editor
 
@@ -819,7 +846,7 @@ song is a *.MP3 file and if the song has lyrics (it is a singing call)
 it also has a [Markdown](https://commonmark.org/help/) file with the MP3 suffix
 replaced with *.MD.  This is most of the data CallerBuddy needs.
 
-However CallerBuddy also has to store three more pieces of information
+However CallerBuddy also has to store four more pieces of information
  1. **Browser Context** - CallerBuddy saves the handle 
     for the **CallerBuddySongs** folder
     in a database that the browser maintains.  This is how CallerBuddy
@@ -859,6 +886,11 @@ However CallerBuddy also has to store three more pieces of information
     **CallerBuddySettings.json**.  Note that this file **is deleted** when 
     CallerBuddy is reset, because generally this data is the kind of thing
     that the user is expecting to reset, and is pretty easy to replace.
+ 4. **Play History** - Each time a song counts as played, CallerBuddy adds a
+    line to **CallerBuddyHistory.csv** in the CallerBuddySongs folder.  The
+    line is the music file's path and the date-time it was played.  See
+    [Song History](#song-history).  This file is **not** deleted when
+    CallerBuddy resets.
 
   That is the complete summary of the data that CallerBuddy manages.
   Note that if the **CallerBuddySongs.json** is not present
@@ -884,7 +916,9 @@ as being played.   When the Song player exits and
 Every time a song is played, the Last Played time for that song is updated.  
 It then checks if it has already done this for this calendar day, and if 
 so it does NOT update the weighted average (thus the weighted average is
-only updated at most once a day).    The weighted average is what is known 
+only updated at most once a day).    Every qualifying play is still appended
+to **CallerBuddyHistory.csv**, including later plays of the same song on
+the same day.  See [Song History](#song-history).    The weighted average is what is known 
 as an exponential sliding window with an increment of 1 and a  half life 
 of 28 days (1 month).  
 

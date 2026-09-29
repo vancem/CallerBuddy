@@ -22,6 +22,7 @@ export const TabType = {
   PlaylistPlay: "playlist-play",
   SongPlay: "song-play",
   SongOnboard: "song-onboard",
+  SongHistory: "song-history",
   Help: "help",
 } as const;
 

@@ -42,6 +42,7 @@ import { PlaylistEditor } from "./playlist-editor.js";
 import "./playlist-play.js";
 import "./song-play.js";
 import "./song-onboard.js";
+import "./song-history-view.js";
 import { HelpView } from "./help-view.js";
 
 /** Records that the user answered the one-time startup fullscreen prompt. */
@@ -670,6 +671,8 @@ export class AppShell extends LitElement {
       }
       case TabType.SongOnboard:
         return html`<song-onboard></song-onboard>`;
+      case TabType.SongHistory:
+        return html`<song-history-view></song-history-view>`;
       default:
         return html`<p>Unknown tab type</p>`;
     }
@@ -685,6 +688,7 @@ export class AppShell extends LitElement {
 
   private renderMenu() {
     const canUseEditorFolder = callerBuddy.state.importTargetDir() !== null;
+    const hasRoot = callerBuddy.state.rootHandle !== null;
     return html`
       <div class="menu-overlay" @click=${this.closeMenu}></div>
       <div class="menu" role="menu">
@@ -728,6 +732,17 @@ export class AppShell extends LitElement {
           @click=${this.onCreateFolder}
         >
           Create Folder…
+        </button>
+        <button
+          class="menu-item"
+          role="menuitem"
+          ?disabled=${!hasRoot}
+          title=${hasRoot
+            ? "Show songs you have played, newest first"
+            : "Choose a CallerBuddy folder before viewing song history"}
+          @click=${this.onSongHistory}
+        >
+          Song History
         </button>
         <button class="menu-item" role="menuitem" @click=${this.toggleFullscreen}>
           ${this.isFullscreenApi() ? "Exit Full Screen" : "Full Screen"}
@@ -1028,6 +1043,13 @@ export class AppShell extends LitElement {
     } catch {
       // user cancelled or picker unavailable
     }
+  }
+
+  private onSongHistory() {
+    log.info(`[ui] menu: Song History`);
+    this.showMenu = false;
+    if (!callerBuddy.state.rootHandle) return;
+    callerBuddy.state.openSingletonTab(TabType.SongHistory, "Song History", true);
   }
 
   private onHelp() {

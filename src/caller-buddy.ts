@@ -60,6 +60,7 @@ import {
   shouldRefreshPlayStats,
   tempoRatioFromSong,
 } from "./utils/play-history.js";
+import { appendSongHistory } from "./services/song-history.js";
 import { log } from "./services/logger.js";
 import { formatUnknownError } from "./utils/format.js";
 import {
@@ -100,7 +101,8 @@ export class CallerBuddy {
   private lastLoadedSongDirHandle: FileSystemDirectoryHandle | null = null;
 
   /**
-   * When true, closing the player does not update lastUsed / playWeight.
+   * When true, closing the player does not update lastUsed / playWeight
+   * and does not append CallerBuddyHistory.csv.
    * App-wide, not persisted across reloads.
    */
   private practiceMode = false;
@@ -1208,6 +1210,34 @@ export class CallerBuddy {
   }
 
   /**
+   * Append one qualifying play to CallerBuddyHistory.csv.
+   * Recorded even when CallerBuddySongs.json was already updated earlier today.
+   */
+  private async recordQualifyingPlayHistory(
+    song: Song,
+    persistDirHandle: FileSystemDirectoryHandle | null,
+    nowMs: number,
+  ): Promise<void> {
+    const root = this.state.rootHandle;
+    if (!root) {
+      log.warn(`song history: no CallerBuddyRoot; skipped "${song.musicFile}"`);
+      return;
+    }
+    try {
+      if (!song.dirHandle && persistDirHandle) song.dirHandle = persistDirHandle;
+      await this.ensurePlaylistRelPathForSong(song);
+      const path = song.playlistRelPath || song.musicFile;
+      await appendSongHistory(root, {
+        path,
+        playedAt: new Date(nowMs).toISOString(),
+      });
+      log.info(`song history: appended "${path}"`);
+    } catch (err) {
+      log.warn("song history: could not append:", err);
+    }
+  }
+
+  /**
    * Tear down song play (stop audio, optionally persist play history, remove tab, clear current song).
    * Idempotent: no-op if there is no song play tab and no current song.
    */
@@ -1235,13 +1265,16 @@ export class CallerBuddy {
       if (qualifies) {
         const nowMs = Date.now();
         this.state.setLastSongEndedMs(nowMs);
-        if (!this.practiceMode && shouldRefreshPlayStats(song.lastUsed, nowMs)) {
-          const deltaDays = daysSinceLastUsedMs(song.lastUsed, nowMs);
-          const wNew = nextPlayWeight(song.playWeight, deltaDays);
-          const updated = { ...song, lastUsed: lastUsedIsoFromMs(nowMs), playWeight: wNew };
-          await this.updateSong(updated, {
-            dirHandle: persistDirHandle ?? undefined,
-          });
+        if (!this.practiceMode) {
+          await this.recordQualifyingPlayHistory(song, persistDirHandle, nowMs);
+          if (shouldRefreshPlayStats(song.lastUsed, nowMs)) {
+            const deltaDays = daysSinceLastUsedMs(song.lastUsed, nowMs);
+            const wNew = nextPlayWeight(song.playWeight, deltaDays);
+            const updated = { ...song, lastUsed: lastUsedIsoFromMs(nowMs), playWeight: wNew };
+            await this.updateSong(updated, {
+              dirHandle: persistDirHandle ?? undefined,
+            });
+          }
         }
       }
     }

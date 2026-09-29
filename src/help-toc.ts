@@ -10,6 +10,7 @@ export const HELP_TOC: HelpTocEntry[] = [
   { id: "expected-workflow", title: "Expected Workflow" },
   { id: "first-time-setup", title: "First Time Setup", indent: true },
   { id: "the-app-menu", title: "The App Menu" },
+  { id: "song-history", title: "Song History" },
   { id: "playlist-editor", title: "Playlist Editor" },
   { id: "now-playing", title: "Now Playing" },
   { id: "the-break-timer", title: "The Break Timer", indent: true },

@@ -42,10 +42,17 @@ interface FileSystemWritableFileStream extends WritableStream {
   truncate(size: number): Promise<void>;
 }
 
+interface FileSystemCreateWritableOptions {
+  /** When true, existing bytes are kept and the stream starts at position 0. */
+  keepExistingData?: boolean;
+}
+
 interface FileSystemFileHandle extends FileSystemHandle {
   readonly kind: "file";
   getFile(): Promise<File>;
-  createWritable(): Promise<FileSystemWritableFileStream>;
+  createWritable(
+    options?: FileSystemCreateWritableOptions,
+  ): Promise<FileSystemWritableFileStream>;
   /** Chrome: rename within the same directory (or move into another). */
   move?(name: string): Promise<void>;
   move?(
