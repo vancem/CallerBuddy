@@ -1,6 +1,6 @@
 /**
  * CallerBuddyHistory.csv: one row per qualifying play.
- * Column 1 is the CallerBuddyRoot-relative music path; column 2 is an ISO date-time.
+ * Column 1 is the CallerBuddyRoot-relative music path; column 2 is a local date-time with offset.
  * Display fields (title, rank, weight, label) are joined from the song catalog.
  */
 
@@ -13,8 +13,27 @@ export const SONG_HISTORY_HEADER = "path,playedAt";
 export interface SongHistoryEntry {
   /** CallerBuddyRoot-relative music path, using "/" separators. */
   path: string;
-  /** ISO-8601 date-time when the play was recorded. */
+  /**
+   * When the play was recorded, in local time with a numeric offset,
+   * rounded to the nearest minute (e.g. 2026-09-29T14:41-07:00).
+   */
   playedAt: string;
+}
+
+/**
+ * Local date-time with a numeric timezone offset, rounded to the nearest minute.
+ * Example: 2026-09-29T14:41-07:00
+ */
+export function formatLocalPlayedAt(ms: number): string {
+  const rounded = new Date(Math.round(ms / 60_000) * 60_000);
+  const pad = (n: number) => String(Math.abs(n)).padStart(2, "0");
+  const offsetMin = -rounded.getTimezoneOffset();
+  const sign = offsetMin >= 0 ? "+" : "-";
+  return (
+    `${rounded.getFullYear()}-${pad(rounded.getMonth() + 1)}-${pad(rounded.getDate())}` +
+    `T${pad(rounded.getHours())}:${pad(rounded.getMinutes())}` +
+    `${sign}${pad(Math.trunc(Math.abs(offsetMin) / 60))}:${pad(Math.abs(offsetMin) % 60)}`
+  );
 }
 
 export interface SongHistoryDisplayRow {

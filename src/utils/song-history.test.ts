@@ -4,11 +4,28 @@ import { lastUsedIsoFromMs } from "./play-history.js";
 import {
   SONG_HISTORY_HEADER,
   buildSongHistoryDisplayRows,
+  formatLocalPlayedAt,
   formatSongHistoryLine,
   parseSongHistoryCsv,
   songHistoryAppendText,
   sortSongHistoryNewestFirst,
 } from "./song-history.js";
+
+describe("formatLocalPlayedAt", () => {
+  it("uses local time, a numeric offset, and whole minutes", () => {
+    const ms = Date.parse("2026-09-29T21:41:24.889Z");
+    const formatted = formatLocalPlayedAt(ms);
+    expect(formatted).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
+    expect(Date.parse(formatted)).toBe(Math.round(ms / 60_000) * 60_000);
+  });
+
+  it("rounds a half minute up and anything under that down", () => {
+    const up = Date.parse("2026-03-25T22:02:30.000Z");
+    const down = Date.parse("2026-03-25T22:02:29.999Z");
+    expect(Date.parse(formatLocalPlayedAt(up))).toBe(Date.parse("2026-03-25T22:03:00.000Z"));
+    expect(Date.parse(formatLocalPlayedAt(down))).toBe(Date.parse("2026-03-25T22:02:00.000Z"));
+  });
+});
 
 describe("songHistoryAppendText", () => {
   const entry = { path: "Christmas/Song.mp3", playedAt: "2026-09-29T21:19:00.000Z" };

@@ -61,6 +61,7 @@ import {
   tempoRatioFromSong,
 } from "./utils/play-history.js";
 import { appendSongHistory } from "./services/song-history.js";
+import { formatLocalPlayedAt } from "./utils/song-history.js";
 import { log } from "./services/logger.js";
 import { formatUnknownError } from "./utils/format.js";
 import {
@@ -1229,7 +1230,7 @@ export class CallerBuddy {
       const path = song.playlistRelPath || song.musicFile;
       await appendSongHistory(root, {
         path,
-        playedAt: new Date(nowMs).toISOString(),
+        playedAt: formatLocalPlayedAt(nowMs),
       });
       log.info(`song history: appended "${path}"`);
     } catch (err) {
