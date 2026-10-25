@@ -14,6 +14,10 @@ To learn about **using** CallerBuddy, open the app above and read the
 [CallerBuddy help](https://vancem.github.io/CallerBuddy/#help/welcome-to-callerbuddy). 
 The rest of this file README is about how to BUILD or MODIFY CallerBuddy itself.  
 
+If you want to know more about Square Dance Calling see 
+[CallerTips](https://vancem.github.io/CallerTips/), which is a document specifically
+targeted at new Square Dance Callers or those curious about becoming one.  
+
 ---------------------------------
 Before you can build CallerBuddy, you will need some developer software installed
 on your machine.   None of this costs money, but you do have to trust it.  
