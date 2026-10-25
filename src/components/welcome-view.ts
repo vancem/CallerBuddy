@@ -235,16 +235,29 @@ export class WelcomeView extends LitElement {
 
       <section class="section">
         <h2>Learning More</h2>
-        <p>
-          If you just want to learn more before taking the plunge,
-          <button
-            type="button"
-            class="text-link"
-            @click=${() => this.openHelp("welcome-to-callerbuddy")}
-          >
-            View CallerBuddy Help
-          </button>.
-        </p>
+        <ul class="learn-more">
+          <li>
+            If you just want to learn more before taking the plunge,
+            <button
+              type="button"
+              class="text-link"
+              @click=${() => this.openHelp("welcome-to-callerbuddy")}
+            >
+              View CallerBuddy Help
+            </button>.
+          </li>
+          <li>
+            To learn more about Square Dance calling see
+            <a
+              class="text-link"
+              href="https://vancem.github.io/CallerTips/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Calling Tips
+            </a>.
+          </li>
+        </ul>
       </section>
     `;
   }
@@ -581,6 +594,18 @@ export class WelcomeView extends LitElement {
       color: var(--cb-fg);
       line-height: 1.45;
       font-size: 0.95rem;
+    }
+
+    .learn-more {
+      margin: 0;
+      padding-left: 1.25rem;
+      color: var(--cb-fg);
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .learn-more li {
+      margin: 0.15rem 0;
     }
 
     .actions {
