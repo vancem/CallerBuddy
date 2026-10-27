@@ -1,6 +1,6 @@
 # Welcome to CallerBuddy
 
-CallerBuddy is a web-based program that plays music and
+CallerBuddy is a web-based program written by [Vance Morrison](https://vancem.github.io/VancePMorrison/) that plays music and
 displays lyrics for square dance callers during performances.  Here are some of its key features.  
 
 1. **Browser or App** - CallerBuddy can be used just as a website in your browser, 
