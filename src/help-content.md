@@ -1,12 +1,18 @@
 # Welcome to CallerBuddy
 
 CallerBuddy is a web-based program written by [Vance Morrison](https://vancem.github.io/VancePMorrison/) that plays music and
-displays lyrics for square dance callers during performances.  Here are some of its key features.  
+displays lyrics for square dance callers during performances.
+You can run this software or 
+[install it on your device](#running-callerbuddy-outside-the-browser) from the
+[CallerBuddy distribution site](https://vancem.github.io/CallerBuddy/).
 
-1. **Browser or App** - CallerBuddy can be used just as a website in your browser, 
+Here are some of its key features.  
+
+1. **Browser or App** - CallerBuddy can be used directly as a web page (no install) from 
+   the [CallerBuddy distribution site](https://vancem.github.io/CallerBuddy/)
    but it can also be installed as a normal desktop app (so you can launch it 
    from your taskbar, or place it on the desktop).
-   See [Installing CallerBuddy](#running-callerbuddy-outside-the-browser).
+   See [Installing CallerBuddy](#running-callerbuddy-outside-the-browser) for more.  
 2. **Safe To Run** - You don't need to worry that you are 
    compromising the safety of your machine when you run CallerBuddy because 
    it is only allowed to see files you explicitly enable.  See 
@@ -838,13 +844,11 @@ about the song not stored in the music and lyrics files.
 CallerBuddy was carefully designed to keep its data needs **clean** and very 
 simple.  CallerBuddy only needs access to a single folder which can be 
 called whatever you like but here we called it **CallerBuddySongs** (and we
-recommend that name because it is very descriptive).  Developer docs may
-call the same folder CallerBuddyRoot; in the app and this help it is always
-the **CallerBuddySongs** folder.  As mentioned 
+recommend that name because it is very descriptive).  As mentioned 
 in the [Import Section](#importing-songs) the music associated with the 
 song is a *.MP3 file and if the song has lyrics (it is a singing call) 
 it also has a [Markdown](https://commonmark.org/help/) file with the MP3 suffix
-replaced with *.MD.  This is most of the data CallerBuddy needs.
+replaced with MD.  This is most of the data CallerBuddy needs.
 
 However CallerBuddy also has to store four more pieces of information
  1. **Browser Context** - CallerBuddy saves the handle 
