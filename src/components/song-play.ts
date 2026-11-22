@@ -58,9 +58,6 @@ function generateLyricsTemplate(song: Song): string {
 const PRACTICE_MODE_TOOLTIP =
   "When practice is on, the song is not counted in play history (last used / how often played). (Ctrl+P)";
 
-const AUTO_PAUSE_ON_BLUR_TOOLTIP =
-  "When checked, playback pauses when this window loses focus (switching apps or tabs). Uncheck to keep playing in the background.";
-
 @customElement("song-play")
 export class SongPlay extends LitElement {
   /**
@@ -170,7 +167,6 @@ export class SongPlay extends LitElement {
 
     document.addEventListener("keydown", this._boundKeydown);
     document.addEventListener("keydown", this._boundLyricsExitDialogKeydown, true);
-    window.addEventListener("blur", this._boundWindowBlur);
     window.addEventListener("resize", this._boundWindowResize);
     document.addEventListener("visibilitychange", this._boundVisibilityChange);
 
@@ -227,7 +223,6 @@ export class SongPlay extends LitElement {
     this._songPlaySurface = null;
     document.removeEventListener("keydown", this._boundKeydown);
     document.removeEventListener("keydown", this._boundLyricsExitDialogKeydown, true);
-    window.removeEventListener("blur", this._boundWindowBlur);
     window.removeEventListener("resize", this._boundWindowResize);
     document.removeEventListener("visibilitychange", this._boundVisibilityChange);
     if (this.clockInterval !== null) clearInterval(this.clockInterval);
@@ -367,15 +362,10 @@ export class SongPlay extends LitElement {
     if (!this.editing) return;
     this.getLyricsEditorComponent()?.focusEditableSurface();
   }
-  /** When the window loses focus, pause audio but keep the player open (if auto-pause is on). */
-  private _boundWindowBlur = () => {
-    if (!callerBuddy.getAutoPauseOnWindowBlur()) return;
-    this.pausePlayback();
-  };
 
   /**
    * Browsers often suspend AudioContext when the tab is hidden; resume when
-   * visible so playback/UI recover when "Auto-Pause" is off (we did not call pause).
+   * visible so playback and the player UI pick up where they left off.
    */
   private _boundVisibilityChange = () => {
     if (document.visibilityState !== "visible") return;
@@ -976,7 +966,6 @@ export class SongPlay extends LitElement {
     const song = this.song;
     if (!song) return nothing;
     const practice = callerBuddy.getPracticeMode();
-    const autoPauseBlur = callerBuddy.getAutoPauseOnWindowBlur();
     return html`
       <div class="play-extras-row">
         <div class="play-extras-checks">
@@ -988,15 +977,6 @@ export class SongPlay extends LitElement {
               @change=${this.onPracticeChange}
             />
             Practice
-          </label>
-          <label class="song-play-extras-toggle" title=${AUTO_PAUSE_ON_BLUR_TOOLTIP}>
-            <input
-              type="checkbox"
-              .checked=${autoPauseBlur}
-              title=${AUTO_PAUSE_ON_BLUR_TOOLTIP}
-              @change=${this.onAutoPauseBlurChange}
-            />
-            Auto-Pause
           </label>
         </div>
         <div class="play-extras-actions">
@@ -1019,12 +999,6 @@ export class SongPlay extends LitElement {
   private onPracticeChange(e: Event) {
     const checked = (e.target as HTMLInputElement).checked;
     callerBuddy.setPracticeMode(checked);
-    this.requestUpdate();
-  }
-
-  private onAutoPauseBlurChange(e: Event) {
-    const checked = (e.target as HTMLInputElement).checked;
-    callerBuddy.setAutoPauseOnWindowBlur(checked);
     this.requestUpdate();
   }
 

@@ -257,18 +257,6 @@ practicing, you probably don't want this data updated.  That is what
 the 'practice' checkbox is for (shortcut Ctrl+P).  When you check 'practice' CallerBuddy assumes
 any playing is not 'official' and does not update the play statistics.  
 
-If you run CallerBuddy in a browser, it is pretty easy for the window
-for CallerBuddy to get 'lost' if you navigate away from it.  If music
-is playing while this is happening, it can be very annoying.  By 
-default CallerBuddy enables an 'Auto-Pause' feature where CallerBuddy
-will stop playing if its window loses focus.  This does not solve the
-problem of finding the window again, but it does stop the music, and
-allow you to simply open a new version (which remembers where you were
-so that you can continue reasonably quickly).  However if you 
-are calling over a Zoom connection, Auto-Pause is dangerous because
-you expect to move focus back and forth between CallerBuddy and Zoom.
-For cases like this there is a checkbox to turn off Auto-Pause.  
-
 At the bottom of the right pane of the song player is a button
 for singing calls that invokes the [lyric editor](#edit-lyrics).  Typically
 you will want to tweak singing call lyrics to your preferences, and this

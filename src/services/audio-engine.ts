@@ -186,7 +186,7 @@ export class WebAudioEngine implements AudioEngine {
 
   private wakeLock = new WakeLockService();
 
-  /** When returning to the tab, resume a browser-suspended context (important when auto-pause-on-blur is off). */
+  /** When the document becomes visible, resume a browser-suspended AudioContext. */
   private readonly onDocumentVisibilityChange = () => {
     if (document.visibilityState === "visible") {
       void this.ensureContextRunning();
