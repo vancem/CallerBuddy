@@ -849,7 +849,9 @@ However CallerBuddy also has to store four more pieces of information
     CallerBuddy still saves the handle, but Android forces CallerBuddy
     to refresh it which is why CallerBuddy shows a 'Reconnect' page 
     on startup on Android.   Thus starting CallerBuddy on Android will
-    always be a bit less convenient (two more taps).    
+    always be a bit less convenient (two more taps).
+    If that saved connection gets stuck, see
+    [Manual Reset of CallerBuddy](#manual-reset-of-callerbuddy).
  2. **Song Data** - CallerBuddy has non-lyric-music information 
     about songs that it needs to store somewhere.
     This includes the volume, pitch and tempo settings,
@@ -892,6 +894,58 @@ However CallerBuddy also has to store four more pieces of information
   but it will be perfectly functional (song preference would have to be 
   reconstructed, which is why we have a **CallerBuddySongs.json.bak**) to
   avoid that loss.  
+
+## Manual Reset of CallerBuddy
+
+If CallerBuddy is acting badly (no songs show up, menu items stay grayed
+out, or it just sits there), the first thing to try is **Reset CallerBuddy**
+on the ☰ menu.  That clears CallerBuddy's saved settings and the remembered
+folder connection, then starts over.  Your songs are not deleted.
+
+Sometimes that reset cannot finish.  The usual cause is a saved folder
+connection that the browser never answers (the folder was moved, or a cloud
+drive is stuck).  When that happens you can reset CallerBuddy from the
+browser itself, without using CallerBuddy at all, and start clean.
+
+This procedure does **not** touch anything in your **CallerBuddySongs**
+folder.  Music, lyrics, **CallerBuddySongs.json**, **CallerBuddySettings.json**,
+and **CallerBuddyHistory.csv** all stay where they are.  It only erases the
+browser's memory of CallerBuddy, including the saved folder connection.
+That is why it is safe, and why it still works when CallerBuddy cannot open
+the folder.  Afterward CallerBuddy starts like a first launch and asks you
+to choose the folder again.  Point it at the **CallerBuddySongs** folder you
+already have.  You do not create a new one.
+
+The browser lists this data under the site address, not the name
+CallerBuddy.  For the published app that address is **vancem.github.io**.
+
+### Desktop Chrome or Edge
+
+1. Open CallerBuddy in the browser.  If you are in the installed app and
+   there is no address bar, use the installed-app steps below.
+2. Click the icon to the left of the address bar (a lock or a set of sliders).
+3. Choose **Site settings**.
+4. Choose **Delete data** (some versions say **Clear data**).
+5. Reload CallerBuddy, then choose your existing **CallerBuddySongs** folder.
+
+### Android Chrome
+
+1. Open CallerBuddy in Chrome.
+2. Tap the lock icon to the left of the address bar.
+3. Choose **Site settings**.
+4. Choose **Clear & reset**.
+5. Open CallerBuddy again, then choose your existing **CallerBuddySongs** folder.
+
+### Installed app with no address bar
+
+Open the same site in the Chrome browser and follow the steps above, or:
+
+1. Open Chrome **Settings**.
+2. Open **Privacy and security**.
+3. Open **Site settings**.
+4. Open **View permissions and data stored across sites**.
+5. Find **vancem.github.io** and delete its data.
+6. Open CallerBuddy again, then choose your existing **CallerBuddySongs** folder.
 
 ## How the Played Average is Calculated
 Each time a song is played we need to update the 'Played' average to take

@@ -23,14 +23,15 @@ import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { callerBuddy } from "../caller-buddy.js";
-import { modalOverlayStyles } from "../styles/chrome.js";
-import { TabType } from "../services/app-state.js";
+import { alertDialogStyles, modalOverlayStyles } from "../styles/chrome.js";
+import { StateEvents, TabType } from "../services/app-state.js";
 import {
   DIR_PICKER_ROOT_ID,
   resetCallerBuddyBrowserState,
 } from "../services/file-system-service.js";
 import { APP_VERSION } from "../version.js";
 import { log } from "../services/logger.js";
+import { renderSiteDataRecoveryDialog } from "../utils/ui-alert.js";
 
 /**
  * Resolve a `public/` asset URL under the app's base path. Used for the
@@ -53,13 +54,30 @@ export class WelcomeView extends LitElement {
   @state() private showInstructions = false;
   @state() private showResetConfirm = false;
   @state() private resetInProgress = false;
+  @state() private showStorageRecovery = false;
+  /** Set when the stored folder handle did not answer. Reconnect is not offered. */
+  @state() private folderNotice = "";
 
-  connectedCallback() {
+  private readonly onAppStateChanged = (): void => {
+    this.syncFolderFromState();
+  };
+
+  override connectedCallback() {
     super.connectedCallback();
-    // If there is an existing root handle, show its name
-    if (callerBuddy.state.rootHandle) {
-      this.folderName = callerBuddy.state.rootHandle.name;
-    }
+    this.syncFolderFromState();
+    callerBuddy.state.addEventListener(StateEvents.CHANGED, this.onAppStateChanged);
+  }
+
+  override disconnectedCallback() {
+    callerBuddy.state.removeEventListener(StateEvents.CHANGED, this.onAppStateChanged);
+    super.disconnectedCallback();
+  }
+
+  private syncFolderFromState() {
+    const name = callerBuddy.state.rootHandle?.name ?? "";
+    if (this.folderName !== name) this.folderName = name;
+    const notice = callerBuddy.state.folderOpenNotice;
+    if (this.folderNotice !== notice) this.folderNotice = notice;
   }
 
   protected override firstUpdated(_changed: PropertyValues<this>): void {
@@ -117,6 +135,10 @@ export class WelcomeView extends LitElement {
           </p>
         </header>
 
+        ${this.folderNotice
+          ? html`<p class="error" role="alert">${this.folderNotice}</p>`
+          : ""}
+
         ${this.needsReconnect
           ? this.renderReconnect()
           : this.renderFirstLaunch()}
@@ -130,6 +152,11 @@ export class WelcomeView extends LitElement {
 
       ${this.showInstructions ? this.renderInstructions() : ""}
       ${this.showResetConfirm ? this.renderResetConfirm() : ""}
+      ${this.showStorageRecovery
+        ? renderSiteDataRecoveryDialog(() => {
+            this.showStorageRecovery = false;
+          })
+        : ""}
     `;
   }
 
@@ -382,14 +409,20 @@ export class WelcomeView extends LitElement {
     this.resetInProgress = true;
     this.pickerError = "";
     try {
-      await resetCallerBuddyBrowserState(callerBuddy.state.rootHandle);
+      const result = await resetCallerBuddyBrowserState(callerBuddy.state.rootHandle);
+      if (result === "needs-manual") {
+        this.finishResetNeedsManual();
+      }
     } catch (err) {
       log.warn("Reset CallerBuddy failed:", err);
-      this.pickerError =
-        "Could not reset CallerBuddy. Try clearing site data in the browser.";
-      this.resetInProgress = false;
-      this.showResetConfirm = false;
+      this.finishResetNeedsManual();
     }
+  }
+
+  private finishResetNeedsManual() {
+    this.resetInProgress = false;
+    this.showResetConfirm = false;
+    this.showStorageRecovery = true;
   }
 
   private renderResetConfirm() {
@@ -523,6 +556,7 @@ export class WelcomeView extends LitElement {
 
   static styles = [
     modalOverlayStyles,
+    alertDialogStyles,
     css`
     /*
      * Side margins restored to the pre-redesign centered-column approach

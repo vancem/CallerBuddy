@@ -14,6 +14,7 @@ import { AppState, StateEvents, TabType } from "./services/app-state.js";
 import {
   storeRootHandle,
   loadRootHandle,
+  forgetStoredRootHandle,
   ensurePermission,
   readTextFile,
   readBinaryFile,
@@ -24,6 +25,10 @@ import {
   isSameDirectory,
   moveFile,
   listDirectoriesRecursive,
+  withTimeout,
+  ACTIVATE_IO_MS,
+  HANDLE_PROBE_MS,
+  SAVED_FOLDER_NOTICE,
   type FolderRef,
 } from "./services/file-system-service.js";
 import { loadSongsJson, saveSongsJson, loadAndMergeSongs, scanDirectory, isSongsJsonBackupDue, maybeRefreshSongsJsonBackup } from "./services/song-library.js";
@@ -164,27 +169,78 @@ export class CallerBuddy {
   async init(): Promise<void> {
     log.info("CallerBuddy initializing…");
 
-    const storedHandle = await loadRootHandle();
-    if (storedHandle) {
-      log.info(`init: found stored handle "${storedHandle.name}", checking permission…`);
-      // Try to silently verify permission (no user gesture, may fail)
-      const perm = await storedHandle.queryPermission({ mode: "readwrite" });
-      log.info(`init: queryPermission returned "${perm}"`);
-      if (perm === "granted") {
-        log.info("init: permission granted, activating stored root…");
-        await this.activateRoot(storedHandle);
-        return;
-      }
-      // Permission not granted — we'll need a user gesture. Store the handle
-      // so the welcome view can offer a "reconnect" button.
-      log.info("init: permission not granted; showing welcome.");
-      this.state.rootHandle = storedHandle;
-    } else {
-      log.info("init: no stored handle found");
+    let storedHandle: FileSystemDirectoryHandle | null = null;
+    try {
+      storedHandle = await withTimeout(
+        loadRootHandle(),
+        HANDLE_PROBE_MS,
+        "loadRootHandle",
+      );
+    } catch (err) {
+      log.warn("init: could not load stored handle:", err);
+      await this.recoverFromDeadHandle("loadRootHandle");
+      return;
     }
 
-    log.info("init: opening welcome tab");
+    if (!storedHandle) {
+      log.info("init: no stored handle found");
+      this.state.setFolderOpenNotice("");
+      this.openWelcome();
+      return;
+    }
+
+    log.info(`init: found stored handle "${storedHandle.name}", checking permission…`);
+    let perm: PermissionState;
+    try {
+      // No user gesture and no permission dialog. If this does not return,
+      // the handle is unusable and Reconnect would hang the same way.
+      perm = await withTimeout(
+        storedHandle.queryPermission({ mode: "readwrite" }),
+        HANDLE_PROBE_MS,
+        "queryPermission",
+      );
+    } catch (err) {
+      log.warn("init: queryPermission failed:", err);
+      await this.recoverFromDeadHandle("queryPermission");
+      return;
+    }
+
+    log.info(`init: queryPermission returned "${perm}"`);
+    if (perm === "granted") {
+      log.info("init: permission granted, activating stored root…");
+      await this.activateRoot(storedHandle);
+      return;
+    }
+    if (perm === "prompt") {
+      // Permission needs a user gesture. Keep the handle so Welcome can
+      // offer Reconnect. Do not call requestPermission here.
+      log.info("init: permission not granted; showing welcome.");
+      this.state.setFolderOpenNotice("");
+      this.state.rootHandle = storedHandle;
+      this.openWelcome();
+      return;
+    }
+
+    log.info("init: permission denied; dropping stored handle.");
+    await this.recoverFromDeadHandle("permission denied");
+  }
+
+  private openWelcome(): void {
+    log.info("opening welcome tab");
     this.state.openSingletonTab(TabType.Welcome, "Welcome", false);
+  }
+
+  /**
+   * The stored handle did not answer, or permission is denied.
+   * Drop it so the next launch does not touch it, and show Welcome
+   * without Reconnect (Reconnect would call the same hung API).
+   */
+  private async recoverFromDeadHandle(reason: string): Promise<void> {
+    log.warn(`saved folder unusable (${reason})`);
+    this.state.rootHandle = null;
+    this.state.setFolderOpenNotice(SAVED_FOLDER_NOTICE);
+    await forgetStoredRootHandle();
+    this.openWelcome();
   }
 
   // -----------------------------------------------------------------------
@@ -218,6 +274,10 @@ export class CallerBuddy {
     await stored;
     log.info("setRoot: activating root…");
     await this.activateRoot(handle);
+    if (this.state.rootHandle !== handle) {
+      log.warn("setRoot: root was not activated");
+      return;
+    }
 
     log.info("setRoot: complete");
   }
@@ -269,17 +329,23 @@ export class CallerBuddy {
   }
 
   private async activateRoot(handle: FileSystemDirectoryHandle): Promise<void> {
+    this.state.setFolderOpenNotice("");
     this.state.setRoot(handle);
     await this.state.updateEditorTabsClosable();
     log.info(`activateRoot: CallerBuddyRoot set to "${handle.name}"`);
 
-    log.info("activateRoot: loading settings…");
-    await this.loadSettings();
-    log.info("activateRoot: settings loaded");
-
-    log.info("activateRoot: restoring playlist…");
-    await this.restorePlaylist(handle);
-    log.info("activateRoot: playlist restored");
+    try {
+      await withTimeout(
+        this.loadRootFromDisk(handle),
+        ACTIVATE_IO_MS,
+        "activateRoot",
+      );
+    } catch (err) {
+      log.warn("activateRoot: saved folder did not respond:", err);
+      this.state.rootHandle = null;
+      await this.recoverFromDeadHandle("activateRoot");
+      return;
+    }
 
     this.listenForPlaylistChanges();
     this.listenForDiskRefresh();
@@ -300,6 +366,17 @@ export class CallerBuddy {
   // -----------------------------------------------------------------------
   // Settings
   // -----------------------------------------------------------------------
+
+  /** Settings plus playlist restore. Bounded by the caller so a dead folder cannot stick startup. */
+  private async loadRootFromDisk(handle: FileSystemDirectoryHandle): Promise<void> {
+    log.info("activateRoot: loading settings…");
+    await this.loadSettings();
+    log.info("activateRoot: settings loaded");
+
+    log.info("activateRoot: restoring playlist…");
+    await this.restorePlaylist(handle);
+    log.info("activateRoot: playlist restored");
+  }
 
   /** Read and normalize CallerBuddySettings.json, or null if missing/unreadable. */
   private async readSettingsFromDisk(): Promise<Settings | null> {

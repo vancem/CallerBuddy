@@ -33,7 +33,7 @@ import { APP_VERSION } from "../version.js";
 import { log, getRecentLogs, clearRecentLogs } from "../services/logger.js";
 import { isPhoneLikeTouchDevice } from "../utils/device-traits.js";
 import { bumpLyricsScale } from "../utils/lyrics-scale.js";
-import { renderAlertDialog } from "../utils/ui-alert.js";
+import { renderAlertDialog, renderSiteDataRecoveryDialog } from "../utils/ui-alert.js";
 
 // Side-effect imports to register custom elements
 import "./tab-bar.js";
@@ -69,6 +69,7 @@ export class AppShell extends LitElement {
   @state() private demoInstallError = "";
   @state() private showResetConfirm = false;
   @state() private resetInProgress = false;
+  @state() private showStorageRecovery = false;
   @state() private alertMessage = "";
 
   private _boundKeydown = (e: KeyboardEvent) => this.onKeydown(e);
@@ -525,6 +526,11 @@ export class AppShell extends LitElement {
           : nothing}
         ${this.showLogs ? this.renderLogModal() : nothing}
         ${this.showResetConfirm ? this.renderResetConfirm() : nothing}
+        ${this.showStorageRecovery
+          ? renderSiteDataRecoveryDialog(() => {
+              this.showStorageRecovery = false;
+            })
+          : nothing}
         ${renderAlertDialog(this.alertMessage, () => {
           this.alertMessage = "";
         })}
@@ -938,14 +944,20 @@ export class AppShell extends LitElement {
     this.resetInProgress = true;
     log.info(`[ui] reset confirm: Reset CallerBuddy`);
     try {
-      await resetCallerBuddyBrowserState(callerBuddy.state.rootHandle);
+      const result = await resetCallerBuddyBrowserState(callerBuddy.state.rootHandle);
+      if (result === "needs-manual") {
+        this.finishResetNeedsManual();
+      }
     } catch (err) {
       log.warn("Reset CallerBuddy failed:", err);
-      this.resetInProgress = false;
-      this.showResetConfirm = false;
-      this.alertMessage =
-        "Could not reset CallerBuddy. Try clearing site data in the browser.";
+      this.finishResetNeedsManual();
     }
+  }
+
+  private finishResetNeedsManual() {
+    this.resetInProgress = false;
+    this.showResetConfirm = false;
+    this.showStorageRecovery = true;
   }
 
   private renderResetConfirm() {

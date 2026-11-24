@@ -33,6 +33,7 @@ export const HELP_TOC: HelpTocEntry[] = [
   { id: "subfolders-in-callerbuddy", title: "SubFolders in CallerBuddy" },
   { id: "appendix", title: "Appendix" },
   { id: "how-callerbuddy-stores-the-data-it-needs", title: "How CallerBuddy Stores Data", indent: true },
+  { id: "manual-reset-of-callerbuddy", title: "Manual Reset of CallerBuddy", indent: true },
   { id: "how-the-played-average-is-calculated", title: "How the Played Average is Calculated", indent: true },
   { id: "keyboard-shortcuts", title: "Keyboard Shortcuts", indent: true },
 ];

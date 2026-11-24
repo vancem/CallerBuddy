@@ -27,7 +27,103 @@ const IDB_STORE = "handles";
 const IDB_KEY = "root";
 const SETTINGS_JSON = "CallerBuddySettings.json";
 
+/** Per-step deadline for reset. File System calls are not cancellable. */
+const RESET_STEP_MS = 2000;
+/** Startup probe for IndexedDB load and queryPermission (no user dialog). */
+export const HANDLE_PROBE_MS = 3000;
+/** Settings + playlist restore. A normal folder finishes well inside this. */
+export const ACTIVATE_IO_MS = 20_000;
+
+/** Shown on Welcome when the stored folder handle does not answer. */
+export const SAVED_FOLDER_NOTICE =
+  "The saved folder did not respond. Choose your CallerBuddySongs folder again.";
+
+export type ResetBrowserStateResult = "reloaded" | "needs-manual";
+
+/**
+ * Reload after a successful reset.
+ * An object method so tests can replace it: jsdom's location.reload cannot be redefined.
+ */
+export const resetNavigation = {
+  reload(): void {
+    location.reload();
+  },
+};
+
+export class DeadlineError extends Error {
+  constructor(label: string, ms: number) {
+    super(`${label} timed out after ${ms}ms`);
+    this.name = "DeadlineError";
+  }
+}
+
+/**
+ * Resolve or reject `promise` within `ms`. The underlying work keeps running;
+ * callers must not depend on it after a timeout.
+ */
+export function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new DeadlineError(label, ms));
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+/** Connections this page opened. Closed before deleteDatabase so we are not the blocker. */
+const openDatabases = new Set<IDBDatabase>();
+/** Bumped when connections are dropped so a late open() closes itself. */
+let openGeneration = 0;
+
+function rememberDb(db: IDBDatabase, generation: number): boolean {
+  if (generation !== openGeneration) {
+    db.close();
+    return false;
+  }
+  db.onversionchange = () => {
+    db.close();
+    openDatabases.delete(db);
+  };
+  openDatabases.add(db);
+  return true;
+}
+
+function releaseDb(db: IDBDatabase): void {
+  openDatabases.delete(db);
+  try {
+    db.close();
+  } catch (err) {
+    log.warn("releaseDb:", err);
+  }
+}
+
+function closeTrackedDatabases(): void {
+  openGeneration += 1;
+  for (const db of openDatabases) {
+    try {
+      db.close();
+    } catch (err) {
+      log.warn("closeTrackedDatabases:", err);
+    }
+  }
+  openDatabases.clear();
+}
+
 function openIDB(): Promise<IDBDatabase> {
+  const generation = openGeneration;
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(IDB_NAME, IDB_VERSION);
     request.onupgradeneeded = () => {
@@ -36,7 +132,14 @@ function openIDB(): Promise<IDBDatabase> {
         db.createObjectStore(IDB_STORE);
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      if (!rememberDb(db, generation)) {
+        reject(new Error("IndexedDB connection closed"));
+        return;
+      }
+      resolve(db);
+    };
     request.onerror = () => reject(request.error);
   });
 }
@@ -51,12 +154,12 @@ export async function storeRootHandle(
     const tx = db.transaction(IDB_STORE, "readwrite");
     tx.objectStore(IDB_STORE).put(handle, IDB_KEY);
     tx.oncomplete = () => {
-      db.close();
+      releaseDb(db);
       log.debug("storeRootHandle: handle persisted");
       resolve();
     };
     tx.onerror = () => {
-      db.close();
+      releaseDb(db);
       log.error("storeRootHandle: IndexedDB transaction error:", tx.error);
       reject(tx.error);
     };
@@ -71,11 +174,11 @@ export async function loadRootHandle(): Promise<FileSystemDirectoryHandle | null
       const tx = db.transaction(IDB_STORE, "readonly");
       const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
       req.onsuccess = () => {
-        db.close();
+        releaseDb(db);
         resolve((req.result as FileSystemDirectoryHandle) ?? null);
       };
       req.onerror = () => {
-        db.close();
+        releaseDb(db);
         reject(req.error);
       };
     });
@@ -85,83 +188,209 @@ export async function loadRootHandle(): Promise<FileSystemDirectoryHandle | null
   }
 }
 
-function deleteCallerBuddyIdb(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.deleteDatabase(IDB_NAME);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-    // Other tabs/connections can block; resolve anyway so reset can reload.
+/**
+ * Drop the stored root handle without touching the folder.
+ * Best-effort: a wedged IndexedDB must not hang the caller.
+ */
+export async function forgetStoredRootHandle(): Promise<void> {
+  try {
+    await withTimeout(deleteStoredRootKey(), HANDLE_PROBE_MS, "forgetStoredRootHandle");
+    log.info("forgetStoredRootHandle: removed stored root handle");
+  } catch (err) {
+    log.warn("forgetStoredRootHandle: could not remove stored root handle:", err);
+  }
+}
+
+function deleteStoredRootKey(): Promise<void> {
+  return openIDB().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).delete(IDB_KEY);
+        tx.oncomplete = () => {
+          releaseDb(db);
+          resolve();
+        };
+        tx.onerror = () => {
+          releaseDb(db);
+          reject(tx.error);
+        };
+      }),
+  );
+}
+
+/**
+ * Delete CallerBuddySettings.json only when permission is already granted.
+ * Never calls requestPermission — that can sit on a hidden prompt or never return.
+ */
+async function tryDeleteSettingsFile(
+  handle: FileSystemDirectoryHandle,
+): Promise<void> {
+  const perm = await handle.queryPermission({ mode: "readwrite" });
+  log.info(`resetCallerBuddyBrowserState: queryPermission returned "${perm}"`);
+  if (perm !== "granted") {
+    log.info(
+      "resetCallerBuddyBrowserState: permission not already granted; skipping settings file",
+    );
+    return;
+  }
+  if (await fileExists(handle, SETTINGS_JSON)) {
+    await deleteFile(handle, SETTINGS_JSON);
+    log.info("resetCallerBuddyBrowserState: deleted CallerBuddySettings.json");
+  } else {
+    log.info("resetCallerBuddyBrowserState: no CallerBuddySettings.json present");
+  }
+}
+
+async function clearServiceWorkers(stepMs: number): Promise<void> {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    await withTimeout(
+      (async () => {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+        log.info(
+          `resetCallerBuddyBrowserState: unregistered ${regs.length} service worker(s)`,
+        );
+      })(),
+      stepMs,
+      "unregister service workers",
+    );
+  } catch (err) {
+    log.warn("resetCallerBuddyBrowserState: service worker unregister failed:", err);
+  }
+}
+
+async function clearCaches(stepMs: number): Promise<void> {
+  if (!("caches" in window)) return;
+  try {
+    await withTimeout(
+      (async () => {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+        log.info(`resetCallerBuddyBrowserState: cleared ${keys.length} cache(s)`);
+      })(),
+      stepMs,
+      "clear caches",
+    );
+  } catch (err) {
+    log.warn("resetCallerBuddyBrowserState: cache clear failed:", err);
+  }
+}
+
+async function callerBuddyDatabaseExists(): Promise<boolean> {
+  const factory = indexedDB as IDBFactory & {
+    databases?: () => Promise<Array<{ name?: string }>>;
+  };
+  if (typeof factory.databases !== "function") return true;
+  const rows = await factory.databases();
+  return rows.some((row) => row.name === IDB_NAME);
+}
+
+/**
+ * Delete the CallerBuddy IndexedDB. `onsuccess` means it is gone.
+ * A blocked delete counts only when `databases()` no longer lists it.
+ * If it is still there when the deadline hits, the caller must not reload.
+ */
+function deleteCallerBuddyDatabase(stepMs: number): Promise<boolean> {
+  closeTrackedDatabases();
+  return new Promise((resolve) => {
+    const pending = {
+      settled: false,
+      timer: undefined as ReturnType<typeof setTimeout> | undefined,
+    };
+    const finish = (ok: boolean) => {
+      if (pending.settled) return;
+      pending.settled = true;
+      clearTimeout(pending.timer);
+      resolve(ok);
+    };
+    pending.timer = setTimeout(() => {
+      void callerBuddyDatabaseExists().then(
+        (exists) => finish(!exists),
+        (err) => {
+          log.warn("resetCallerBuddyBrowserState: could not list IndexedDB:", err);
+          finish(false);
+        },
+      );
+    }, stepMs);
+
+    let req: IDBOpenDBRequest;
+    try {
+      req = indexedDB.deleteDatabase(IDB_NAME);
+    } catch (err) {
+      log.warn("resetCallerBuddyBrowserState: deleteDatabase threw:", err);
+      finish(false);
+      return;
+    }
+    req.onsuccess = () => {
+      log.info("resetCallerBuddyBrowserState: IndexedDB deleted");
+      finish(true);
+    };
+    req.onerror = () => {
+      log.warn("resetCallerBuddyBrowserState: IndexedDB delete failed:", req.error);
+      finish(false);
+    };
     req.onblocked = () => {
       log.warn(
-        "deleteCallerBuddyIdb: blocked by another connection; continuing (reload will finish cleanup)",
+        "resetCallerBuddyBrowserState: IndexedDB delete blocked; waiting for the deadline",
       );
-      resolve();
+      void callerBuddyDatabaseExists().then(
+        (exists) => {
+          if (!exists) finish(true);
+        },
+        () => {
+          /* Deadline decides. */
+        },
+      );
     };
   });
 }
 
 /**
  * Clear origin-scoped browser state and reload so the next session matches
- * first launch (welcome / pick folder). Deletes CallerBuddySettings.json when
- * a root handle is available; leaves song files untouched.
+ * first launch (welcome / pick folder). Song files are never deleted.
+ *
+ * Storage is cleared without waiting on the folder handle. Deleting
+ * CallerBuddySettings.json is best-effort and only runs when permission is
+ * already granted; a handle that never answers cannot block the reload.
+ * Returns "needs-manual" when IndexedDB itself cannot be deleted.
  */
 export async function resetCallerBuddyBrowserState(
   rootHandle?: FileSystemDirectoryHandle | null,
-): Promise<void> {
+): Promise<ResetBrowserStateResult> {
   log.info("resetCallerBuddyBrowserState: starting…");
+  const stepMs = RESET_STEP_MS;
 
   let handle = rootHandle ?? null;
   if (!handle) {
-    handle = await loadRootHandle();
-  }
-  if (handle) {
     try {
-      if (await ensurePermission(handle)) {
-        if (await fileExists(handle, SETTINGS_JSON)) {
-          await deleteFile(handle, SETTINGS_JSON);
-          log.info("resetCallerBuddyBrowserState: deleted CallerBuddySettings.json");
-        } else {
-          log.info("resetCallerBuddyBrowserState: no CallerBuddySettings.json present");
-        }
-      } else {
-        log.warn(
-          "resetCallerBuddyBrowserState: no permission to delete CallerBuddySettings.json",
-        );
-      }
+      handle = await withTimeout(loadRootHandle(), stepMs, "loadRootHandle");
     } catch (err) {
-      log.warn(
-        "resetCallerBuddyBrowserState: could not delete CallerBuddySettings.json:",
-        err,
-      );
+      log.warn("resetCallerBuddyBrowserState: could not load stored handle:", err);
+      handle = null;
     }
-  } else {
+  }
+
+  const settingsAttempt = handle
+    ? withTimeout(
+        tryDeleteSettingsFile(handle),
+        stepMs,
+        "delete CallerBuddySettings.json",
+      ).catch((err) => {
+        log.warn(
+          "resetCallerBuddyBrowserState: could not delete CallerBuddySettings.json:",
+          err,
+        );
+      })
+    : Promise.resolve();
+  if (!handle) {
     log.info("resetCallerBuddyBrowserState: no root handle; skipping settings file");
   }
 
   log.info("resetCallerBuddyBrowserState: clearing origin storage…");
-
-  if ("serviceWorker" in navigator) {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(regs.map((r) => r.unregister()));
-    log.info(`resetCallerBuddyBrowserState: unregistered ${regs.length} service worker(s)`);
-  }
-
-  if ("caches" in window) {
-    const keys = await caches.keys();
-    await Promise.all(keys.map((k) => caches.delete(k)));
-    log.info(`resetCallerBuddyBrowserState: cleared ${keys.length} cache(s)`);
-  }
-
-  try {
-    await Promise.race([
-      deleteCallerBuddyIdb(),
-      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
-    ]);
-    log.info("resetCallerBuddyBrowserState: IndexedDB delete requested");
-  } catch (err) {
-    log.warn("resetCallerBuddyBrowserState: IndexedDB delete failed:", err);
-  }
-
+  await clearServiceWorkers(stepMs);
+  await clearCaches(stepMs);
   try {
     localStorage.clear();
     sessionStorage.clear();
@@ -169,8 +398,26 @@ export async function resetCallerBuddyBrowserState(
     log.warn("resetCallerBuddyBrowserState: storage clear failed:", err);
   }
 
+  const deleted = await deleteCallerBuddyDatabase(stepMs);
+  if (!deleted) {
+    log.warn(
+      "resetCallerBuddyBrowserState: IndexedDB still present; manual clear required",
+    );
+    return "needs-manual";
+  }
+
+  try {
+    await settingsAttempt;
+  } catch (err) {
+    log.warn(
+      "resetCallerBuddyBrowserState: settings delete failed after storage clear:",
+      err,
+    );
+  }
+
   log.info("resetCallerBuddyBrowserState: reloading…");
-  location.reload();
+  resetNavigation.reload();
+  return "reloaded";
 }
 
 // ---------------------------------------------------------------------------

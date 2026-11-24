@@ -116,6 +116,28 @@ export const alertDialogStyles = css`
     line-height: 1.5;
   }
 
+  .cb-recovery-dialog {
+    width: min(92vw, 36rem);
+    max-height: min(90vh, 40rem);
+    overflow: auto;
+  }
+
+  .cb-recovery-title {
+    margin: 0 0 0.75rem;
+    font-size: 1.15rem;
+  }
+
+  .cb-recovery-steps {
+    margin: 0 0 1.1rem;
+    padding-left: 1.2rem;
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+
+  .cb-recovery-steps li + li {
+    margin-top: 0.65rem;
+  }
+
   .cb-alert-actions {
     display: flex;
     flex-direction: column;

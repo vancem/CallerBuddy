@@ -115,6 +115,12 @@ export class AppState extends EventTarget {
   userError = "";
 
   /**
+   * Welcome-only line when the stored folder handle did not answer.
+   * Not persisted. Empty when Reconnect is safe to offer.
+   */
+  folderOpenNotice = "";
+
+  /**
    * Wall-clock ms when the last qualifying song play ended, or null if none yet.
    * Session-only (not persisted across reloads); survives Now Playing tab close/reopen.
    */
@@ -158,6 +164,12 @@ export class AppState extends EventTarget {
 
   setUserError(message: string): void {
     this.userError = message;
+    this.emit(StateEvents.CHANGED);
+  }
+
+  setFolderOpenNotice(message: string): void {
+    if (this.folderOpenNotice === message) return;
+    this.folderOpenNotice = message;
     this.emit(StateEvents.CHANGED);
   }
 
