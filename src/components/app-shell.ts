@@ -58,6 +58,15 @@ const FS_RESUME_DISMISS_TS_KEY = "callerbuddy.fsResumeDismissTs";
  */
 const FS_SESSION_INTENT_KEY = "callerbuddy.fsSessionIntent";
 
+/** `1.0.10 abc12345` → `1.0.10 (abc12345)`. The revision is the git hash from inject-version. */
+function formatMenuVersion(version: string): string {
+  const space = version.indexOf(" ");
+  if (space < 0) return version;
+  const base = version.slice(0, space);
+  const rev = version.slice(space + 1).trim();
+  return rev ? `${base} (${rev})` : base;
+}
+
 @customElement("app-shell")
 export class AppShell extends LitElement {
   @state() private showMenu = false;
@@ -801,7 +810,7 @@ export class AppShell extends LitElement {
         </button>
         <hr />
         <div class="menu-item version" role="menuitem">
-          CallerBuddy v${APP_VERSION}
+          CallerBuddy v${formatMenuVersion(APP_VERSION)}
         </div>
       </div>
     `;

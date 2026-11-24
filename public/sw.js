@@ -1,5 +1,5 @@
-/* built: 2026-11-24T16:13:14.952Z */
-const CACHE_NAME = "callerbuddy-v1.0.10-d2ac85db-dirty";
+/* built: 2026-11-24T16:35:58.059Z */
+const CACHE_NAME = "callerbuddy-v1.0.11-96779bb1-dirty";
 const PRECACHE_URLS = ["","index.html"];
 
 /**
