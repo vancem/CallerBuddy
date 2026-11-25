@@ -409,6 +409,51 @@ test.describe("CallerBuddy basic flow", () => {
     await expect(patterCells).toHaveCount(1);
   });
 
+  test("highlights songs that are on the playlist", async ({ page }) => {
+    await goToEditor(page);
+    const editor = page.locator("playlist-editor");
+    const rows = editor.locator("table.song-table tbody tr");
+    await expect(rows).toHaveCount(3);
+    await expect(editor.locator("tr.song-row-on-playlist")).toHaveCount(0);
+
+    await editor.locator("button.add-btn").nth(1).click();
+    await expect(editor.locator("tr.song-row-on-playlist")).toHaveCount(1);
+
+    // Move keyboard focus to another row so the playlist tint is unmixed.
+    await rows.nth(0).locator(".title-cell").click();
+    const highlighted = editor.locator("tr.song-row-on-playlist:not(.song-row-selected)");
+    await expect(highlighted).toHaveCount(1);
+    await expect(highlighted).toHaveCSS("background-color", "rgb(209, 253, 250)");
+  });
+
+  test("song context menu adds or removes depending on playlist membership", async ({
+    page,
+  }) => {
+    await goToEditor(page);
+    const editor = page.locator("playlist-editor");
+    const row = editor.locator("table.song-table tbody tr").nth(0);
+    const menu = editor.locator(".context-menu");
+    const items = editor.locator("ol.playlist-list li.playlist-item");
+
+    await row.locator(".title-cell").click({ button: "right" });
+    await expect(menu.getByRole("menuitem", { name: "Add to end of playlist" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Add to start of playlist" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Remove from playlist" })).toHaveCount(0);
+
+    await menu.getByRole("menuitem", { name: "Add to end of playlist" }).click();
+    await expect(items).toHaveCount(1);
+    await expect(row).toHaveClass(/song-row-on-playlist/);
+
+    await row.locator(".title-cell").click({ button: "right" });
+    await expect(menu.getByRole("menuitem", { name: "Remove from playlist" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Add to end of playlist" })).toHaveCount(0);
+    await expect(menu.getByRole("menuitem", { name: "Add to start of playlist" })).toHaveCount(0);
+
+    await menu.getByRole("menuitem", { name: "Remove from playlist" }).click();
+    await expect(items).toHaveCount(0);
+    await expect(row).not.toHaveClass(/song-row-on-playlist/);
+  });
+
   test("builds a 3-song playlist", async ({ page }) => {
     await goToEditor(page);
     await buildPlaylist(page);

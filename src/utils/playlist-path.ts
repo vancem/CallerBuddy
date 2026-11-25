@@ -59,3 +59,41 @@ export function normalizePlaylistRelPaths(
 ): string[] {
   return paths.map((p) => normalizePlaylistRelPath(p, rootFolderName));
 }
+
+function normalizeSlashes(path: string): string {
+  return path.replace(/\\/g, "/").trim();
+}
+
+/**
+ * CallerBuddyRoot-relative path for a song shown in the playlist editor.
+ * Uses playlistRelPath when the row already has one; otherwise joins the
+ * folder the editor is showing with the audio filename.
+ * Returns null when the folder path is unknown and the song has no path.
+ */
+export function editorSongPlaylistKey(
+  song: { musicFile: string; playlistRelPath?: string },
+  folderRelPath: string | null,
+): string | null {
+  const own = normalizeSlashes(song.playlistRelPath ?? "");
+  if (own) return own.toLowerCase();
+  if (folderRelPath === null) return null;
+  const file = normalizeSlashes(song.musicFile).replace(/^\/+/, "");
+  if (!file) return null;
+  const folder = normalizeSlashes(folderRelPath).replace(/^\/+|\/+$/g, "");
+  return (folder ? `${folder}/${file}` : file).toLowerCase();
+}
+
+/** True when this editor row is already a member of the playlist. */
+export function isEditorSongOnPlaylist(
+  song: { musicFile: string; playlistRelPath?: string },
+  folderRelPath: string | null,
+  playlistRelPaths: Iterable<string>,
+): boolean {
+  const key = editorSongPlaylistKey(song, folderRelPath);
+  if (!key) return false;
+  for (const raw of playlistRelPaths) {
+    const path = normalizeSlashes(raw).toLowerCase();
+    if (path && path === key) return true;
+  }
+  return false;
+}

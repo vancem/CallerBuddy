@@ -50,6 +50,7 @@ import { loadAndMergeSongs, loadSongsJson } from "../services/song-library.js";
 import { isSameDirectory, listDirectory, type DirEntry, type FolderRef } from "../services/file-system-service.js";
 import { log } from "../services/logger.js";
 import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js";
+import { decodePathSegment, isEditorSongOnPlaylist } from "../utils/playlist-path.js";
 import { songMatchesTextFilter } from "../utils/song-text-filter.js";
 import { formatUnknownError } from "../utils/format.js";
 import { openHelpSection } from "../utils/ui-help.js";
@@ -178,6 +179,12 @@ export class PlaylistEditor extends LitElement {
 
   /** Set when {@link loadCurrentFolder} fails; shown instead of a fake empty library. */
   @state() private folderLoadError = "";
+
+  /**
+   * CallerBuddyRoot-relative path of the folder being browsed ("" at the root).
+   * Null until resolved; used to highlight songs already on the playlist.
+   */
+  @state() private currentFolderRelPath: string | null = null;
 
   /** Blocking message that replaces window.alert. */
   @state() private alertMessage = "";
@@ -651,7 +658,9 @@ export class PlaylistEditor extends LitElement {
     this.editingCell = null;
     this.loading = true;
     this.folderLoadError = "";
+    this.currentFolderRelPath = null;
     const seq = ++this.folderLoadSeq;
+    void this.refreshFolderRelPath(handle, seq);
     try {
       // Fast path: load CallerBuddySongs.json first so the UI can render quickly.
       const t0 = performance.now();
@@ -710,6 +719,32 @@ export class PlaylistEditor extends LitElement {
         this.pendingSongTableFocus = true;
         this.requestUpdate();
       }
+    }
+  }
+
+  /** Resolve the open folder to a CallerBuddyRoot-relative path for playlist matching. */
+  private async refreshFolderRelPath(
+    handle: FileSystemDirectoryHandle,
+    seq: number,
+  ): Promise<void> {
+    const rel = await this.resolveFolderRelPath(handle);
+    if (seq !== this.folderLoadSeq) return;
+    this.currentFolderRelPath = rel;
+  }
+
+  private async resolveFolderRelPath(
+    handle: FileSystemDirectoryHandle,
+  ): Promise<string | null> {
+    const root = callerBuddy.state.rootHandle;
+    if (!root) return null;
+    try {
+      if (await isSameDirectory(handle, root)) return "";
+      const segments = await root.resolve(handle);
+      if (!segments || segments.length === 0) return "";
+      return segments.map((segment) => decodePathSegment(segment)).join("/");
+    } catch (err) {
+      log.warn("playlist-editor: could not resolve folder path for playlist highlight:", err);
+      return null;
     }
   }
 
@@ -1038,9 +1073,7 @@ export class PlaylistEditor extends LitElement {
                           draggable="true"
                           data-song-key=${this.songKey(song)}
                           aria-selected=${this.songKey(song) === this.keyboardShortcutSongKey}
-                          class=${this.songKey(song) === this.keyboardShortcutSongKey
-                            ? "song-row-selected"
-                            : ""}
+                          class=${this.songRowClass(song)}
                           @mousedown=${() => this.onSongRowShortcutAnchor(song)}
                           @dragstart=${(e: DragEvent) => this.onSongDragStart(e, song)}
                           @dragend=${this.onEditorDragEnd}
@@ -1176,18 +1209,23 @@ export class PlaylistEditor extends LitElement {
     if (!this.contextTarget) return nothing;
 
     if (this.contextTarget.kind === "song") {
+      const onPlaylist = this.isSongOnPlaylist(this.contextTarget.song);
       return html`
         <div
           class="context-menu"
           style="left:${this.contextMenuPos.x}px; top:${this.contextMenuPos.y}px"
           role="menu"
         >
-          <button class="menu-item" role="menuitem"
-            @click=${() => this.addToPlaylistFromCtx("end")}
-          >Add to end of playlist</button>
-          <button class="menu-item" role="menuitem"
-            @click=${() => this.addToPlaylistFromCtx("start")}
-          >Add to start of playlist</button>
+          ${onPlaylist
+            ? html`<button class="menu-item" role="menuitem"
+                @click=${() => this.removeFromPlaylistFromCtx()}
+              >Remove from playlist</button>`
+            : html`<button class="menu-item" role="menuitem"
+                @click=${() => this.addToPlaylistFromCtx("end")}
+              >Add to end of playlist</button>
+              <button class="menu-item" role="menuitem"
+                @click=${() => this.addToPlaylistFromCtx("start")}
+              >Add to start of playlist</button>`}
           <hr />
           <button class="menu-item" role="menuitem"
             @click=${() => this.playSongFromCtx()}
@@ -1263,6 +1301,14 @@ export class PlaylistEditor extends LitElement {
     } else {
       void this.addToPlaylist(song);
     }
+  }
+
+  private removeFromPlaylistFromCtx() {
+    if (!this.contextTarget || this.contextTarget.kind !== "song") return;
+    const song = this.contextTarget.song;
+    this.contextTarget = null;
+    const index = this.playlistIndexForSong(song);
+    if (index >= 0) callerBuddy.state.removeFromPlaylist(index);
   }
 
   private async playSongFromCtx() {
@@ -1715,6 +1761,39 @@ export class PlaylistEditor extends LitElement {
 
   private songKey(song: Song): string {
     return song.musicFile.toLowerCase();
+  }
+
+  /** True when this library row is already a member of the shared playlist. */
+  private isSongOnPlaylist(song: Song): boolean {
+    const playlist = callerBuddy.state.playlist;
+    if (playlist.includes(song)) return true;
+    return isEditorSongOnPlaylist(
+      song,
+      this.currentFolderRelPath,
+      playlist.map((entry) => entry.playlistRelPath ?? ""),
+    );
+  }
+
+  /** Playlist index for this library row, or -1 when it is not on the playlist. */
+  private playlistIndexForSong(song: Song): number {
+    const playlist = callerBuddy.state.playlist;
+    const direct = playlist.indexOf(song);
+    if (direct >= 0) return direct;
+    return playlist.findIndex((entry) =>
+      isEditorSongOnPlaylist(song, this.currentFolderRelPath, [
+        entry.playlistRelPath ?? "",
+      ]),
+    );
+  }
+
+  /** Keyboard focus plus a tint when the song is already on the playlist. */
+  private songRowClass(song: Song): string {
+    const classes: string[] = [];
+    if (this.isSongOnPlaylist(song)) classes.push("song-row-on-playlist");
+    if (this.songKey(song) === this.keyboardShortcutSongKey) {
+      classes.push("song-row-selected");
+    }
+    return classes.join(" ");
   }
 
   private formatLastUsedDays(song: Song): string {
@@ -2634,9 +2713,18 @@ export class PlaylistEditor extends LitElement {
       border-bottom: 1px solid var(--cb-border);
     }
 
+    /* Songs already chosen for the playlist: same tint as the Now Playing playlist panel. */
+    .song-table tbody tr.song-row-on-playlist {
+      background: var(--cb-now-playing-panel-bg);
+    }
+
     /* Single selection row: shortcuts (+/=, P), arrow keys, and add/play targets. */
     .song-table tbody tr.song-row-selected {
       background: color-mix(in srgb, var(--cb-accent) 14%, var(--cb-panel-bg));
+    }
+
+    .song-table tbody tr.song-row-on-playlist.song-row-selected {
+      background: color-mix(in srgb, var(--cb-accent) 22%, var(--cb-now-playing-panel-bg));
     }
 
     .song-table:focus {

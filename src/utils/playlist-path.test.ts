@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { decodePathSegment, normalizePlaylistRelPath } from "./playlist-path.js";
+import {
+  decodePathSegment,
+  isEditorSongOnPlaylist,
+  normalizePlaylistRelPath,
+} from "./playlist-path.js";
 
 describe("decodePathSegment", () => {
   it("decodes URI-encoded segments", () => {
@@ -51,5 +55,62 @@ describe("normalizePlaylistRelPath", () => {
         ROOT,
       ),
     ).toBe("patter/BS 579 - Candy Girl.mp3");
+  });
+});
+
+describe("isEditorSongOnPlaylist", () => {
+  const playlist = ["patter/BS 579 - Candy Girl.mp3", "RR 247 - Joy To The World.mp3"];
+
+  it("matches a root song by filename", () => {
+    expect(
+      isEditorSongOnPlaylist(
+        { musicFile: "RR 247 - Joy To The World.mp3" },
+        "",
+        playlist,
+      ),
+    ).toBe(true);
+  });
+
+  it("matches a subfolder song by folder plus filename", () => {
+    expect(
+      isEditorSongOnPlaylist(
+        { musicFile: "BS 579 - Candy Girl.mp3" },
+        "patter",
+        playlist,
+      ),
+    ).toBe(true);
+  });
+
+  it("does not match the same filename in a different folder", () => {
+    expect(
+      isEditorSongOnPlaylist(
+        { musicFile: "BS 579 - Candy Girl.mp3" },
+        "singing",
+        playlist,
+      ),
+    ).toBe(false);
+  });
+
+  it("uses playlistRelPath on the row when the folder path is unknown", () => {
+    expect(
+      isEditorSongOnPlaylist(
+        {
+          musicFile: "BS 579 - Candy Girl.mp3",
+          playlistRelPath: "patter/BS 579 - Candy Girl.mp3",
+        },
+        null,
+        playlist,
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false when the song is not on the playlist", () => {
+    expect(
+      isEditorSongOnPlaylist(
+        { musicFile: "SQD 101 - Sunny Side.mp3" },
+        "",
+        playlist,
+      ),
+    ).toBe(false);
   });
 });
