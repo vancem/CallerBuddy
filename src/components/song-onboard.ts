@@ -135,6 +135,15 @@ export class SongOnboard extends LitElement {
   /** Formatted vs Raw — restored from session when this tab remounts after Help. */
   @state() private lyricsEditorMode: LyricsEditorMode = getLyricsEditorSessionMode();
   @state() private lyricsHint = "";
+  /**
+   * The analysis found convertible lyrics, so the user can choose to import
+   * the music alone as patter instead.
+   */
+  @state() private sourceHadLyrics = false;
+  /** Ignore converted lyrics and review this import as a patter song. */
+  @state() private importAsPatter = false;
+  /** Lyrics currently shown came from a source file (not typed from scratch). */
+  @state() private lyricsFromSource = false;
   @state() private destMp3Name = "";
   @state() private destLyricsName = "";
   @state() private mp3Candidates: Mp3Candidate[] = [];
@@ -157,6 +166,16 @@ export class SongOnboard extends LitElement {
   private collisionCheckSeq = 0;
 
   private proposal: OnboardingProposal | null = null;
+  /**
+   * Singing-call lyrics to restore if the user unchecks "import as patter".
+   * Updated from the editor when they leave the converted-lyrics review.
+   */
+  private singingDraft: {
+    lyricsMarkdown: string;
+    selectedHtml: string;
+    lyricsHint: string;
+    fromSource: boolean;
+  } | null = null;
 
   protected updated(changed: Map<PropertyKey, unknown>) {
     if (changed.has("selectedMp3") && this.selectedMp3) {
@@ -223,6 +242,15 @@ export class SongOnboard extends LitElement {
       this.selectedHtml = data.proposal.selectedHtml;
       this.lyricsMarkdown = data.proposal.lyricsMarkdown;
       this.lyricsHint = data.proposal.lyricsHint ?? "";
+      this.sourceHadLyrics = !!data.proposal.lyricsMarkdown;
+      this.lyricsFromSource = this.sourceHadLyrics;
+      this.importAsPatter = false;
+      this.singingDraft = {
+        lyricsMarkdown: data.proposal.lyricsMarkdown,
+        selectedHtml: data.proposal.selectedHtml,
+        lyricsHint: data.proposal.lyricsHint ?? "",
+        fromSource: !!data.proposal.lyricsMarkdown,
+      };
       this.destMp3Name = data.proposal.destMp3Name;
       this.destLyricsName = data.proposal.destLyricsName;
       this.mp3Candidates = data.proposal.mp3Candidates;
@@ -334,11 +362,53 @@ export class SongOnboard extends LitElement {
           (p) => callerBuddy.readOnboardingBinary(p),
         );
         this.lyricsHint = "";
+        this.lyricsFromSource = !!this.lyricsMarkdown;
       } catch {
         this.lyricsMarkdown = "";
+        this.lyricsFromSource = false;
       }
     } else {
       this.lyricsMarkdown = "";
+      this.lyricsFromSource = false;
+    }
+    this.importAsPatter = false;
+    this.lyricsEditorGen++;
+    this.updateDestNames();
+  }
+
+  /**
+   * Drop converted lyrics and review the import the way a source with no
+   * lyrics files is reviewed: blank editor, music file only.
+   * Unchecking restores the singing-call conversion.
+   */
+  private onImportAsPatterChange(e: Event) {
+    const checked = (e.target as HTMLInputElement).checked;
+    if (checked) {
+      if (this.lyricsMarkdown) {
+        this.singingDraft = {
+          lyricsMarkdown: this.lyricsMarkdownFromEditor(),
+          selectedHtml: this.selectedHtml,
+          lyricsHint: this.lyricsHint,
+          fromSource: this.lyricsFromSource,
+        };
+      }
+      this.importAsPatter = true;
+      this.lyricsFromSource = false;
+      this.lyricsMarkdown = "";
+      this.lyricsHint = "";
+      this.selectedHtml = "";
+      this.lyricsEditorGen++;
+      this.updateDestNames();
+      return;
+    }
+
+    this.importAsPatter = false;
+    const draft = this.singingDraft;
+    if (draft?.lyricsMarkdown) {
+      this.lyricsMarkdown = draft.lyricsMarkdown;
+      this.selectedHtml = draft.selectedHtml;
+      this.lyricsHint = draft.lyricsHint;
+      this.lyricsFromSource = draft.fromSource;
     }
     this.lyricsEditorGen++;
     this.updateDestNames();
@@ -591,18 +661,29 @@ export class SongOnboard extends LitElement {
                     Open editor to paste
                   </button>
                 `
-              : html`
-                  <p>Could not find any lyrics file in this source.</p>
-                  <p class="muted">
-                    This song will be imported as a <strong>patter</strong> song
-                    (music only, no lyrics). If that is not correct, you can add
-                    lyrics by hand.
-                  </p>
-                  <button class="secondary-btn" type="button" @click=${this.startBlankLyrics}
-                    title="Open an empty lyrics editor and type or paste lyrics">
-                    Add lyrics by hand
-                  </button>
-                `}
+              : this.importAsPatter
+                ? html`
+                    <p>
+                      This song will be imported as a <strong>patter</strong> song
+                      (music only, no lyrics).
+                    </p>
+                    <button class="secondary-btn" type="button" @click=${this.startBlankLyrics}
+                      title="Open an empty lyrics editor and type or paste lyrics">
+                      Add lyrics by hand
+                    </button>
+                  `
+                : html`
+                    <p>Could not find any lyrics file in this source.</p>
+                    <p class="muted">
+                      This song will be imported as a <strong>patter</strong> song
+                      (music only, no lyrics). If that is not correct, you can add
+                      lyrics by hand.
+                    </p>
+                    <button class="secondary-btn" type="button" @click=${this.startBlankLyrics}
+                      title="Open an empty lyrics editor and type or paste lyrics">
+                      Add lyrics by hand
+                    </button>
+                  `}
           </div>
         </div>
       `;
@@ -627,6 +708,8 @@ export class SongOnboard extends LitElement {
   }
 
   private startBlankLyrics() {
+    this.importAsPatter = false;
+    this.lyricsFromSource = false;
     this.lyricsMarkdown = generateLyricsMarkdownTemplate(
       this.songTitle || "Untitled",
       this.label || "",
@@ -693,14 +776,28 @@ export class SongOnboard extends LitElement {
             : nothing}
         </div>
 
-        ${this.lyricsMarkdown
+        ${this.sourceHadLyrics
+          ? html`
+              <label class="patter-toggle"
+                title="Ignore lyrics in this source and import the music only, as a patter song">
+                <input
+                  type="checkbox"
+                  .checked=${this.importAsPatter}
+                  title="Ignore lyrics in this source and import the music only, as a patter song"
+                  @change=${this.onImportAsPatterChange}
+                />
+                import as patter music (no lyrics)
+              </label>
+            `
+          : nothing}
+        ${this.lyricsFromSource && this.lyricsMarkdown
           ? html`<p class="explain">Source lyrics were converted to Markdown and placed
               in the editor — please review and update as desired.
               You can open original files from the list above to compare or cut and paste.</p>`
           : nothing}
 
-        <!-- HTML source selector (only if multiple) -->
-        ${this.htmlCandidates.length > 1
+        <!-- HTML source selector (only if multiple, and not importing as patter) -->
+        ${this.htmlCandidates.length > 1 && !this.importAsPatter
           ? html`
             <div class="section">
               <h3>Lyrics Source File</h3>
@@ -872,6 +969,22 @@ export class SongOnboard extends LitElement {
       color: var(--cb-fg-secondary, #aaa);
       margin: 0;
       line-height: 1.4;
+    }
+
+    .patter-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .patter-toggle input {
+      margin: 0;
+      cursor: pointer;
     }
 
     .explain strong { color: var(--cb-fg); }

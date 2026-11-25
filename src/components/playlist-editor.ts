@@ -50,7 +50,7 @@ import { loadAndMergeSongs, loadSongsJson } from "../services/song-library.js";
 import { isSameDirectory, listDirectory, type DirEntry, type FolderRef } from "../services/file-system-service.js";
 import { log } from "../services/logger.js";
 import { daysSinceLastUsedMs, displayPlayWeight } from "../utils/play-history.js";
-import { decodePathSegment, isEditorSongOnPlaylist } from "../utils/playlist-path.js";
+import { decodePathSegment, songMatchesPlaylistEntry } from "../utils/playlist-path.js";
 import { songMatchesTextFilter } from "../utils/song-text-filter.js";
 import { formatUnknownError } from "../utils/format.js";
 import { openHelpSection } from "../utils/ui-help.js";
@@ -658,7 +658,9 @@ export class PlaylistEditor extends LitElement {
     this.editingCell = null;
     this.loading = true;
     this.folderLoadError = "";
-    this.currentFolderRelPath = null;
+    // Same handle as the root: path is "" with no async resolve (that call can hang).
+    const root = callerBuddy.state.rootHandle;
+    this.currentFolderRelPath = root && handle === root ? "" : null;
     const seq = ++this.folderLoadSeq;
     void this.refreshFolderRelPath(handle, seq);
     try {
@@ -740,7 +742,9 @@ export class PlaylistEditor extends LitElement {
     try {
       if (await isSameDirectory(handle, root)) return "";
       const segments = await root.resolve(handle);
-      if (!segments || segments.length === 0) return "";
+      // null means "not a child" or the lookup failed — not the root folder.
+      if (!segments) return null;
+      if (segments.length === 0) return "";
       return segments.map((segment) => decodePathSegment(segment)).join("/");
     } catch (err) {
       log.warn("playlist-editor: could not resolve folder path for playlist highlight:", err);
@@ -1765,24 +1769,15 @@ export class PlaylistEditor extends LitElement {
 
   /** True when this library row is already a member of the shared playlist. */
   private isSongOnPlaylist(song: Song): boolean {
-    const playlist = callerBuddy.state.playlist;
-    if (playlist.includes(song)) return true;
-    return isEditorSongOnPlaylist(
-      song,
-      this.currentFolderRelPath,
-      playlist.map((entry) => entry.playlistRelPath ?? ""),
+    return callerBuddy.state.playlist.some((entry) =>
+      songMatchesPlaylistEntry(song, entry, this.currentFolderRelPath),
     );
   }
 
   /** Playlist index for this library row, or -1 when it is not on the playlist. */
   private playlistIndexForSong(song: Song): number {
-    const playlist = callerBuddy.state.playlist;
-    const direct = playlist.indexOf(song);
-    if (direct >= 0) return direct;
-    return playlist.findIndex((entry) =>
-      isEditorSongOnPlaylist(song, this.currentFolderRelPath, [
-        entry.playlistRelPath ?? "",
-      ]),
+    return callerBuddy.state.playlist.findIndex((entry) =>
+      songMatchesPlaylistEntry(song, entry, this.currentFolderRelPath),
     );
   }
 

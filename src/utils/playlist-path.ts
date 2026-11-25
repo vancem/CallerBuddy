@@ -97,3 +97,35 @@ export function isEditorSongOnPlaylist(
   }
   return false;
 }
+
+/** Folder handle identity used to match a library row to a restored playlist copy. */
+export interface PlaylistDirHandle {
+  name: string;
+}
+
+/**
+ * True when a library row is the same song as a playlist entry.
+ * Restored playlist rows are copies, so object identity is not enough.
+ * Path matching needs the open folder's root-relative path, which comes from
+ * FileSystemDirectoryHandle.resolve / isSameEntry and can hang on cloud drives.
+ * The folder-handle check still highlights those rows while that lookup is pending.
+ */
+export function songMatchesPlaylistEntry(
+  song: { musicFile: string; playlistRelPath?: string; dirHandle?: PlaylistDirHandle | null },
+  entry: { musicFile: string; playlistRelPath?: string; dirHandle?: PlaylistDirHandle | null },
+  folderRelPath: string | null,
+): boolean {
+  if (song === entry) return true;
+  if (isEditorSongOnPlaylist(song, folderRelPath, [entry.playlistRelPath ?? ""])) {
+    return true;
+  }
+  const songFile = song.musicFile.trim().toLowerCase();
+  const entryFile = entry.musicFile.trim().toLowerCase();
+  if (!songFile || songFile !== entryFile) return false;
+  const songDir = song.dirHandle;
+  const entryDir = entry.dirHandle;
+  if (!songDir || !entryDir) return false;
+  if (songDir === entryDir) return true;
+  if (folderRelPath === null && songDir.name === entryDir.name) return true;
+  return false;
+}

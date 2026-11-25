@@ -625,6 +625,26 @@ test.describe("CallerBuddy basic flow", () => {
     await expect(onboard).toBeVisible();
     await expect(onboard.getByRole("heading", { name: "Import Test" })).toBeVisible();
 
+    const patterBox = onboard.getByRole("checkbox", {
+      name: "import as patter music (no lyrics)",
+    });
+    await expect(patterBox).toBeVisible();
+    await expect(patterBox).not.toBeChecked();
+    await expect(onboard).toContainText("Source lyrics were converted");
+    await expect(onboard).toContainText("Lyrics:");
+
+    await patterBox.check();
+    await expect(patterBox).toBeChecked();
+    await expect(onboard).not.toContainText("Source lyrics were converted");
+    await expect(onboard.locator("lyrics-editor")).toHaveCount(0);
+    await expect(onboard).toContainText("imported as a patter");
+    await expect(onboard).toContainText("No lyrics file will be created");
+
+    await patterBox.uncheck();
+    await expect(onboard).toContainText("Source lyrics were converted");
+    await expect(onboard.getByRole("heading", { name: "Import Test" })).toBeVisible();
+    await expect(onboard.locator("lyrics-editor")).toHaveCount(1);
+
     await onboard.getByRole("button", { name: "Cancel" }).click();
     await expect(onboard).not.toBeVisible();
   });

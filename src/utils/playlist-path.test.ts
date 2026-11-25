@@ -3,6 +3,7 @@ import {
   decodePathSegment,
   isEditorSongOnPlaylist,
   normalizePlaylistRelPath,
+  songMatchesPlaylistEntry,
 } from "./playlist-path.js";
 
 describe("decodePathSegment", () => {
@@ -112,5 +113,41 @@ describe("isEditorSongOnPlaylist", () => {
         playlist,
       ),
     ).toBe(false);
+  });
+});
+
+describe("songMatchesPlaylistEntry", () => {
+  const folder = { name: "CallerBuddySongs" };
+
+  it("matches a restored copy in the same folder when the folder path is still unknown", () => {
+    const library = { musicFile: "Cotton Eyed Joe.mp3", dirHandle: folder };
+    const restored = {
+      musicFile: "Cotton Eyed Joe.mp3",
+      playlistRelPath: "Cotton Eyed Joe.mp3",
+      dirHandle: folder,
+    };
+    expect(songMatchesPlaylistEntry(library, restored, null)).toBe(true);
+  });
+
+  it("matches a root song by path once the open folder is known to be the root", () => {
+    const library = { musicFile: "Cotton Eyed Joe.mp3" };
+    const restored = {
+      musicFile: "Cotton Eyed Joe.mp3",
+      playlistRelPath: "Cotton Eyed Joe.mp3",
+    };
+    expect(songMatchesPlaylistEntry(library, restored, "")).toBe(true);
+  });
+
+  it("does not treat the same filename in another folder as a match", () => {
+    const library = {
+      musicFile: "BS 579 - Candy Girl.mp3",
+      dirHandle: { name: "singing" },
+    };
+    const restored = {
+      musicFile: "BS 579 - Candy Girl.mp3",
+      playlistRelPath: "patter/BS 579 - Candy Girl.mp3",
+      dirHandle: { name: "patter" },
+    };
+    expect(songMatchesPlaylistEntry(library, restored, "singing")).toBe(false);
   });
 });
